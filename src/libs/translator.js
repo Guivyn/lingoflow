@@ -4,7 +4,6 @@ import {
   OPT_STYLE_FUZZY,
   GLOBLA_RULE,
   DEFAULT_SETTING,
-  // DEFAULT_MOUSEHOVER_KEY,
   OPT_STYLE_NONE,
   DEFAULT_API_SETTING,
   DEFAULT_MOUSE_HOVER_BUBBLE_STYLE,
@@ -15,7 +14,6 @@ import {
   API_SPE_TYPES,
   MSG_INJECT_CSS,
   MSG_UPDATE_ICON,
-  newI18n,
 } from "../config";
 import { resolveApiPromptSettings } from "../config/prompt";
 import {
@@ -25,18 +23,17 @@ import {
 import { parseTerms } from "../core/rules/TermParser";
 import { RuleMatcher } from "../core/rules/RuleMatcher";
 import { TranslationRenderer } from "../core/renderer/TranslationRenderer";
+import { DomScanner } from "../core/scanner/DomScanner";
+import { DomKit } from "../core/dom/DomKit";
 import { interpreter } from "./interpreter";
 import { clearFetchPool } from "./pool";
 import { debounce, scheduleIdle, genEventName, parseAITerms } from "./utils";
 import { apiTranslate } from "../apis";
 import { appLog } from "./log";
 import { clearAllBatchQueue } from "./batchQueue";
-import { genTextClass } from "./style";
-import { createLoadingSVG, createRetrySVG } from "./svg";
+import { createLoadingSVG } from "./svg";
 import { shortcutRegister } from "./shortcut";
 import { tryDetectLang } from "./detect";
-import { trustedTypesHelper } from "./trustedTypes";
-import { injectJs, INJECTOR } from "../injectors";
 import { injectInternalCss } from "./injector";
 import { isExt } from "./client";
 import { sendBgMsg } from "./msg";
@@ -325,11 +322,6 @@ export class Translator {
   #enabled = false; // 全局默认状态
   #runId = 0; // 用于中止过期的异步请求
 
-  #transOnlyRevertTimer = null;
-  #transOnlyRevertTarget = null;
-  #transOnlyRevertEnabled = false;
-  #boundTransOnlyMouseOver = null;
-  #boundTransOnlyMouseOut = null;
   #termValues = []; // 按顺序存储术语的替换值
   #combinedTermsRegex; // 专业术语正则表达式
   #combinedSkipsRegex; // 跳过文本正则表达式
@@ -341,19 +333,10 @@ export class Translator {
   #glossary = {}; // AI词典
   #ruleMatcher = null; // 规则匹配器
   #renderer = null; // DOM 渲染器
-  #textClass = {}; // 译文样式class
-  #textSheet = null; // CSSStyleSheet 实例（Firefox 内容脚本中不可用时为 null）
-  #textStylesRaw = ""; // 原始 CSS 文本（Firefox adoptedStyleSheets 回退备用）
-  #useSheetFallback = false; // Firefox 跨作用域限制标记：adoptedStyleSheets 不可用时直接走内联 <style>
+  #scanner = null; // DOM 扫描器
   #apisMap = new Map(); // 用于接口快速查找
 
-  #observedNodes = new WeakSet(); // 存储所有被识别出的、可翻译的 DOM 节点单元
-  #translationNodes = new WeakMap(); // 存储所有插入到页面的译文节点
-  #viewNodes = new Set(); // 当前在可视范围内的单元
   #processedNodes = new WeakMap(); // 已处理（已执行翻译DOM操作）的单元
-  #rootNodes = new Set(); // 已监控的根节点
-  #skipMoNodes = new WeakSet(); // 忽略变化的节点
-  #plainTextPreprocessingNodes = new WeakSet(); // 正在流式预处理的纯文本 pre
 
   #removeKeydownHandler; // 快捷键清理函数
   #removeKeydownHandler2; // 备用快捷键清理函数
@@ -364,90 +347,7 @@ export class Translator {
   #hoverBubbleRunId = 0; // 用于丢弃过期的气泡翻译请求
   #boundMouseMoveHandler; // 鼠标事件
   #boundKeyDownHandler; // 键盘事件
-  #windowMessageHandler = null;
-
-  #debouncedFindShadowRoot = null;
-
-  #io; // IntersectionObserver
-  #mo; // MutationObserver
   #dmm; // DebounceMouseMover
-
-  #rescanQueue = new Set(); // “脏容器”队列
-  #isQueueProcessing = false; // 队列处理状态标志
-
-  // 获取当前视口中的稳定锚点，用于 DOM 高度/结构发生改变（如插入译文）后保持滚动条位置，防止页面视觉闪烁或滚动位置发生偏移
-  #captureViewportAnchor() {
-    if (!document.elementFromPoint || !window.scrollBy) return null;
-
-    // 测试视口中部的三个不同纵坐标点（50%, 33%, 66%），确保抓取到一个有效的可视 DOM 节点
-    const points = [0.5, 0.33, 0.66];
-    for (const ratio of points) {
-      const x = Math.max(0, Math.floor(window.innerWidth / 2));
-      const y = Math.max(
-        0,
-        Math.min(window.innerHeight - 1, Math.floor(window.innerHeight * ratio))
-      );
-      const element = document.elementFromPoint(x, y);
-      const anchor = this.#normalizeViewportAnchor(element);
-      if (!anchor?.isConnected) continue;
-
-      const rect = anchor.getBoundingClientRect();
-      if (rect.width || rect.height) {
-        return { element: anchor, top: rect.top };
-      }
-    }
-
-    return null;
-  }
-
-  // 规范化视口锚点，如果是译文容器节点，则向上归纳为对应的原文节点，以保证高度恢复的稳定性
-  #normalizeViewportAnchor(element) {
-    if (!element) return null;
-
-    const wrapper = element.closest?.(`.${Translator.LINGOFLOW_CLASS.warpper}`);
-    if (!wrapper) return element;
-
-    const { nodes } = this.#translationNodes.get(wrapper) || {};
-    const originalNode = nodes?.find((node) => node.isConnected);
-    if (originalNode?.nodeType === Node.ELEMENT_NODE) return originalNode;
-    if (originalNode?.parentElement?.isConnected)
-      return originalNode.parentElement;
-
-    return wrapper.previousElementSibling || wrapper.parentElement;
-  }
-
-  // 恢复滚动视口的锚点位置，通过计算锚点元素的位移差进行补偿滚动
-  #restoreViewportAnchor(anchor) {
-    if (!anchor?.element?.isConnected) return;
-
-    const scrollingElement =
-      document.scrollingElement || document.documentElement;
-    if (!scrollingElement) return;
-
-    const overflowY = window.getComputedStyle(scrollingElement).overflowY;
-    const canScrollDocument =
-      scrollingElement.scrollHeight > scrollingElement.clientHeight &&
-      overflowY !== "hidden" &&
-      overflowY !== "clip";
-    if (!canScrollDocument) return;
-
-    const currentTop = anchor.element.getBoundingClientRect().top;
-    const offset = currentTop - anchor.top;
-    // 如果位移差超过 0.5 像素，则平滑滚动以补偿该差值
-    if (Math.abs(offset) > 0.5) {
-      window.scrollBy(0, offset);
-    }
-  }
-
-  // 包装执行 DOM 修改的回调函数，并在前后自动完成视口滚动稳定保护
-  #withViewportAnchor(callback) {
-    const anchor = this.#captureViewportAnchor();
-    try {
-      return callback();
-    } finally {
-      this.#restoreViewportAnchor(anchor);
-    }
-  }
 
   // 忽略元素
   get #ignoreSelector() {
@@ -468,25 +368,6 @@ export class Translator {
     return selectors.join(", ");
   }
 
-  #appendCssText(node, cssText, label) {
-    if (typeof cssText !== "string" || !cssText.trim()) return;
-
-    try {
-      const style = node?.style;
-      if (
-        !style ||
-        typeof style !== "object" ||
-        typeof style.cssText !== "string"
-      ) {
-        return;
-      }
-
-      style.cssText = `${style.cssText || ""}${cssText}`;
-    } catch (err) {
-      appLog("append rule style error", label, err);
-    }
-  }
-
   #createPlainTextChunkNode(chunk) {
     if (chunk.type !== "text" || !chunk.value) return null;
 
@@ -503,7 +384,7 @@ export class Translator {
       !pre.isConnected ||
       !this.#rule.isPlainText
     ) {
-      this.#plainTextPreprocessingNodes.delete(pre);
+      this.#scanner.unmarkPreprocessing(pre);
       return;
     }
 
@@ -558,13 +439,13 @@ export class Translator {
 
     if (fragment.childNodes.length) {
       pre.appendChild(fragment);
-      textNodes.forEach((node) => this.#startObserveNode(node));
+      textNodes.forEach((node) => this.#scanner.observeNode(node));
     }
 
     if (state.offset < state.source.length || state.pendingBreaks > 0) {
       scheduleIdle(() => this.#appendPlainTextPreBatch(pre, state), 100);
     } else {
-      this.#plainTextPreprocessingNodes.delete(pre);
+      this.#scanner.unmarkPreprocessing(pre);
     }
   }
 
@@ -582,7 +463,7 @@ export class Translator {
     };
 
     pre.dataset.lingoflowPreprocessed = "true";
-    this.#plainTextPreprocessingNodes.add(pre);
+    this.#scanner.markPreprocessing(pre);
     pre.replaceChildren();
     this.#appendPlainTextPreBatch(pre, state, true);
   }
@@ -702,6 +583,7 @@ export class Translator {
     this.#ruleMatcher.setSkipsRegex(this.#combinedSkipsRegex);
     this.#renderer = new TranslationRenderer({
       rule: this.#rule,
+      setting: this.#setting,
       tags: Translator.TAGS,
       getPlaceholderConfig: () => this.#placeholderConfig,
       getTerms: () => ({
@@ -711,6 +593,35 @@ export class Translator {
       isIgnoredElement: this.#ruleMatcher.isIgnoredElement.bind(
         this.#ruleMatcher
       ),
+      shouldBreak: this.#ruleMatcher.shouldBreak.bind(this.#ruleMatcher),
+      translationTagName: this.#translationTagName,
+    });
+    this.#scanner = new DomScanner({
+      rule: this.#rule,
+      setting: this.#setting,
+      getIgnoreSelector: () => this.#ignoreSelector,
+      translationTagName: this.#translationTagName,
+      combinedSkipsRegex: this.#combinedSkipsRegex,
+      onNode: (node) => this.#performSyncNode(node),
+      onRescan: (container) => {
+        this.#processedNodes.delete(container);
+        this.#cleanupAllTranslations(container);
+      },
+      onShadowRoot: (shadowRoot) => this.#renderer.injectStyle(shadowRoot),
+      tryAdoptHost: (hostNode) =>
+        this.#tryAdoptExistingTranslationHost(hostNode),
+      isProcessed: (node) => this.#processedNodes.has(node),
+      getState: () => ({
+        enabled: this.#enabled,
+        transAllnow: this.#transAllnow,
+        rootMargin: this.#rootMargin,
+      }),
+      isIgnoredElement: this.#ruleMatcher.isIgnoredElement.bind(
+        this.#ruleMatcher
+      ),
+      isBlockNode: this.#ruleMatcher.isBlockNode.bind(this.#ruleMatcher),
+      hasBlockNode: this.#ruleMatcher.hasBlockNode.bind(this.#ruleMatcher),
+      shouldBreak: this.#ruleMatcher.shouldBreak.bind(this.#ruleMatcher),
     });
 
     const parsedTerms = parseTerms(this.#rule.terms);
@@ -718,20 +629,11 @@ export class Translator {
     this.#combinedTermsRegex = parsedTerms.combinedRegex;
     // this.#parseAITerms(this.#rule.aiTerms);
     this.#glossary = parseAITerms(this.#rule.aiTerms);
-    this.#createTextStyles();
 
     this.#boundMouseMoveHandler = this.#handleMouseMove.bind(this);
     this.#boundKeyDownHandler = this.#handleKeyDown.bind(this);
 
-    this.#io = this.#createIntersectionObserver();
-    this.#mo = this.#createMutationObserver();
     this.#dmm = this.#createDebounceMouseMover();
-
-    this.#windowMessageHandler = this.#handleWindowMessage.bind(this);
-    this.#debouncedFindShadowRoot = debounce(
-      this.#findAndObserveShadowRoot.bind(this),
-      300
-    );
 
     // 鼠标悬停翻译
     if (this.#setting.mouseHoverSetting.useMouseHover) {
@@ -743,7 +645,7 @@ export class Translator {
       this.#rule.transOnly === "true" &&
       this.#rule.transOnlyRevert === "true"
     ) {
-      this.#enableTransOnlyRevert();
+      this.#renderer.enableTransOnlyRevert();
     }
 
     if (document.readyState === "loading") {
@@ -776,98 +678,7 @@ export class Translator {
       });
     }
 
-    // 查找根节点并扫描
-    document
-      .querySelectorAll(this.#rule.rootsSelector || "body")
-      .forEach((root) => {
-        this.#startObserveRoot(root);
-      });
-
-    if (this.#rule.scanAll === "true" || this.#rule.hasShadowroot === "true") {
-      this.#attachShadowRootListener();
-      this.#findAndObserveShadowRoot();
-    }
-  }
-
-  #handleWindowMessage(event) {
-    if (event.data?.type === "LINGOFLOW_SHADOW_ROOT_CREATED") {
-      this.#debouncedFindShadowRoot();
-    }
-  }
-
-  #attachShadowRootListener() {
-    if (!this.#isShadowRootJsInjected) {
-      const id = "lingoflow-inject-shadowroot-js";
-      injectJs(INJECTOR.shadowroot, id);
-
-      this.#isShadowRootJsInjected = true;
-    }
-
-    window.addEventListener("message", this.#windowMessageHandler);
-  }
-
-  #removeShadowRootListener() {
-    window.removeEventListener("message", this.#windowMessageHandler);
-  }
-
-  // 查找现有的所有shadowroot
-  #findAndObserveShadowRoot() {
-    try {
-      this.#findAllShadowRoots().forEach((shadowRoot) => {
-        this.#startObserveShadowRoot(shadowRoot);
-      });
-    } catch (err) {
-      appLog("findAllShadowRoots", err);
-    }
-  }
-
-  // 创建样式
-  #createTextStyles() {
-    const [textClass, textStyles] = genTextClass(this.#setting.customStyles);
-    this.#textClass = textClass;
-    this.#textStylesRaw = textStyles;
-
-    try {
-      const textSheet = new CSSStyleSheet();
-      textSheet.replaceSync(textStyles);
-      this.#textSheet = textSheet;
-    } catch (err) {
-      appLog("createTextStyles: CSSStyleSheet not available", err);
-      // CSSStyleSheet 在当前环境不可用（Firefox 内容脚本等），改用内联 <style>
-      this.#useSheetFallback = true;
-    }
-  }
-
-  // 注入样式（优先 adoptedStyleSheets，失败时回退到 <style>）
-  #injectSheet(shadowRoot) {
-    if (this.#useSheetFallback || !this.#textSheet) {
-      this.#injectSheetFallback(shadowRoot);
-      return;
-    }
-
-    try {
-      if (!shadowRoot.adoptedStyleSheets.includes(this.#textSheet)) {
-        shadowRoot.adoptedStyleSheets = [
-          ...shadowRoot.adoptedStyleSheets,
-          this.#textSheet,
-        ];
-      }
-    } catch {
-      // Firefox 跨作用域限制：内容脚本的 CSSStyleSheet 无法赋值给页面 ShadowRoot
-      this.#useSheetFallback = true;
-      this.#injectSheetFallback(shadowRoot);
-    }
-  }
-
-  // 回退方案：通过内联 <style> 元素注入样式（兼容 Firefox）
-  #injectSheetFallback(shadowRoot) {
-    const fallbackStyleId = `${APP_LCNAME}-fallback-style`;
-    if (shadowRoot.getElementById(fallbackStyleId)) return;
-
-    const style = document.createElement("style");
-    style.id = fallbackStyleId;
-    style.textContent = this.#textStylesRaw || "";
-    shadowRoot.append(style);
+    this.#scanner.init();
   }
 
   // #parseAITerms(termsString) {
@@ -900,92 +711,11 @@ export class Translator {
   //   return "";
   // }
 
-  // 监控翻译单元的可见性
-  #createIntersectionObserver() {
-    const { transInterval } = this.#setting;
-    const rootMargin = this.#rootMargin;
-
-    const pending = new Set();
-    const flush = debounce(() => {
-      pending.forEach((node) => this.#performSyncNode(node));
-      pending.clear();
-    }, transInterval);
-
-    return new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            this.#viewNodes.add(entry.target);
-            pending.add(entry.target);
-            flush();
-          } else {
-            this.#viewNodes.delete(entry.target);
-          }
-        });
-      },
-      { threshold: 0.01, rootMargin: `${rootMargin}px 0px ${rootMargin}px 0px` }
-    );
-  }
-
-  // 监控页面动态变化
-  #createMutationObserver() {
-    return new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (
-          this.#skipMoNodes.has(mutation.target) ||
-          this.#plainTextPreprocessingNodes.has(mutation.target) ||
-          mutation.nextSibling?.tagName?.toLowerCase() ===
-            this.#translationTagName
-        ) {
-          continue;
-        }
-
-        if (mutation.type === "characterData") {
-          if (
-            mutation.oldValue !== mutation.target.nodeValue &&
-            !this.#combinedSkipsRegex.test(mutation.target.nodeValue)
-          ) {
-            this.#queueForRescan(mutation.target.parentElement);
-          }
-        } else if (mutation.type === "childList") {
-          let nodes = new Set();
-          let hasText = false;
-          mutation.addedNodes.forEach((node) => {
-            if (
-              this.#skipMoNodes.has(node) ||
-              node.nodeName?.toLowerCase() === this.#translationTagName
-            ) {
-              return;
-            }
-
-            if (node.nodeType === Node.TEXT_NODE) {
-              hasText = true;
-            } else if (Translator.isElementOrFragment(node)) {
-              nodes.add(node);
-            }
-          });
-          if (hasText) {
-            this.#queueForRescan(mutation.target);
-          } else {
-            nodes.forEach((node) => this.#queueForRescan(node));
-          }
-        }
-      }
-    });
-  }
-
   // 节流的鼠标悬停事件
   #createDebounceMouseMover() {
     return debounce((targetNode) => {
       const startNode = targetNode;
-      let foundNode = null;
-      while (targetNode && targetNode !== document.body) {
-        if (this.#observedNodes.has(targetNode)) {
-          foundNode = targetNode;
-          break;
-        }
-        targetNode = targetNode.parentElement;
-      }
+      const foundNode = this.#scanner.findObservedAncestor(targetNode);
       this.#hoveredNode = foundNode || startNode;
 
       const { mouseHoverKey = [], mouseHoverKey2 = [] } =
@@ -1023,7 +753,7 @@ export class Translator {
       this.#init();
     }
     let targetNode = this.#hoveredNode;
-    if (!targetNode || !this.#observedNodes.has(targetNode)) return;
+    if (!targetNode || !this.#scanner.hasObserved(targetNode)) return;
 
     this.#toggleTargetNode(targetNode);
   }
@@ -1031,6 +761,15 @@ export class Translator {
   // 触发段落翻译
   toggleHoverNode() {
     this.#handleKeyDown();
+  }
+
+  translateNodes(nodes) {
+    const targets = Array.isArray(nodes) ? nodes : [nodes];
+    return Promise.all(
+      targets
+        .filter((node) => DomKit.isElementOrFragment(node))
+        .map((node) => this.#processNode(node))
+    );
   }
 
   // 切换节点翻译状态
@@ -1043,7 +782,7 @@ export class Translator {
     if (this.#processedNodes.has(targetNode)) {
       const hasPendingTranslation = Array.from(
         this.#findTranslationWrappers(targetNode)
-      ).some((wrapper) => !this.#translationNodes.has(wrapper));
+      ).some((wrapper) => !this.#renderer.getTranslationState(wrapper));
       if (hasPendingTranslation) return;
       this.#cleanupDirectTranslations(targetNode);
     } else {
@@ -1057,235 +796,6 @@ export class Translator {
       this.#setting.mouseHoverSetting?.displayMode ===
       OPT_MOUSE_HOVER_DISPLAY_BUBBLE
     );
-  }
-
-  // 获取元素的 shadowRoot（支持 closed 模式）
-  #getShadowRoot(element) {
-    // Firefox 原生支持
-    if (element.openOrClosedShadowRoot) {
-      return element.openOrClosedShadowRoot;
-    }
-    // Chrome 扩展 API
-    if (
-      typeof globalThis !== "undefined" &&
-      globalThis.chrome?.dom?.openOrClosedShadowRoot &&
-      element instanceof HTMLElement
-    ) {
-      return globalThis.chrome.dom.openOrClosedShadowRoot(element);
-    }
-    // 标准 API（只能获取 open 模式）
-    return element.shadowRoot;
-  }
-
-  #isLingoFlowIgnoredNode(node) {
-    return (
-      node?.nodeType === Node.ELEMENT_NODE &&
-      (node.matches?.(Translator.LINGOFLOW_IGNORE_SELECTOR) ||
-        node.closest?.(Translator.LINGOFLOW_IGNORE_SELECTOR))
-    );
-  }
-
-  // 找页面所有 ShadowRoot
-  #findAllShadowRoots(root = document.body, results = new Set()) {
-    // const start = performance.now();
-    try {
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
-      while (walker.nextNode()) {
-        const node = walker.currentNode;
-        if (this.#isLingoFlowIgnoredNode(node)) {
-          continue;
-        }
-
-        const shadowRoot = this.#getShadowRoot(node);
-        if (shadowRoot) {
-          results.add(shadowRoot);
-          this.#findAllShadowRoots(shadowRoot, results);
-        }
-      }
-    } catch (err) {
-      appLog("无法访问某个 shadowRoot", err);
-    }
-    // const end = performance.now();
-    // const duration = end - start;
-    // console.log(`findAllShadowRoots 耗时：${duration} 毫秒`);
-    return results;
-  }
-
-  // 向上查找发生变化的块级元素
-  #findChangeContainer(startNode) {
-    if (
-      !Translator.isElementOrFragment(startNode) ||
-      startNode.closest?.(this.#ignoreSelector)
-    ) {
-      return null;
-    }
-
-    let current = startNode;
-    while (current && current !== document.body) {
-      if (
-        this.#ruleMatcher.isBlockNode(current) ||
-        this.#observedNodes.has(current)
-      ) {
-        // 确保找到的容器在我们监控的根节点内
-        for (const root of this.#rootNodes) {
-          if (root.contains(current)) {
-            return current;
-          }
-        }
-      }
-      current = current.parentElement;
-    }
-
-    return null;
-  }
-
-  // “脏容器”队列
-  #queueForRescan(target) {
-    this.#rescanQueue.add(target);
-    if (!this.#isQueueProcessing) {
-      this.#isQueueProcessing = true;
-      scheduleIdle(() => {
-        this.#rescanQueue.forEach((t) => this.#rescanContainer(t));
-        this.#rescanQueue.clear();
-        this.#isQueueProcessing = false;
-      }, 100);
-    }
-  }
-
-  // 处理“脏容器”
-  #rescanContainer(changedNode) {
-    const container = this.#findChangeContainer(changedNode);
-    if (!container) return;
-
-    this.#processedNodes.delete(container); // 删除处理状态，允许重新翻译
-    this.#cleanupAllTranslations(container);
-    this.#scanNode(container);
-  }
-
-  // 重新观察
-  #reIO(node) {
-    this.#io.unobserve(node);
-    this.#io.observe(node);
-  }
-
-  // 重新观察可视范围内全部节点
-  #reIOViewNodes() {
-    this.#viewNodes.forEach((n) => this.#reIO(n));
-  }
-
-  // 监控shadowroot
-  #startObserveShadowRoot(shadowRoot) {
-    try {
-      if (
-        shadowRoot.host.matches(`#${APP_CONSTS.fabID}, #${APP_CONSTS.boxID}`)
-      ) {
-        return;
-      }
-      this.#startObserveRoot(shadowRoot);
-      this.#injectSheet(shadowRoot);
-    } catch (err) {
-      appLog("startObserveShadowRoot", err);
-    }
-  }
-
-  // 监控根节点
-  #startObserveRoot(root) {
-    if (this.#rootNodes.has(root)) return;
-    this.#rootNodes.add(root);
-    this.#mo.observe(root, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-      characterDataOldValue: true,
-    });
-    this.#scanNode(root);
-  }
-
-  // 开始/重新监控节点
-  #startObserveNode(node) {
-    // todo: DocumentFragment 无法被 this.#io.observe
-    if (!Translator.isElement(node)) return;
-    if (this.#tryAdoptExistingTranslationHost(node)) {
-      if (!this.#observedNodes.has(node)) {
-        this.#observedNodes.add(node);
-        this.#io.observe(node);
-      }
-      return;
-    }
-
-    if (!this.#observedNodes.has(node) && this.#enabled && this.#transAllnow) {
-      this.#observedNodes.add(node);
-      this.#processNode(node);
-      return;
-    }
-
-    // 未监控
-    if (!this.#observedNodes.has(node)) {
-      this.#observedNodes.add(node);
-      this.#io.observe(node);
-      return;
-    }
-
-    // 已监控，但未处理状态，且在可视范围
-    if (!this.#processedNodes.has(node) && this.#viewNodes.has(node)) {
-      this.#reIO(node);
-    }
-  }
-
-  // 非自动识别文本模式下，快速查询目标节点
-  #queryNode(rootNode) {
-    // root 也可能是目标节点
-    if (rootNode.matches?.(this.#rule.selector)) {
-      this.#startObserveNode(rootNode);
-    }
-
-    rootNode.querySelectorAll(this.#rule.selector).forEach((node) => {
-      if (!node.closest?.(this.#ignoreSelector)) {
-        this.#startObserveNode(node);
-      }
-    });
-  }
-
-  // 寻找需要被监控的文本节点
-  #scanNode(rootNode) {
-    if (
-      !Translator.isElementOrFragment(rootNode) ||
-      // rootNode.matches?.(this.#rule.keepSelector) ||
-      rootNode.matches?.(this.#ignoreSelector)
-    ) {
-      return;
-    }
-
-    if (this.#rule.autoScan === "false") {
-      this.#queryNode(rootNode);
-      return;
-    }
-
-    const hasText = Translator.hasTextNode(rootNode);
-
-    // 如果当前节点没有直接文本，但只有一个子节点，继续向下钻取，避免在过高层级包裹
-    if (!hasText && rootNode.children.length === 1) {
-      const child = rootNode.children[0];
-      if (!child.classList?.contains(Translator.LINGOFLOW_CLASS.warpper)) {
-        this.#scanNode(child);
-        return;
-      }
-    }
-
-    const hasBlock = this.#ruleMatcher.hasBlockNode(rootNode);
-
-    if (hasText || !hasBlock) {
-      this.#startObserveNode(rootNode);
-    }
-
-    if (hasBlock) {
-      for (const child of rootNode.children) {
-        const isBlock = this.#ruleMatcher.isBlockNode(child);
-        if (!hasText || isBlock) {
-          this.#scanNode(child);
-        }
-      }
-    }
   }
 
   // 处理一个待翻译的节点
@@ -1385,7 +895,7 @@ export class Translator {
 
       const newNodes = validParts.map((part) => {
         const newNode = document.createTextNode(part);
-        this.#skipMoNodes.add(newNode);
+        this.#scanner.markSkipped(newNode);
         return newNode;
       });
 
@@ -1415,22 +925,11 @@ export class Translator {
 
         const br = document.createElement("br");
         br.className = Translator.LINGOFLOW_CLASS.br;
-        this.#skipMoNodes.add(br);
+        this.#scanner.markSkipped(br);
 
         node.after(br);
       }
     });
-  }
-
-  // 移除br
-  #removeBrTags(parentNode) {
-    if (!parentNode) return;
-
-    parentNode
-      .querySelectorAll(`.${Translator.LINGOFLOW_CLASS.br}`)
-      .forEach((br) => br.remove());
-
-    parentNode.normalize();
   }
 
   // 判断是否需要换行
@@ -1453,252 +952,6 @@ export class Translator {
     }
   }
 
-  // 将文本写入剪贴板；当 Clipboard API 不可用时，回退到临时文本框复制
-  async #copyText(text) {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return;
-    }
-
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.setAttribute("readonly", "");
-    textarea.style.cssText =
-      "position: fixed; left: -9999px; top: 0; opacity: 0;";
-
-    document.body.appendChild(textarea);
-    try {
-      textarea.focus();
-      textarea.select();
-      document.execCommand("copy");
-    } finally {
-      textarea.remove();
-    }
-  }
-
-  // 创建带错误信息浮层的重试按钮，浮层内支持直接复制错误内容
-  #createRetryErrorNode(errorText, onRetry) {
-    const i18n = newI18n(this.#setting.uiLang || "zh");
-    const copyText = i18n("copy") || "Copy";
-    const isDarkMode =
-      this.#setting.darkMode === "dark" ||
-      (this.#setting.darkMode === "auto" &&
-        window.matchMedia?.("(prefers-color-scheme: dark)")?.matches);
-    const panelBg = isDarkMode ? "#1f1f23" : "#ffffff";
-    const panelText = isDarkMode
-      ? "rgba(255, 255, 255, 0.82)"
-      : "rgba(0, 0, 0, 0.78)";
-    const panelBorder = isDarkMode
-      ? "rgba(32, 156, 238, 0.45)"
-      : "rgba(32, 156, 238, 0.28)";
-    const panelShadow = isDarkMode
-      ? "0 8px 24px rgba(0, 0, 0, 0.42)"
-      : "0 8px 24px rgba(0, 0, 0, 0.16)";
-    const errorColor = isDarkMode ? "#ff8a80" : "#d32f2f";
-    const buttonBg = isDarkMode
-      ? "rgba(32, 156, 238, 0.14)"
-      : "rgba(32, 156, 238, 0.08)";
-    const buttonHoverBg = isDarkMode
-      ? "rgba(32, 156, 238, 0.24)"
-      : "rgba(32, 156, 238, 0.16)";
-
-    const container = document.createElement("span");
-    container.style.cssText =
-      "position: relative; display: inline-flex; align-items: center; vertical-align: middle;";
-
-    const retryIcon = createRetrySVG();
-    retryIcon.classList.add(Translator.LINGOFLOW_CLASS.retry);
-    retryIcon.setAttribute("role", "button");
-    retryIcon.setAttribute("tabindex", "0");
-
-    const panel = document.createElement("span");
-    panel.className = "notranslate";
-    panel.setAttribute("translate", "no");
-    panel.style.cssText = [
-      "position: fixed",
-      "left: 0",
-      "top: 0",
-      "z-index: 2147483647",
-      "display: none",
-      "box-sizing: border-box",
-      "width: max-content",
-      "max-width: min(420px, calc(100vw - 16px))",
-      "max-height: 240px",
-      "overflow: auto",
-      "padding: 10px 10px 8px 12px",
-      `border: 1px solid ${panelBorder}`,
-      "border-left: 3px solid #209CEE",
-      "border-radius: 6px",
-      `background: ${panelBg}`,
-      `color: ${panelText}`,
-      `box-shadow: ${panelShadow}`,
-      "font-size: 12px",
-      "line-height: 1.5",
-      "font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      "white-space: pre-wrap",
-      "overflow-wrap: anywhere",
-      "user-select: text",
-      "visibility: hidden",
-    ].join("; ");
-
-    const message = document.createElement("span");
-    message.textContent = errorText;
-    message.style.cssText = `color: ${errorColor};`;
-
-    const copyButton = document.createElement("button");
-    copyButton.type = "button";
-    copyButton.textContent = copyText;
-    copyButton.style.cssText = [
-      "display: flex",
-      "align-items: center",
-      "justify-content: center",
-      "width: fit-content",
-      "margin-top: 8px",
-      "padding: 3px 8px",
-      "border: 1px solid rgba(32, 156, 238, 0.35)",
-      "border-radius: 4px",
-      `background: ${buttonBg}`,
-      "color: #209CEE",
-      "font-size: 12px",
-      "line-height: 1.4",
-      "font-weight: 500",
-      "cursor: pointer",
-      "transition: background 0.2s ease, border-color 0.2s ease",
-    ].join("; ");
-    copyButton.addEventListener("mouseenter", () => {
-      copyButton.style.background = buttonHoverBg;
-      copyButton.style.borderColor = "rgba(32, 156, 238, 0.55)";
-    });
-    copyButton.addEventListener("mouseleave", () => {
-      copyButton.style.background = buttonBg;
-      copyButton.style.borderColor = "rgba(32, 156, 238, 0.35)";
-    });
-    copyButton.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-
-      try {
-        await this.#copyText(errorText);
-        copyButton.textContent = "OK";
-        setTimeout(() => {
-          copyButton.textContent = copyText;
-        }, 800);
-      } catch (copyErr) {
-        appLog("copy translate error: ", this.#formatTranslateError(copyErr));
-      }
-    });
-
-    let hideTimer = null;
-
-    const clearHideTimer = () => {
-      if (!hideTimer) return;
-      clearTimeout(hideTimer);
-      hideTimer = null;
-    };
-
-    // 浮层挂到 body，避免被正文节点的 stacking context 或 overflow 裁剪。
-    const updatePanelPosition = () => {
-      if (!container.isConnected) {
-        hidePanel();
-        return;
-      }
-
-      const anchorRect = container.getBoundingClientRect();
-      const viewportGap = 8;
-      const panelGap = 6;
-      const panelRect = panel.getBoundingClientRect();
-      const panelWidth = panelRect.width;
-      const panelHeight = panelRect.height;
-      const maxLeft = window.innerWidth - panelWidth - viewportGap;
-      const maxTop = window.innerHeight - panelHeight - viewportGap;
-
-      let left = anchorRect.left;
-      let top = anchorRect.bottom + panelGap;
-
-      if (top > maxTop) {
-        top = anchorRect.top - panelHeight - panelGap;
-      }
-
-      panel.style.left = `${Math.max(viewportGap, Math.min(left, maxLeft))}px`;
-      panel.style.top = `${Math.max(viewportGap, Math.min(top, maxTop))}px`;
-      panel.style.visibility = "visible";
-    };
-
-    const showPanel = () => {
-      clearHideTimer();
-      if (!panel.isConnected) {
-        document.body.appendChild(panel);
-      }
-      panel.style.display = "block";
-      panel.style.visibility = "hidden";
-      updatePanelPosition();
-      window.addEventListener("scroll", updatePanelPosition, true);
-      window.addEventListener("resize", updatePanelPosition);
-    };
-
-    const hidePanel = () => {
-      clearHideTimer();
-      window.removeEventListener("scroll", updatePanelPosition, true);
-      window.removeEventListener("resize", updatePanelPosition);
-      panel.style.display = "none";
-      panel.style.visibility = "hidden";
-      panel.remove();
-    };
-
-    const hidePanelSoon = () => {
-      clearHideTimer();
-      hideTimer = setTimeout(() => {
-        const activeElement = document.activeElement;
-        if (
-          container.matches(":hover") ||
-          panel.matches(":hover") ||
-          container.contains(activeElement) ||
-          panel.contains(activeElement)
-        ) {
-          return;
-        }
-
-        hidePanel();
-      }, 80);
-    };
-
-    container.addEventListener("mouseenter", showPanel);
-    container.addEventListener("mouseleave", hidePanelSoon);
-    container.addEventListener("focusin", showPanel);
-    container.addEventListener("focusout", (e) => {
-      if (panel.contains(e.relatedTarget)) return;
-      if (container.contains(e.relatedTarget)) return;
-      hidePanelSoon();
-    });
-    panel.addEventListener("mouseenter", showPanel);
-    panel.addEventListener("mouseleave", hidePanelSoon);
-    panel.addEventListener("focusin", showPanel);
-    panel.addEventListener("focusout", (e) => {
-      if (container.contains(e.relatedTarget)) return;
-      if (panel.contains(e.relatedTarget)) return;
-      hidePanelSoon();
-    });
-    retryIcon.addEventListener("click", (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      hidePanel();
-      onRetry();
-    });
-    retryIcon.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
-      e.stopPropagation();
-      e.preventDefault();
-      hidePanel();
-      onRetry();
-    });
-
-    panel.appendChild(message);
-    panel.appendChild(copyButton);
-    container.appendChild(retryIcon);
-
-    return container;
-  }
-
   // 翻译内联节点
   async #translateNodeGroup(nodes, hostNode, deLang) {
     const {
@@ -1711,14 +964,11 @@ export class Translator {
       selectStyle,
       parentStyle,
       grandStyle,
-      // detectRemote,
       toLang,
-      // skipLangs = [],
       transOrder = "original-first",
     } = this.#rule;
     const {
       newlineLength,
-      // langDetector，
     } = this.#setting;
     const parentNode = hostNode.parentElement;
     const hideOrigin = transOnly === "true";
@@ -1728,51 +978,16 @@ export class Translator {
         this.#renderer.serializeForTranslation(nodes, termsStyle);
       if (this.#ruleMatcher.isInvalidText(processedString)) return;
 
-      const wrapper = document.createElement(this.#translationTagName);
-      wrapper.className = `${Translator.LINGOFLOW_CLASS.warpper} notranslate`;
-
-      const inner = document.createElement(transTag);
-      inner.lang = toLang;
-      inner.className = `${Translator.LINGOFLOW_CLASS.inner} ${this.#textClass[textStyle] || ""}`;
-      if (textExtStyle?.trim()) {
-        inner.style.cssText = textExtStyle; // 附加内联样式
-      }
-      inner.appendChild(createLoadingSVG());
-
-      // 将 <br> 作为 wrapper 的子节点，以便 toggleTranslationOnly 统一管理
-      if (processedString.length > newlineLength) {
-        const br = document.createElement("br");
-        br.hidden = hideOrigin;
-        if (transOrder === "translation-first") {
-          // 译文在上：inner → br
-          wrapper.appendChild(inner);
-          wrapper.appendChild(br);
-        } else {
-          // 原文在上：br → inner
-          wrapper.appendChild(br);
-          wrapper.appendChild(inner);
-        }
-      } else {
-        const space = document.createElement("span");
-        space.textContent = " ";
-        space.className = Translator.LINGOFLOW_CLASS.space;
-        space.hidden = hideOrigin;
-        if (transOrder === "translation-first") {
-          wrapper.appendChild(inner);
-          wrapper.appendChild(space);
-        } else {
-          wrapper.appendChild(space);
-          wrapper.appendChild(inner);
-        }
-      }
-
-      this.#withViewportAnchor(() => {
-        // 根据 transOrder 选项决定译文显示位置
-        if (transOrder === "translation-first") {
-          nodes[0].before(wrapper); // 译文在上
-        } else {
-          nodes[nodes.length - 1].after(wrapper); // 原文在上（默认）
-        }
+      const { wrapper, inner } = this.#renderer.createWrapper({
+        nodes,
+        processedString,
+        toLang,
+        transTag,
+        textStyle,
+        textExtStyle,
+        transOrder,
+        hideOrigin,
+        newlineLength,
       });
 
       const currentRunId = this.#runId;
@@ -1850,9 +1065,7 @@ export class Translator {
 
       // 如果翻译文本为空，或者识别出来的源语言与目标语言一致，则移除临时的翻译 Loading 容器
       if (!translatedText || isSameLang) {
-        this.#withViewportAnchor(() => {
-          wrapper.remove();
-        });
+        this.#renderer.removeWrapper(wrapper);
         return;
       }
 
@@ -1862,31 +1075,25 @@ export class Translator {
         placeholderMap
       );
 
-      // REVIEW: 高安全标准的 Trusted Types 注入机制。
-      // 在页面插入 innerHTML 很容易遭受 DOM-based XSS 跨站脚本攻击。
-      // 特别是在 Chrome 扩展中强灌 innerHTML 会直接触发扩展程序的安全拦截。
-      // 此处将 htmlString 传入 trustedTypesHelper.createHTML 转化为受信任的 TrustedHTML 实例，
-      // 再安全地写入 inner.innerHTML，这完全符合现代高 CSP 标准站点的规范，非常专业。
-      const trustedHTML = trustedTypesHelper.createHTML(htmlString);
+      this.#renderer.renderTranslation({ wrapper, htmlString });
 
-      this.#withViewportAnchor(() => {
-        inner.innerHTML = trustedHTML;
-      });
-
-      this.#translationNodes.set(wrapper, {
-        nodes,
-        isHide: hideOrigin,
-      });
       if (hideOrigin) {
-        this.#withViewportAnchor(() => {
-          this.#removeNodes(nodes, wrapper);
+        this.#renderer.commitTranslation({
+          wrapper,
+          nodes,
+          isHide: true,
         });
+        this.#renderer.setTranslationOnly(wrapper, "true");
+      } else {
+        this.#renderer.commitTranslation({ wrapper, nodes, isHide: false });
       }
 
-      // 附加样式
-      this.#appendCssText(hostNode, selectStyle, "selectStyle");
-      this.#appendCssText(parentNode, parentStyle, "parentStyle");
-      this.#appendCssText(parentNode?.parentElement, grandStyle, "grandStyle");
+      this.#renderer.appendHostStyle(
+        hostNode,
+        selectStyle,
+        parentStyle,
+        grandStyle
+      );
 
       // 翻译完成钩子函数（在隔离沙盒内安全执行用户自定义的译后处理脚本）
       // REVIEW: 共享 Sval 实例导致 Hook 竞态条件 (Race Condition) 隐患。
@@ -1928,20 +1135,10 @@ export class Translator {
           `:scope > .${Translator.LINGOFLOW_CLASS.warpper}:last-of-type`
         );
         if (wrapper) {
-          const inner = wrapper.querySelector(
-            `.${Translator.LINGOFLOW_CLASS.inner}`
-          );
-          if (inner) {
-            inner.textContent = "";
-            const retryNode = this.#createRetryErrorNode(errorText, () => {
-              this.#withViewportAnchor(() => {
-                wrapper.remove();
-              });
-              this.#processedNodes.delete(hostNode);
-              this.#translateNodeGroup(nodes, hostNode, deLang);
-            });
-            inner.appendChild(retryNode);
-          }
+          this.#renderer.setError(wrapper, errorText, () => {
+            this.#processedNodes.delete(hostNode);
+            this.#translateNodeGroup(nodes, hostNode, deLang);
+          });
         }
       } catch (retryErr) {
         appLog("retry icon error: ", retryErr.message);
@@ -2134,101 +1331,38 @@ overflow-wrap: anywhere !important;`;
 
   // 查找指定节点下所有译文节点
   #findTranslationWrappers(parentNode) {
-    return parentNode.querySelectorAll(
-      `:scope > .${Translator.LINGOFLOW_CLASS.warpper}`
-    );
+    return this.#renderer.findWrappers(parentNode);
   }
 
   // 清理所有插入的译文dom
   #cleanupAllNodes() {
-    this.#rootNodes.forEach((root) => this.#cleanupAllTranslations(root));
+    this.#scanner.getRoots().forEach((root) => this.#cleanupAllTranslations(root));
   }
 
   // 清理节点下面所有译文dom
   #cleanupAllTranslations(root) {
-    root
-      .querySelectorAll(`.${Translator.LINGOFLOW_CLASS.warpper}`)
-      .forEach((el) => this.#removeTranslationElement(el));
+    this.#renderer.removeAllWrappers(root).forEach((parent) => {
+      this.#processedNodes.delete(parent);
+    });
   }
 
   // 清理子节点译文dom
   #cleanupDirectTranslations(node) {
     this.#findTranslationWrappers(node).forEach((el) => {
-      this.#removeTranslationElement(el);
+      const parent = this.#renderer.removeWrapper(el);
+      this.#processedNodes.delete(parent);
     });
   }
 
-  #collectExistingTranslationNodes(wrapper) {
-    const { transOrder = "original-first" } = this.#rule;
-    const nodes = [];
-    const isOriginalBefore = transOrder !== "translation-first";
-    let current = isOriginalBefore
-      ? wrapper.previousSibling
-      : wrapper.nextSibling;
-
-    while (current) {
-      if (
-        this.#ruleMatcher.shouldBreak(current) &&
-        !Translator.TAGS.WARP.has(current.nodeName?.toUpperCase())
-      ) {
-        break;
-      }
-
-      if (
-        current.nodeType === Node.ELEMENT_NODE ||
-        current.nodeType === Node.TEXT_NODE
-      ) {
-        if (isOriginalBefore) {
-          nodes.unshift(current);
-        } else {
-          nodes.push(current);
-        }
-      }
-
-      current = isOriginalBefore
-        ? current.previousSibling
-        : current.nextSibling;
-    }
-
-    return nodes;
-  }
-
-  #getTranslationBackup(wrapper) {
-    return wrapper.querySelector(
-      `:scope > template.${Translator.LINGOFLOW_CLASS.backup}`
-    );
-  }
-
-  #getOrCreateTranslationBackup(wrapper) {
-    let backup = this.#getTranslationBackup(wrapper);
-    if (!backup) {
-      backup = document.createElement("template");
-      backup.className = Translator.LINGOFLOW_CLASS.backup;
-      wrapper.appendChild(backup);
-    }
-    return backup;
-  }
-
   #tryAdoptExistingTranslationHost(hostNode) {
-    if (!Translator.isElementOrFragment(hostNode)) return false;
+    if (!DomKit.isElementOrFragment(hostNode)) return false;
 
-    const wrappers = Array.from(hostNode.children || []).filter((child) =>
-      child.classList?.contains(Translator.LINGOFLOW_CLASS.warpper)
-    );
+    const wrappers = this.#renderer.adoptExistingWrappers(hostNode);
     if (!wrappers.length) return false;
 
     wrappers.forEach((wrapper) => {
-      const backup = this.#getTranslationBackup(wrapper);
-      const backupNodes = backup ? Array.from(backup.content.childNodes) : [];
-      const hasBackupNodes = backupNodes.length > 0;
-      const nodes = hasBackupNodes
-        ? backupNodes
-        : this.#collectExistingTranslationNodes(wrapper);
-      this.#translationNodes.set(wrapper, {
-        nodes,
-        isHide: hasBackupNodes,
-      });
-      nodes.forEach((node) => {
+      const { nodes } = this.#renderer.getTranslationState(wrapper) || {};
+      (nodes || []).forEach((node) => {
         if (node.nodeType === Node.ELEMENT_NODE) {
           this.#processedNodes.set(node, { ...this.#rule });
         }
@@ -2236,146 +1370,7 @@ overflow-wrap: anywhere !important;`;
     });
 
     this.#processedNodes.set(hostNode, { ...this.#rule });
-    this.#observedNodes.add(hostNode);
-    this.#viewNodes.add(hostNode);
     return true;
-  }
-
-  // 清理译文
-  #removeTranslationElement(el) {
-    this.#withViewportAnchor(() => {
-      const parentElement = el.parentElement;
-      this.#processedNodes.delete(parentElement);
-
-      // 如果是仅显示译文模式，先恢复原文
-      const { nodes, isHide } = this.#translationNodes.get(el) || {};
-      if (isHide) {
-        this.#restoreOriginal(el, nodes);
-      }
-
-      this.#translationNodes.delete(el);
-      el.remove();
-
-      this.#removeBrTags(parentElement);
-    });
-  }
-
-  // 恢复原文
-  #restoreOriginal(el, nodes) {
-    if (nodes) {
-      const frag = document.createDocumentFragment();
-      nodes.forEach((n) => frag.appendChild(n));
-      const parent = el.parentElement;
-      parent?.insertBefore(frag, el);
-    }
-  }
-
-  // 移除多个节点
-  #removeNodes(nodes, wrapper) {
-    if (nodes && wrapper) {
-      const backup = this.#getOrCreateTranslationBackup(wrapper);
-      nodes.forEach((n) => backup.content.appendChild(n));
-    } else if (nodes) {
-      const frag = document.createDocumentFragment();
-      nodes.forEach((n) => frag.appendChild(n));
-    }
-  }
-
-  // 切换译文和双语显示
-  #toggleTranslationOnly(node, transOnly) {
-    const { transOrder = "original-first" } = this.#rule;
-    this.#findTranslationWrappers(node).forEach((el) => {
-      const br = el.querySelector(":scope > br");
-      const space = el.querySelector(
-        `:scope > span.${Translator.LINGOFLOW_CLASS.space}`
-      );
-      const { nodes } = this.#translationNodes.get(el) || {};
-      if (transOnly === "true") {
-        // 双语变为仅译文
-        this.#withViewportAnchor(() => {
-          if (br) br.hidden = true;
-          if (space) space.hidden = true;
-          this.#removeNodes(nodes, el);
-        });
-        this.#translationNodes.set(el, { nodes, isHide: true });
-      } else {
-        // 仅译文变为双语
-        this.#withViewportAnchor(() => {
-          if (br) br.hidden = false;
-          if (space) space.hidden = false;
-          if (nodes && nodes.length) {
-            const frag = document.createDocumentFragment();
-            nodes.forEach((n) => frag.appendChild(n));
-            const parent = el.parentElement;
-            if (parent) {
-              if (transOrder === "translation-first") {
-                // 译文在上：原文节点应在 wrapper 之后
-                el.after(frag);
-              } else {
-                // 原文在上：原文节点应在 wrapper 之前
-                el.before(frag);
-              }
-            }
-          }
-        });
-        this.#translationNodes.set(el, { nodes, isHide: false });
-      }
-    });
-  }
-
-  // 根据 transOrder 调整 wrapper 位置
-  #adjustWrapperPosition(wrapper, nodes, transOrder) {
-    if (!nodes || !nodes.length) return;
-
-    // 获取第一个和最后一个原文节点的位置
-    const firstNode = nodes[0];
-    const lastNode = nodes[nodes.length - 1];
-
-    // 获取 wrapper 和原文节点的父容器
-    const wrapperParent = wrapper.parentElement;
-    const firstNodeParent = firstNode?.parentElement;
-    const lastNodeParent = lastNode?.parentElement;
-
-    // 仅在同一父容器下才需要调整位置
-    if (wrapperParent !== firstNodeParent || wrapperParent !== lastNodeParent) {
-      return;
-    }
-
-    // br 是 wrapper 的子节点，只需调整 wrapper 相对于原文节点的位置
-    if (transOrder === "translation-first") {
-      // 译文在上：wrapper 应在原文节点前面
-      if (firstNode.previousElementSibling !== wrapper) {
-        firstNode.before(wrapper);
-      }
-    } else {
-      // 原文在上（默认）：wrapper 应在原文节点后面
-      if (lastNode.nextElementSibling !== wrapper) {
-        lastNode.after(wrapper);
-      }
-    }
-  }
-
-  // 更新样式
-  #updateStyle(node, oldStyle, newStyle) {
-    this.#findTranslationWrappers(node).forEach((el) => {
-      const inner = el.querySelector(
-        `:scope > .${Translator.LINGOFLOW_CLASS.inner}`
-      );
-      inner.classList.remove(this.#textClass[oldStyle]);
-      inner.classList.add(this.#textClass[newStyle]);
-    });
-  }
-
-  // 更新文本顺序
-  #updateTransOrder(node, transOrder) {
-    this.#findTranslationWrappers(node).forEach((el) => {
-      const { nodes } = this.#translationNodes.get(el) || {};
-      if (nodes && nodes.length) {
-        this.#withViewportAnchor(() => {
-          this.#adjustWrapperPosition(el, nodes, transOrder);
-        });
-      }
-    });
   }
 
   // 刷新节点翻译
@@ -2427,35 +1422,26 @@ overflow-wrap: anywhere !important;`;
     if (appliedRule.textStyle !== textStyle) {
       const oldStyle = appliedRule.textStyle;
       appliedRule.textStyle = textStyle;
-      this.#updateStyle(node, oldStyle, textStyle);
+      this.#renderer.updateTextStyles(node, oldStyle, textStyle);
     }
 
     // 文本顺序规则过时
     if (appliedRule.transOrder !== transOrder) {
       appliedRule.transOrder = transOrder;
-      this.#updateTransOrder(node, transOrder);
+      this.#renderer.updateTransOrder(node, transOrder);
     }
 
     // 切换原文显示
     if (appliedRule.transOnly !== transOnly) {
       appliedRule.transOnly = transOnly;
-      this.#toggleTranslationOnly(node, transOnly);
+      this.#renderer.updateTranslationOnly(node, transOnly);
     }
   }
 
   // 停止监听，重置参数
   #resetOptions() {
-    this.#removeShadowRootListener();
-
-    this.#io.disconnect();
-    this.#mo.disconnect();
-    this.#viewNodes.clear();
-    this.#rootNodes.clear();
-    this.#observedNodes = new WeakSet();
-    this.#translationNodes = new WeakMap();
+    this.#scanner.reset();
     this.#processedNodes = new WeakMap();
-    this.#plainTextPreprocessingNodes = new WeakSet();
-    this.#io = this.#createIntersectionObserver();
   }
 
   // 开启鼠标悬停翻译
@@ -2497,118 +1483,6 @@ overflow-wrap: anywhere !important;`;
     document.removeEventListener("mousemove", this.#boundMouseMoveHandler);
     this.#removeKeydownHandler?.();
     this.#removeKeydownHandler2?.();
-  }
-
-  #enableTransOnlyRevert() {
-    if (this.#transOnlyRevertEnabled) return;
-    this.#transOnlyRevertEnabled = true;
-
-    this.#boundTransOnlyMouseOver = (e) => {
-      const wrapper = e.target.closest?.(
-        `.${Translator.LINGOFLOW_CLASS.warpper}`
-      );
-      if (wrapper) {
-        const data = this.#translationNodes.get(wrapper);
-        if (!data || !data.isHide) return;
-        if (this.#transOnlyRevertTarget === wrapper) return;
-
-        this.#clearTransOnlyRevertTimer();
-        const delay = parseFloat(this.#rule.transOnlyRevertDelay) || 0.5;
-        this.#transOnlyRevertTimer = setTimeout(() => {
-          this.#showOriginalTemporarily(wrapper, data);
-        }, delay * 1000);
-        return;
-      }
-
-      if (this.#transOnlyRevertTarget) {
-        const data = this.#translationNodes.get(this.#transOnlyRevertTarget);
-        if (data) {
-          const origNodes = data.nodes || [];
-          for (const node of origNodes) {
-            if (node === e.target || node.contains?.(e.target)) return;
-          }
-        }
-      }
-    };
-
-    this.#boundTransOnlyMouseOut = (e) => {
-      if (!this.#transOnlyRevertTarget) {
-        const wrapper = e.target.closest?.(
-          `.${Translator.LINGOFLOW_CLASS.warpper}`
-        );
-        if (wrapper) this.#clearTransOnlyRevertTimer();
-        return;
-      }
-
-      const wrapper = this.#transOnlyRevertTarget;
-      const related = e.relatedTarget;
-
-      if (related && (wrapper.contains(related) || related === wrapper)) return;
-
-      const data = this.#translationNodes.get(wrapper);
-      if (data && related) {
-        const origNodes = data.nodes || [];
-        for (const node of origNodes) {
-          if (node === related || node.contains?.(related)) return;
-        }
-      }
-
-      this.#clearTransOnlyRevertTimer();
-      this.#hideOriginalTemporarily(wrapper);
-    };
-
-    document.addEventListener("mouseover", this.#boundTransOnlyMouseOver);
-    document.addEventListener("mouseout", this.#boundTransOnlyMouseOut);
-  }
-
-  #disableTransOnlyRevert() {
-    if (!this.#transOnlyRevertEnabled) return;
-    this.#transOnlyRevertEnabled = false;
-
-    this.#clearTransOnlyRevertTimer();
-    if (this.#transOnlyRevertTarget) {
-      this.#hideOriginalTemporarily(this.#transOnlyRevertTarget);
-    }
-
-    document.removeEventListener("mouseover", this.#boundTransOnlyMouseOver);
-    document.removeEventListener("mouseout", this.#boundTransOnlyMouseOut);
-    this.#boundTransOnlyMouseOver = null;
-    this.#boundTransOnlyMouseOut = null;
-  }
-
-  #clearTransOnlyRevertTimer() {
-    if (this.#transOnlyRevertTimer) {
-      clearTimeout(this.#transOnlyRevertTimer);
-      this.#transOnlyRevertTimer = null;
-    }
-  }
-
-  #showOriginalTemporarily(wrapper, data) {
-    const { nodes } = data;
-    this.#withViewportAnchor(() => {
-      this.#restoreOriginal(wrapper, nodes);
-      const inner = wrapper.querySelector(
-        `:scope > .${Translator.LINGOFLOW_CLASS.inner}`
-      );
-      if (inner) inner.style.display = "none";
-      const br = wrapper.querySelector(":scope > br");
-      if (br) br.hidden = true;
-    });
-    this.#transOnlyRevertTarget = wrapper;
-  }
-
-  #hideOriginalTemporarily(wrapper) {
-    const data = this.#translationNodes.get(wrapper);
-    if (!data) return;
-    const { nodes } = data;
-    this.#withViewportAnchor(() => {
-      this.#removeNodes(nodes, wrapper);
-      const inner = wrapper.querySelector(
-        `:scope > .${Translator.LINGOFLOW_CLASS.inner}`
-      );
-      if (inner) inner.style.display = "";
-    });
-    this.#transOnlyRevertTarget = null;
   }
 
   // 注入JS/CSS
@@ -2684,7 +1558,7 @@ overflow-wrap: anywhere !important;`;
       if (this.#transAllnow) {
         this.rescan();
       } else {
-        this.#reIOViewNodes();
+        this.#scanner.reobserveVisibleNodes();
       }
     } else {
       this.#init();
@@ -2780,7 +1654,7 @@ overflow-wrap: anywhere !important;`;
     this.disable();
     this.#resetOptions();
     this.#disableMouseHover();
-    this.#disableTransOnlyRevert();
+    this.#renderer.disableTransOnlyRevert();
     this.#removeInjector();
     this.#isInitialized = false;
   }
@@ -2831,7 +1705,7 @@ overflow-wrap: anywhere !important;`;
     }
 
     if (hasChanged) {
-      this.#reIOViewNodes();
+      this.#scanner.reobserveVisibleNodes();
       this.#syncTransOnlyRevert();
     }
   }
@@ -2839,10 +1713,10 @@ overflow-wrap: anywhere !important;`;
   #syncTransOnlyRevert() {
     const shouldEnable =
       this.#rule.transOnly === "true" && this.#rule.transOnlyRevert === "true";
-    if (shouldEnable && !this.#transOnlyRevertEnabled) {
-      this.#enableTransOnlyRevert();
-    } else if (!shouldEnable && this.#transOnlyRevertEnabled) {
-      this.#disableTransOnlyRevert();
+    if (shouldEnable) {
+      this.#renderer.enableTransOnlyRevert();
+    } else {
+      this.#renderer.disableTransOnlyRevert();
     }
   }
 

@@ -1,5 +1,6 @@
 import { browser } from "./browser";
 import { Translator } from "./translator";
+import { DomScanner } from "../core/scanner/DomScanner";
 import { TransboxManager } from "./tranbox";
 import { shortcutRegister } from "./shortcut";
 import { sendIframeMsg } from "./iframe";
@@ -53,11 +54,8 @@ export default class TranslatorManager {
   #isIframe;
   #transboxOnly;
 
-  // SPA 容器监听：document 负责 html 替换，documentElement 负责 body 替换。
-  #documentObserver = null;
-  #documentElementObserver = null;
-  #knownDocumentElement = null;
-  #knownBody = null;
+  // SPA 容器监听与内容扫描统一交给 DomScanner。
+  #domScanner = null;
 
   // 多个导航/DOM 事件通常会连发，用 0ms timer 合并成一次 rescan/restart。
   #spaRefreshTimer = null;
@@ -68,8 +66,6 @@ export default class TranslatorManager {
   #innerMessageHandler = null;
   #browserMessageHandler = null;
   #windowMessageHandler = null;
-  #pageRestoreHandler = null;
-  #spaNavigationHandler = null;
 
   // 运行期子模块实例。它们可能挂载 DOM，因此随 restart 销毁并重建。
   _translator = null;
@@ -94,8 +90,6 @@ export default class TranslatorManager {
     this.#innerMessageHandler = this.#handleInnerMessage.bind(this);
     this.#browserMessageHandler = this.#handleBrowserMessage.bind(this);
     this.#windowMessageHandler = this.#handleWindowMessage.bind(this);
-    this.#pageRestoreHandler = this.#handlePageRestore.bind(this);
-    this.#spaNavigationHandler = this.#handleSpaNavigation.bind(this);
   }
 
   /**
@@ -281,44 +275,19 @@ export default class TranslatorManager {
    * - pageshow/turbo 事件没有替换容器时只 rescan，修复 BFCache/Turbo 状态过期。
    */
   #setupSpaListeners() {
-    this.#documentObserver = new MutationObserver(() => {
-      this.#handleDocumentContainerMutation("document");
+    this.#domScanner = new DomScanner({});
+    this.#domScanner.startContainerWatch({
+      onRestart: (reason) => this.#scheduleSpaRefresh("restart", reason),
+      onRescan: (reason) => this.#scheduleSpaRefresh("rescan", reason),
     });
-    // 监听 document 的直接子节点，用于捕捉 documentElement/html 被替换。
-    this.#documentObserver.observe(document, { childList: true });
-
-    this.#refreshDocumentElementObserver();
-    window.addEventListener("pageshow", this.#pageRestoreHandler);
-    document.addEventListener(
-      "turbo:frame-load",
-      this.#spaNavigationHandler,
-      true
-    );
   }
 
   /**
    * 注销 SPA 监听并清空当前已知容器引用。
    */
   #teardownSpaListeners() {
-    this.#documentObserver?.disconnect();
-    this.#documentObserver = null;
-
-    this.#documentElementObserver?.disconnect();
-    this.#documentElementObserver = null;
-
-    this.#knownDocumentElement?.removeEventListener(
-      "turbo:load",
-      this.#spaNavigationHandler
-    );
-    this.#knownDocumentElement = null;
-    this.#knownBody = null;
-
-    window.removeEventListener("pageshow", this.#pageRestoreHandler);
-    document.removeEventListener(
-      "turbo:frame-load",
-      this.#spaNavigationHandler,
-      true
-    );
+    this.#domScanner?.stopContainerWatch();
+    this.#domScanner = null;
   }
 
   /**
@@ -328,64 +297,7 @@ export default class TranslatorManager {
    * restart 完成后必须刷新已知引用和 observer。
    */
   #refreshDocumentElementObserver() {
-    this.#documentElementObserver?.disconnect();
-    this.#documentElementObserver = null;
-
-    this.#knownDocumentElement?.removeEventListener(
-      "turbo:load",
-      this.#spaNavigationHandler
-    );
-
-    // 这两个引用是判断“容器是否真的被替换”的基准。
-    this.#knownDocumentElement = document.documentElement;
-    this.#knownBody = document.body;
-
-    if (!this.#knownDocumentElement) return;
-
-    this.#knownDocumentElement.addEventListener(
-      "turbo:load",
-      this.#spaNavigationHandler
-    );
-    this.#documentElementObserver = new MutationObserver(() => {
-      this.#handleDocumentContainerMutation("documentElement");
-    });
-    // 监听 documentElement 的直接子节点，用于捕捉 body 被整体替换。
-    this.#documentElementObserver.observe(this.#knownDocumentElement, {
-      childList: true,
-    });
-  }
-
-  /**
-   * 处理 DOM 容器观察事件。
-   *
-   * MutationObserver 会因任意直接子节点变化触发；只有 body/html 引用变化
-   * 才说明运行期 DOM 挂载点失效，需要重启子模块。
-   */
-  #handleDocumentContainerMutation(reason) {
-    if (this.#hasDocumentContainerChanged()) {
-      this.#scheduleSpaRefresh("restart", reason);
-    }
-  }
-
-  /**
-   * BFCache 恢复处理。
-   *
-   * 普通首次 pageshow 不需要处理；persisted=true 表示从 BFCache 恢复，
-   * content script 不会重新执行，但 Translator 的内部扫描状态可能过期。
-   */
-  #handlePageRestore(event) {
-    if (event.type === "pageshow" && event.persisted !== true) return;
-    this.#scheduleSpaRefresh("rescan", event.type);
-  }
-
-  /**
-   * Turbo 导航完成处理。
-   *
-   * Turbo 事件本身不一定替换 body/html，因此默认只请求 rescan。
-   * 如果同一轮事件里观察到容器替换，调度器会自动升级为 restart。
-   */
-  #handleSpaNavigation(event) {
-    this.#scheduleSpaRefresh("rescan", event.type);
+    this.#domScanner?.refreshContainerWatch();
   }
 
   /**
@@ -422,7 +334,10 @@ export default class TranslatorManager {
 
       if (!this.#isActive) return;
 
-      if (refreshType === "restart" || this.#hasDocumentContainerChanged()) {
+      if (
+        refreshType === "restart" ||
+        this.#domScanner?.hasContainerChanged()
+      ) {
         this.restart(refreshReason);
         return;
       }
@@ -442,16 +357,6 @@ export default class TranslatorManager {
     this.#spaRefreshTimer = null;
     this.#pendingSpaRefresh = null;
     this.#pendingSpaRefreshReason = "";
-  }
-
-  /**
-   * 判断当前页面根容器是否已被替换。
-   */
-  #hasDocumentContainerChanged() {
-    return (
-      document.documentElement !== this.#knownDocumentElement ||
-      document.body !== this.#knownBody
-    );
   }
 
   /**
