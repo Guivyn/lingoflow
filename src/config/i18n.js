@@ -1004,22 +1004,6 @@ export const I18N = {
     ko: `인터페이스 언어`,
     tr: `Arayüz Dili`,
   },
-  version_warning: {
-    zh: `当前版本 (v{0}) 不是最新版本 (v{1})，可以等待自动升级或手动`,
-    en: `Current version (v{0}) is not the latest version (v{1}). You can wait for auto-update or manually `,
-    zh_TW: `當前版本 (v{0}) 不是最新版本 (v{1})，可以等待自動升級或手動`,
-    ja: `現在のバージョン (v{0}) は最新バージョン (v{1}) ではありません。自動更新を待つか、手動で`,
-    ko: `현재 버전(v{0})은 최신 버전(v{1})이 아닙니다. 자동 업데이트를 기다리거나 수동으로 `,
-    tr: `Mevcut sürüm (v{0}), en son sürüm (v{1}) değildir. Otomatik güncellemeyi bekleyebilir veya manuel olarak güncelleyebilirsiniz `,
-  },
-  download_update: {
-    zh: `下载更新`,
-    en: `download update`,
-    zh_TW: `下載更新`,
-    ja: `アップデートをダウンロード`,
-    ko: `업데이트 다운로드`,
-    tr: `Güncellemeyi Indir`,
-  },
   fetch_limit: {
     zh: `最大并发请求数量 (1-100)`,
     en: `Maximum Number Of Concurrent Requests (1-100)`,
