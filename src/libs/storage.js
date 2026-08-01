@@ -1,0 +1,239 @@
+import {
+  APP_NAME,
+  STOKEY_SETTING,
+  STOKEY_SETTING_BACKUP_V1_BEFORE_V2,
+  STOKEY_SETTING_OLD,
+  STOKEY_RULES,
+  STOKEY_RULES_OLD,
+  STOKEY_FAB,
+  STOKEY_TRANBOX,
+  STOKEY_MSAUTH,
+  DEFAULT_SETTING,
+  DEFAULT_RULES,
+  getSettingVersion,
+  migrateSettingPromptsToV2,
+  SETTINGS_VERSION_V2,
+} from "../config";
+import { isExt } from "./client";
+import { browser } from "./browser";
+import { appLog } from "./log";
+import { debounce } from "./utils";
+
+// 品牌更名前的应用名，用于一次性迁移旧 chrome.storage/localStorage 数据。
+const LEGACY_APP_NAME = "KISS-Translator";
+
+/**
+ * 跨平台存储底层写入操作。
+ * 自动适配 Chrome Extension (browser.storage.local) 与普通网页环境 (localStorage)。
+ * @param {string} key 键名
+ * @param {*} val 待写入的字符串数据
+ */
+async function set(key, val) {
+  if (isExt) {
+    await browser.storage.local.set({ [key]: val });
+  } else {
+    window.localStorage.setItem(key, val);
+  }
+}
+
+/**
+ * 跨平台存储底层读取操作。
+ * @param {string} key 键名
+ * @returns {Promise<string|null>} 读取到的原始字符串数据
+ */
+async function get(key) {
+  if (isExt) {
+    const val = await browser.storage.local.get([key]);
+    return val[key];
+  }
+  return window.localStorage.getItem(key);
+}
+
+/**
+ * 跨平台存储底层删除操作。
+ * @param {string} key 键名
+ */
+async function del(key) {
+  if (isExt) {
+    await browser.storage.local.remove([key]);
+  } else {
+    window.localStorage.removeItem(key);
+  }
+}
+
+/**
+ * 写入序列化后的对象数据。
+ * @param {string} key 键名
+ * @param {Object|Array} obj 待存入 of JS 对象或数组
+ */
+async function setObj(key, obj) {
+  await set(key, JSON.stringify(obj));
+}
+
+/**
+ * 尝试写入默认对象数据。仅在当前键名不存在任何值时才会触发写入。
+ * @param {string} key 键名
+ * @param {Object|Array} obj 默认值对象
+ */
+async function trySetObj(key, obj) {
+  if (!(await get(key))) {
+    await setObj(key, obj);
+  }
+}
+
+/**
+ * 读取并自动反序列化 JSON 字符串为 JS 对象。
+ * @param {string} key 键名
+ * @returns {Promise<Object|Array|null>} 返回反序列化后的数据，发生解析错误或为空时返回 null
+ */
+async function getObj(key) {
+  const val = await get(key);
+  if (val === null || val === undefined) return null;
+  try {
+    return JSON.parse(val);
+  } catch (err) {
+    appLog("parse json in storage err: ", key);
+  }
+  return null;
+}
+
+/**
+ * 局部合并并更新已存的对象数据。
+ * REVIEW: 该方法采用 ES6 属性展开符进行浅拷贝合并。若原对象含有较深的嵌套子结构，
+ * 在调用此方法更新子结构时需要调用者自行处理好深度合并，否则会导致深层字段丢失。
+ * @param {string} key 键名
+ * @param {Object} obj 待合并的数据切片
+ */
+async function putObj(key, obj) {
+  const cur = (await getObj(key)) ?? {};
+  await setObj(key, { ...cur, ...obj });
+}
+
+/**
+ * 对外暴露的底层通用 storage 接口封装
+ */
+export const storage = {
+  get,
+  set,
+  del,
+  setObj,
+  trySetObj,
+  getObj,
+  putObj,
+};
+
+// --- 应用设置 (Settings) 数据存取 ---
+export const getSetting = () => getObj(STOKEY_SETTING);
+export const getSettingOld = () => getObj(STOKEY_SETTING_OLD);
+const writeSettingBackupBeforeV2 = (setting) =>
+  setObj(STOKEY_SETTING_BACKUP_V1_BEFORE_V2, setting);
+const mergeSettingWithDefault = (setting) => ({
+  ...DEFAULT_SETTING,
+  ...(setting || {}),
+  version: setting?.version ?? DEFAULT_SETTING.version,
+});
+export const migrateStoredSettingToV2 = async (
+  setting,
+  backupSetting = setting
+) => {
+  if (getSettingVersion(setting) >= SETTINGS_VERSION_V2) {
+    return setting;
+  }
+
+  await writeSettingBackupBeforeV2(backupSetting);
+  return migrateSettingPromptsToV2(setting);
+};
+
+const migrateLegacyAppStorage = async () => {
+  const keys = [
+    STOKEY_SETTING,
+    STOKEY_SETTING_BACKUP_V1_BEFORE_V2,
+    STOKEY_RULES,
+    STOKEY_FAB,
+    STOKEY_TRANBOX,
+    STOKEY_MSAUTH,
+  ];
+
+  for (const key of keys) {
+    const legacyKey = key.replace(APP_NAME, LEGACY_APP_NAME);
+    if (legacyKey === key) continue;
+
+    const value = await get(legacyKey);
+    if (value !== undefined && value !== null && !(await get(key))) {
+      await set(key, value);
+    }
+  }
+};
+
+export const runDataMigration = async () => {
+  await migrateLegacyAppStorage();
+
+  const rawSetting = await getSetting();
+  if (rawSetting && getSettingVersion(rawSetting) < SETTINGS_VERSION_V2) {
+    try {
+      const nextSetting = await migrateStoredSettingToV2(
+        rawSetting,
+        rawSetting
+      );
+      await setObj(STOKEY_SETTING, nextSetting);
+      appLog("Migration to V2 completed.");
+    } catch (err) {
+      appLog("Data migration to V2 failed:", err);
+    }
+  }
+};
+
+export const getSettingWithDefault = async () => {
+  const rawSetting = await getSetting();
+  if (!rawSetting) {
+    return DEFAULT_SETTING;
+  }
+
+  const setting =
+    getSettingVersion(rawSetting) < SETTINGS_VERSION_V2
+      ? migrateSettingPromptsToV2(rawSetting)
+      : rawSetting;
+
+  return mergeSettingWithDefault(setting);
+};
+export const setSetting = async (val) => setObj(STOKEY_SETTING, val);
+export const putSetting = async (obj) => {
+  const cur = (await getSetting()) ?? {};
+  await setSetting({ ...cur, ...obj });
+};
+
+// --- 用户翻译规则 (Rules) 数据存取 ---
+export const getRules = () => getObj(STOKEY_RULES);
+export const getRulesOld = () => getObj(STOKEY_RULES_OLD);
+export const getRulesWithDefault = async () =>
+  (await getRules()) || DEFAULT_RULES;
+export const setRules = (val) => setObj(STOKEY_RULES, val);
+
+// --- 悬浮球 (Fab Button) 位置及偏好存取 ---
+export const getFab = () => getObj(STOKEY_FAB);
+export const getFabWithDefault = async () => (await getFab()) || {};
+export const setFab = (obj) => setObj(STOKEY_FAB, obj);
+export const putFab = (obj) => putObj(STOKEY_FAB, obj);
+
+// --- 交互翻译框 (TranBox UI) 位置与大小存取 ---
+export const getTranBox = () => getObj(STOKEY_TRANBOX);
+export const putTranBox = (obj) => putObj(STOKEY_TRANBOX, obj);
+// 节流处理高频更新的 TranBox 位置写入
+export const debouncePutTranBox = debounce(putTranBox, 300);
+
+// --- 微软云服务授权 Token 存取 ---
+export const getMsauth = () => getObj(STOKEY_MSAUTH);
+export const setMsauth = (val) => setObj(STOKEY_MSAUTH, val);
+
+/**
+ * 首次加载或升级时，尝试向本地写入系统默认初始数据。
+ * @param {string} uiLang 系统的默认语言设置
+ */
+export const tryInitDefaultData = async (uiLang) => {
+  try {
+    await trySetObj(STOKEY_SETTING, { ...DEFAULT_SETTING, uiLang });
+    await trySetObj(STOKEY_RULES, DEFAULT_RULES);
+  } catch (err) {
+    appLog("init default", err);
+  }
+};
