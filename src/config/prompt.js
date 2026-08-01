@@ -11,21 +11,21 @@ import {
 } from "./api";
 
 // 定义各类预设提示词的唯一标识符 (Slug)
-export const PROMPT_SLUG_NOBATCH_TRANSLATION = "nobatch-translation";
-export const PROMPT_SLUG_BATCH_TRANSLATION_JSON = "batch-translation-json";
-export const PROMPT_SLUG_BATCH_TRANSLATION_XML = "batch-translation-xml";
-export const PROMPT_SLUG_BATCH_TRANSLATION_LINE = "batch-translation-line";
-export const PROMPT_SLUG_SUBTITLE_SEGMENTATION = "subtitle-segmentation";
-export const PROMPT_SLUG_DICTIONARY_EN_ZH = "dictionary-en-zh";
+const PROMPT_SLUG_NOBATCH_TRANSLATION = "nobatch-translation";
+const PROMPT_SLUG_BATCH_TRANSLATION_JSON = "batch-translation-json";
+const PROMPT_SLUG_BATCH_TRANSLATION_XML = "batch-translation-xml";
+const PROMPT_SLUG_BATCH_TRANSLATION_LINE = "batch-translation-line";
+const PROMPT_SLUG_SUBTITLE_SEGMENTATION = "subtitle-segmentation";
+const PROMPT_SLUG_DICTIONARY_EN_ZH = "dictionary-en-zh";
 
 // 提示词应用模式：跟随接口内部配置，或使用全局统一配置
 export const PROMPT_MODE_FOLLOW_API = "follow_api";
 export const PROMPT_MODE_GLOBAL = "global";
 
 // 定义提示词所属的分类，用于在界面和逻辑中进行归类区分
-export const PROMPT_CATEGORY_BATCH_SYSTEM = "batch system prompt";
-export const PROMPT_CATEGORY_USER = "user prompt";
-export const PROMPT_CATEGORY_SUBTITLE = "subtitle prompt";
+const PROMPT_CATEGORY_BATCH_SYSTEM = "batch system prompt";
+const PROMPT_CATEGORY_USER = "user prompt";
+const PROMPT_CATEGORY_SUBTITLE = "subtitle prompt";
 export const PROMPT_CATEGORY_DICTIONARY = "dictionary prompt";
 // 允许在设置界面“提示词管理”中展示和维护的分类列表
 export const PROMPT_TEMPLATE_CATEGORIES = [
@@ -42,7 +42,7 @@ export const DEFAULT_SUBTITLE_PROMPT_SLUG = PROMPT_SLUG_SUBTITLE_SEGMENTATION;
 export const DEFAULT_DICTIONARY_PROMPT_SLUG = PROMPT_SLUG_DICTIONARY_EN_ZH;
 
 // 配置数据结构的版本号（用于检测并执行数据迁移升级逻辑）
-export const SETTINGS_VERSION_V1 = 1;
+const SETTINGS_VERSION_V1 = 1;
 export const SETTINGS_VERSION_V2 = 2;
 export const CURRENT_SETTINGS_VERSION = SETTINGS_VERSION_V2;
 
@@ -195,17 +195,6 @@ function findPromptBySlugOrDefault(userPrompts, promptSlug, defaultPromptSlug) {
   );
 }
 
-/**
- * 获取指定提示词的名称（未进行本地化翻译的原始名称）。
- *
- * @param {Array} userPrompts 用户自定义提示词列表
- * @param {string} promptSlug 提示词标识符
- * @returns {string} 提示词名称，未找到则返回空字符串
- */
-export function getPromptName(userPrompts = [], promptSlug) {
-  return findPromptBySlug(userPrompts, promptSlug)?.name || "";
-}
-
 function hasOwn(source = {}, fieldName) {
   return Object.prototype.hasOwnProperty.call(source, fieldName);
 }
@@ -307,28 +296,6 @@ export function getPromptDisplayName(prompt = {}, i18n) {
   }
 
   return normalizedPrompt.name || normalizedPrompt.slug;
-}
-
-/**
- * 获取提示词分类在界面上显示的名称（支持国际化）。
- *
- * @param {string} category 提示词分类常量
- * @param {Function} i18n 多语言翻译函数
- * @returns {string} 分类的展示名称
- */
-export function getPromptCategoryDisplayName(category, i18n) {
-  if (typeof i18n !== "function") {
-    return category || "";
-  }
-
-  const keyMap = {
-    [PROMPT_CATEGORY_BATCH_SYSTEM]: "prompt_category_batch_system",
-    [PROMPT_CATEGORY_USER]: "prompt_category_user",
-    [PROMPT_CATEGORY_SUBTITLE]: "prompt_category_subtitle",
-    [PROMPT_CATEGORY_DICTIONARY]: "prompt_category_dictionary",
-  };
-
-  return i18n(keyMap[category], category || "");
 }
 
 function getPromptOptions(prompts = [], category) {

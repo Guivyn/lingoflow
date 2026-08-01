@@ -1,3 +1,18 @@
+import {
+  buildSubtitleSystemPrompt,
+  detectSubtitleProtocol,
+  formatIndexSubtitleEvents,
+  handleSubtitle,
+} from "./trans";
+import {
+  DEFAULT_API_LIST,
+  OPT_TRANS_DEEPSEEK,
+  OPT_TRANS_OPENAI,
+  defaultSubtitlePrompt,
+} from "../config";
+import { fetchData } from "../libs/fetch";
+import { fetchStream } from "../libs/fetch";
+
 jest.mock("query-string", () => ({
   stringify: (obj) => new URLSearchParams(obj).toString(),
 }));
@@ -14,21 +29,6 @@ jest.mock("../libs/fetch", () => ({
 jest.mock("../libs/docInfo", () => ({
   getDocInfo: () => ({}),
 }));
-
-import {
-  buildSubtitleSystemPrompt,
-  detectSubtitleProtocol,
-  formatIndexSubtitleEvents,
-  handleSubtitle,
-} from "./trans";
-import {
-  DEFAULT_API_LIST,
-  OPT_TRANS_DEEPSEEK,
-  OPT_TRANS_OPENAI,
-  defaultSubtitlePrompt,
-} from "../config";
-import { fetchData } from "../libs/fetch";
-import { fetchStream } from "../libs/fetch";
 
 const getApiSetting = (apiType) => ({
   ...DEFAULT_API_LIST.find((api) => api.apiType === apiType),

@@ -3,10 +3,13 @@ import { Translator } from "./translator";
 import { TransboxManager } from "./tranbox";
 import { shortcutRegister } from "./shortcut";
 import { sendIframeMsg } from "./iframe";
+import { sendBgMsg } from "./msg";
+import { isExt } from "./client";
 import {
   EVENT_LINGOFLOW_INNER,
   EVENT_LINGOFLOW,
   MSG_HOVERNODE_TOGGLE,
+  MSG_OPEN_OPTIONS,
 } from "../config";
 import { touchTapListener } from "./touch";
 import { PopupManager } from "./popupManager";
@@ -555,7 +558,9 @@ export default class TranslatorManager {
         this.#processActions({ action: MSG_POPUP_TOGGLE })
       ),
       shortcutRegister(shortcuts[OPT_SHORTCUT_SETTING], () =>
-        window.open(process.env.REACT_APP_OPTIONSPAGE, "_blank")
+        isExt
+          ? sendBgMsg(MSG_OPEN_OPTIONS)
+          : window.open(process.env.REACT_APP_OPTIONSPAGE, "_blank")
       ),
       shortcutRegister(tranboxSetting?.tranboxShortcut, () =>
         this.#processActions({ action: MSG_TRANSBOX_TOGGLE })

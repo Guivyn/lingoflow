@@ -8,7 +8,6 @@ export const APP_NAME = process.env.REACT_APP_NAME.trim()
   .split(/\s+/)
   .join("-");
 export const APP_LCNAME = APP_NAME.toLowerCase(); // 应用名称小写，用于 ID 命名前缀等
-export const APP_UPNAME = APP_NAME.toUpperCase(); // 应用名称大写
 
 // 注入到网页 DOM 中的特定元素 ID，通过小写应用名防冲突
 export const APP_CONSTS = {

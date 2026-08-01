@@ -24,7 +24,6 @@ export const MSG_TRANS_TOGGLE_STYLE = "toggle_styles"; // 广播切换译文样�
 export const MSG_OPEN_TRANBOX = "open_tranbox"; // 广播开启划词翻译面板消息
 export const MSG_TRANS_GETRULE = "trans_getrule"; // 获取网页匹配的特定规则
 export const MSG_TRANS_PUTRULE = "trans_putrule"; // 保存或应用网页翻译规则
-export const MSG_TRANS_CURRULE = "trans_currule"; // 发送当前页面所适配的有效规则
 export const MSG_TRANSBOX_TOGGLE = "toggle_transbox"; // 切换划词翻译框的显示与隐藏
 export const MSG_POPUP_TOGGLE = "toggle_popup"; // 切换 Popup 弹窗的显隐状态
 export const MSG_MOUSEHOVER_TOGGLE = "toggle_mousehover"; // 切换鼠标悬停翻译功能
@@ -49,5 +48,3 @@ export const EVENT_LINGOFLOW = "lingoflow"; // 暴露给网页环境的外部交
 export const MSG_XHR_DATA_YOUTUBE = "LINGOFLOW_XHR_DATA_YOUTUBE"; // 传递 YouTube 拦截到的字幕 XHR 数据
 
 // --- 字幕菜单控制状态类型 ---
-export const MSG_MENUS_PROGRESSED = "progressed"; // 进度事件
-export const MSG_MENUS_UPDATEFORM = "updateFormData"; // 更新表单参数数据

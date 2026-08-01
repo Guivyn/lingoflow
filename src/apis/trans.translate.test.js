@@ -1,3 +1,8 @@
+import { handleTranslate } from "./trans";
+import { DEFAULT_API_LIST, OPT_TRANS_OPENAI } from "../config";
+import { fetchData, fetchStream } from "../libs/fetch";
+import { trustedTypesHelper } from "../libs/trustedTypes";
+
 jest.mock("query-string", () => ({
   stringify: (obj) => new URLSearchParams(obj).toString(),
 }));
@@ -14,11 +19,6 @@ jest.mock("../libs/fetch", () => ({
 jest.mock("../libs/docInfo", () => ({
   getDocInfo: () => ({}),
 }));
-
-import { handleTranslate } from "./trans";
-import { DEFAULT_API_LIST, OPT_TRANS_OPENAI } from "../config";
-import { fetchData, fetchStream } from "../libs/fetch";
-import { trustedTypesHelper } from "../libs/trustedTypes";
 
 const getApiSetting = (apiType) => ({
   ...DEFAULT_API_LIST.find((api) => api.apiType === apiType),

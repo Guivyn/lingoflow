@@ -8,30 +8,15 @@ import { OPT_STYLE_NONE } from "./styles";
 
 // --- 规则模式关键字 ---
 export const GLOBAL_KEY = "*"; // 全局匹配键名，表示继承全局设置
-export const REMAIN_KEY = "-"; // 保留/排除键名，表示不执行继承
-export const SHADOW_KEY = ">>>"; // 用于深度穿透 Shadow DOM 的 CSS 选择器分隔符
 
 export const DEFAULT_COLOR = "#209CEE"; // 默认的生词高亮背景色/波浪线颜色
 
 export const DEFAULT_TRANS_TAG = "font"; // 默认翻译译文所外包的 HTML 标签名
-export const DEFAULT_SELECT_STYLE =
+const DEFAULT_SELECT_STYLE =
   "-webkit-line-clamp: unset; max-height: none; height: auto;"; // 默认放开高度限制的 CSS，防止翻译后因译文变长导致文本截断或溢出
 
 // --- 网页翻译的触发时机常量 ---
 export const OPT_TIMING_PAGESCROLL = "mk_pagescroll"; // 智能滚动加载翻译：仅翻译当前视口内的可见段落
-export const OPT_TIMING_PAGEOPEN = "mk_pageopen"; // 页面打开时立即翻译：全网页从头到尾一次性自动翻译
-export const OPT_TIMING_MOUSEOVER = "mk_mouseover"; // 鼠标悬停翻译：鼠标滑过某个段落时，单独翻译当前段落
-export const OPT_TIMING_CONTROL = "mk_ctrlKey"; // Control 键 + 鼠标悬停触发翻译
-export const OPT_TIMING_SHIFT = "mk_shiftKey"; // Shift 键 + 鼠标悬停触发翻译
-export const OPT_TIMING_ALT = "mk_altKey"; // Alt 键 + 鼠标悬停触发翻译
-export const OPT_TIMING_ALL = [
-  OPT_TIMING_PAGESCROLL,
-  OPT_TIMING_PAGEOPEN,
-  OPT_TIMING_MOUSEOVER,
-  OPT_TIMING_CONTROL,
-  OPT_TIMING_SHIFT,
-  OPT_TIMING_ALT,
-];
 
 // --- 文本段落切分拆分策略 (避免单个段落过长导致大模型翻译效果差或报错) ---
 export const OPT_SPLIT_PARAGRAPH_DISABLE = "split_disable"; // 禁用段落切分
@@ -44,13 +29,13 @@ export const OPT_SPLIT_PARAGRAPH_ALL = [
 ];
 
 // 默认的待翻译元素选择器：包含主要的标题、列表、段落及引用块
-export const DEFAULT_SELECTOR =
+const DEFAULT_SELECTOR =
   "h1, h2, h3, h4, h5, h6, li, p, dd, blockquote, figcaption, label, legend";
 // 默认被忽略、不参与翻译的选择器：包含按钮、页脚、导航栏、代码块、矢量图以及带“logo”属性的元素
-export const DEFAULT_IGNORE_SELECTOR =
+const DEFAULT_IGNORE_SELECTOR =
   "button, footer, pre, mark, nav, svg, img[src*='.svg'], [class*='logo'] svg, [id*='logo'] svg";
 // 默认保留原样、不破坏内部结构的特殊行内元素选择器（如行内代码、公式等）
-export const DEFAULT_KEEP_SELECTOR = `code, cite, math, .math, a:has(code)`;
+const DEFAULT_KEEP_SELECTOR = `code, cite, math, .math, a:has(code)`;
 
 // 网页匹配翻译规则的空对象结构模板（属性全览）
 export const DEFAULT_RULE = {

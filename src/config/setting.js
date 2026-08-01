@@ -31,24 +31,18 @@ export const DEFAULT_SHORTCUTS = {
   [OPT_SHORTCUT_SETTING]: ["AltLeft", "KeyO"], // Alt + O 打开设置
 };
 
-export const TRANS_MIN_LENGTH = 2; // 触发网页翻译的最小文本字符数 (过短字符如单个字母不予处理)
-export const TRANS_MAX_LENGTH = 100000; // 单次翻译的最大字符数
+const TRANS_MIN_LENGTH = 2; // 触发网页翻译的最小文本字符数 (过短字符如单个字母不予处理)
+const TRANS_MAX_LENGTH = 100000; // 单次翻译的最大字符数
 export const TRANS_NEWLINE_LENGTH = 20; // 文本被认定为需要单独换行的长度限制
 
 // 默认不参与整页翻译的网站黑名单 (例如翻译工具本身、特定系统页，避免死循环翻译)
 export const DEFAULT_BLACKLIST = [
-  "https://guivyn.github.io/lingoflow/options.html",
   "https://translate.google.com",
   "https://www.deepl.com/translator",
 ];
 export const DEFAULT_CSPLIST = []; // 默认禁用 CSP 安全策略的网址列表
 export const DEFAULT_ORILIST = ["https://dict.youdao.com"]; // 默认在跨域请求中需要重写 Origin 请求头的域名
 
-// --- 划词/选区翻译配置 ---
-export const PHONIC_MAP = {
-  en_phonic: ["英", "uk"], // 英国英语发音
-  us_phonic: ["美", "en"], // 美国英语发音
-};
 // 划词翻译框的触发时机常量
 export const OPT_TRANBOX_TRIGGER_CLICK = "click"; // 划词后，点击出现的翻译悬浮球图标再触发翻译
 export const OPT_TRANBOX_TRIGGER_HOVER = "hover"; // 划词后，鼠标悬停在悬浮球上触发翻译
@@ -69,7 +63,7 @@ export const OPT_TRANBOX_BTN_POSITION_ALL = [
 ];
 export const OPT_TRANBOX_INTERACT_CLICK = "click"; // 单击翻译框内选中文本触发新翻译
 export const OPT_TRANBOX_INTERACT_DBLCLICK = "dblclick"; // 双击翻译框内选中文本触发新翻译
-export const DEFAULT_TRANBOX_SHORTCUT = ["AltLeft", "KeyS"]; // 呼出划词翻译面板的键盘快捷键
+const DEFAULT_TRANBOX_SHORTCUT = ["AltLeft", "KeyS"]; // 呼出划词翻译面板的键盘快捷键
 export const DEFAULT_TRANBOX_SETTING = {
   transOpen: true, // 是否启用划词翻译功能
   blacklist: "", // 划词翻译禁用的域名列表

@@ -1,7 +1,7 @@
 {
   "name": "lingoflow",
   "description": "A lightweight bilingual translation Chrome extension.",
-  "version": "2.0.28",
+  "version": "0.1.0",
   "author": "Gabe<yugang2002@gmail.com>",
   "private": true,
   "dependencies": {
@@ -32,6 +32,11 @@
     "version:set": "zx src/scripts/update-version.mjs set",
     "build:chrome": "zx src/scripts/build-task.mjs --target=chrome",
     "format": "prettier --write \"**/*.{js,json,html}\"",
+    "lint": "eslint src --ext .js,.jsx",
+    "lint:fix": "eslint src --ext .js,.jsx --fix",
+    "i18n:report": "node src/scripts/dynamic-i18n-report.mjs",
+    "test:ci": "cross-env CI=true react-app-rewired test --watchAll=false --runInBand",
+    "build:ci": "cross-env REACT_APP_CLIENT=chrome CI=true react-app-rewired build",
     "build": "pnpm sync-version && pnpm format && pnpm build:chrome",
     "zip": "zx src/scripts/archive.mjs",
     "build+zip": "cross-env CI=true pnpm build && pnpm zip",
@@ -43,6 +48,20 @@
     "extends": [
       "react-app",
       "react-app/jest"
+    ],
+    "overrides": [
+      {
+        "files": [
+          "src/**/*.test.js"
+        ],
+        "rules": {
+          "testing-library/no-container": "off",
+          "testing-library/render-result-naming-convention": "off",
+          "testing-library/no-unnecessary-act": "off",
+          "require-yield": "off",
+          "no-useless-constructor": "off"
+        }
+      }
     ],
     "globals": {
       "globalThis": true,

@@ -7,7 +7,6 @@ import {
   URL_CACHE_DICT,
   OPT_LANGS_TO_SPEC,
   OPT_LANGS_SPEC_DEFAULT,
-  API_SPE_TYPES,
   DEFAULT_API_SETTING,
   OPT_TRANS_MICROSOFT,
   URL_CACHE_SUBTITLE,
@@ -16,6 +15,7 @@ import {
   defaultNobatchUserPrompt,
   defaultDictUserPrompt,
 } from "../config";
+import { getProviderCapability } from "../providers";
 import { getCacheDigest } from "../libs/cacheDigest";
 import {
   handleTranslate,
@@ -38,11 +38,14 @@ const PROMPT_CACHE_SCOPE_DICT = "dict";
 const PROMPT_CACHE_SCOPE_PLAIN = "plain";
 
 function getTranslatePromptCacheScope(apiSetting = {}) {
-  if (!API_SPE_TYPES.ai.has(apiSetting.apiType)) {
+  if (!getProviderCapability(apiSetting.apiType, "ai")) {
     return PROMPT_CACHE_SCOPE_PLAIN;
   }
 
-  return apiSetting.useBatchFetch && API_SPE_TYPES.batch.has(apiSetting.apiType)
+  return (
+    apiSetting.useBatchFetch &&
+    getProviderCapability(apiSetting.apiType, "batch")
+  )
     ? PROMPT_CACHE_SCOPE_BATCH
     : PROMPT_CACHE_SCOPE_NOBATCH;
 }
@@ -77,13 +80,6 @@ async function getPromptCacheSig(apiSetting = {}, promptScope) {
 
   return (await getCacheDigest(promptText, PROMPT_CACHE_SALT)).slice(0, 16);
 }
-
-/**
- * 通用轻量数据拉取函数。
- * @param {string} url 目标 URL
- * @returns {Promise<*>} 拉取的数据内容
- */
-export const apiFetch = (url) => fetchData(url);
 
 /**
  * 获取微软 Edge 翻译服务的授权凭证 Token。
@@ -383,18 +379,6 @@ export const apiYoudaoDict = async (text) => {
 };
 
 /**
- * 百度文本转语音 (TTS) API，可用于单词发音朗读。
- * @param {string} text 朗读文本
- * @param {string} lan 语言代号，默认 "uk" (英音)
- * @param {number} spd 语速 (1-9)，默认 3
- * @returns {Promise<ArrayBuffer>} TTS 音频字节流
- */
-export const apiBaiduTTS = (text, lan = "uk", spd = 3) => {
-  const input = `https://fanyi.baidu.com/gettts?${queryString.stringify({ lan, text, spd })}`;
-  return fetchData(input);
-};
-
-/**
  * 全局统一翻译分发控制网关。
  * 承载了翻译缓存命中判断、并发批量队列合并、流式文本输出处理等最核心的工程化细节。
  * @param {Object} params
@@ -470,7 +454,7 @@ export const apiTranslate = async ({
 
   // 2. 缓存未命中，分发执行翻译请求
   let translation = [];
-  if (useBatchFetch && API_SPE_TYPES.batch.has(apiType)) {
+  if (useBatchFetch && getProviderCapability(apiType, "batch")) {
     // 2.2 支持批量翻译的传统接口 (如 Google/Microsoft/DeepL 等)
     // 使用 BatchQueue 进行零散文本大合并，节省网络交互次数，大幅提升网页整页翻译的载入速度
     const {
@@ -482,10 +466,11 @@ export const apiTranslate = async ({
       useStream,
       useContext,
     } = apiSetting;
-    const enableStream = useStream && API_SPE_TYPES.stream.has(apiType);
+    const enableStream =
+      useStream && getProviderCapability(apiType, "stream");
     const configuredBatchConcurrency = Number(batchConcurrency);
     const effectiveBatchConcurrency =
-      useContext && API_SPE_TYPES.context.has(apiType)
+      useContext && getProviderCapability(apiType, "context")
         ? 1
         : Number.isFinite(configuredBatchConcurrency) &&
             configuredBatchConcurrency >= 1
@@ -621,7 +606,7 @@ export const apiDict = async ({
   }
 
   const { apiType } = apiSetting;
-  if (!API_SPE_TYPES.ai.has(apiType)) {
+  if (!getProviderCapability(apiType, "ai")) {
     throw new Error("AI dictionary only supports AI APIs.");
   }
 

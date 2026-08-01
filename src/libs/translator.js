@@ -18,10 +18,16 @@ import {
   newI18n,
 } from "../config";
 import { resolveApiPromptSettings } from "../config/prompt";
+import {
+  getPlainTextChunkLimit,
+  readNextPlainTextChunk,
+} from "../core/scanner/plainTextChunking";
+import { parseTerms } from "../core/rules/TermParser";
+import { RuleMatcher } from "../core/rules/RuleMatcher";
+import { TranslationRenderer } from "../core/renderer/TranslationRenderer";
 import { interpreter } from "./interpreter";
 import { clearFetchPool } from "./pool";
 import { debounce, scheduleIdle, genEventName, parseAITerms } from "./utils";
-import { escapeHTML } from "./html";
 import { apiTranslate } from "../apis";
 import { appLog } from "./log";
 import { clearAllBatchQueue } from "./batchQueue";
@@ -333,7 +339,8 @@ export class Translator {
   #eventName = ""; // 通信事件名称
   #docInfo = {}; // 网页信息
   #glossary = {}; // AI词典
-  #blockSelectorInvalid = false; // 自定义块级选择器是否已确认无效
+  #ruleMatcher = null; // 规则匹配器
+  #renderer = null; // DOM 渲染器
   #textClass = {}; // 译文样式class
   #textSheet = null; // CSSStyleSheet 实例（Firefox 内容脚本中不可用时为 null）
   #textStylesRaw = ""; // 原始 CSS 文本（Firefox adoptedStyleSheets 回退备用）
@@ -461,32 +468,6 @@ export class Translator {
     return selectors.join(", ");
   }
 
-  #isIgnoredElement(node) {
-    return (
-      node?.nodeType === Node.ELEMENT_NODE &&
-      node.matches?.(this.#ignoreSelector)
-    );
-  }
-
-  #matchesBlockSelector(node) {
-    const selector = this.#rule.blockSelector?.trim();
-    if (
-      !selector ||
-      this.#blockSelectorInvalid ||
-      !Translator.isElement(node)
-    ) {
-      return false;
-    }
-
-    try {
-      return node.matches(selector);
-    } catch (err) {
-      this.#blockSelectorInvalid = true;
-      appLog("invalid blockSelector", err);
-      return false;
-    }
-  }
-
   #appendCssText(node, cssText, label) {
     if (typeof cssText !== "string" || !cssText.trim()) return;
 
@@ -504,127 +485,6 @@ export class Translator {
     } catch (err) {
       appLog("append rule style error", label, err);
     }
-  }
-
-  #isBlockNode(node) {
-    if (this.#matchesBlockSelector(node)) return true;
-    return Translator.isBlockNode(node);
-  }
-
-  #hasBlockNode(node) {
-    if (!Translator.isElementOrFragment(node)) return false;
-    for (const child of node.childNodes) {
-      if (this.#isBlockNode(child)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  #getPlainTextChunkLimit() {
-    const maxLength = Number(this.#setting.maxLength);
-    // 单个纯文本块必须小于 maxLength，避免后续 #isInvalidText 直接过滤。
-    const hardLimit = Number.isFinite(maxLength)
-      ? Math.max(1, maxLength - 1)
-      : 3000;
-
-    // 控制默认块大小，避免纯文本页面一次请求过长文本。
-    return Math.min(3000, hardLimit);
-  }
-
-  #findPlainTextBreakIndex(text, limit) {
-    const slice = text.slice(0, limit + 1);
-    let breakIndex = -1;
-    // 优先在句尾或换行处切分，减少把一句话截断的概率。
-    const naturalBreakRegex = /(?:[。！？]+|[.?!]+(?=\s+|$)|\n+)/g;
-    let match;
-
-    while ((match = naturalBreakRegex.exec(slice)) !== null) {
-      const candidate = match.index + match[0].length;
-      if (candidate > 0 && candidate <= limit) {
-        breakIndex = candidate;
-      }
-    }
-
-    if (breakIndex > Math.floor(limit * 0.4)) {
-      return breakIndex;
-    }
-
-    for (let i = limit; i > Math.floor(limit * 0.4); i--) {
-      if (/\s/.test(text[i - 1])) {
-        return i;
-      }
-    }
-
-    return limit;
-  }
-
-  #readPlainTextNewline(source, offset) {
-    let count = 0;
-    let nextOffset = offset;
-
-    while (nextOffset < source.length) {
-      const char = source[nextOffset];
-      if (char === "\r") {
-        count++;
-        nextOffset += source[nextOffset + 1] === "\n" ? 2 : 1;
-      } else if (char === "\n") {
-        count++;
-        nextOffset++;
-      } else {
-        break;
-      }
-    }
-
-    return count ? { count, nextOffset } : null;
-  }
-
-  #findPlainTextLineEnd(source, offset) {
-    let cursor = offset;
-
-    while (cursor < source.length) {
-      const char = source[cursor];
-      if (char === "\r" || char === "\n") break;
-      cursor++;
-    }
-
-    return cursor;
-  }
-
-  #readNextPlainTextChunk(source, offset, limit) {
-    if (offset >= source.length) return null;
-
-    const newline = this.#readPlainTextNewline(source, offset);
-    if (newline) {
-      return {
-        type: "break",
-        count: Math.max(0, newline.count - 1),
-        nextOffset: newline.nextOffset,
-      };
-    }
-
-    const lineEnd = this.#findPlainTextLineEnd(source, offset);
-    const lineLength = lineEnd - offset;
-
-    if (lineLength <= limit) {
-      return {
-        type: "text",
-        value: source.slice(offset, lineEnd),
-        nextOffset: lineEnd,
-      };
-    }
-
-    // 超长单行继续按自然边界或硬上限拆分，保证每个 span 可单独翻译。
-    const splitIndex = this.#findPlainTextBreakIndex(
-      source.slice(offset, lineEnd),
-      limit
-    );
-
-    return {
-      type: "text",
-      value: source.slice(offset, offset + splitIndex),
-      nextOffset: offset + splitIndex,
-    };
   }
 
   #createPlainTextChunkNode(chunk) {
@@ -647,7 +507,7 @@ export class Translator {
       return;
     }
 
-    const limit = this.#getPlainTextChunkLimit();
+    const limit = getPlainTextChunkLimit(this.#setting);
     const maxNodes = isInitialBatch ? 20 : 100;
     const maxDuration = isInitialBatch ? Infinity : 10;
     const startedAt = performance.now?.() || Date.now();
@@ -666,7 +526,7 @@ export class Translator {
         continue;
       }
 
-      const chunk = this.#readNextPlainTextChunk(
+      const chunk = readNextPlainTextChunk(
         state.source,
         state.offset,
         limit
@@ -831,8 +691,31 @@ export class Translator {
     this.#combinedSkipsRegex = new RegExp(
       Translator.BUILTIN_SKIP_PATTERNS.map((r) => `(${r.source})`).join("|")
     );
+    this.#ruleMatcher = new RuleMatcher({
+      rule: this.#rule,
+      setting: this.#setting,
+      ignoreSelector: this.#ignoreSelector,
+      translationTagName: this.#translationTagName,
+      tags: Translator.TAGS,
+      isBlockNode: Translator.isBlockNode.bind(Translator),
+    });
+    this.#ruleMatcher.setSkipsRegex(this.#combinedSkipsRegex);
+    this.#renderer = new TranslationRenderer({
+      rule: this.#rule,
+      tags: Translator.TAGS,
+      getPlaceholderConfig: () => this.#placeholderConfig,
+      getTerms: () => ({
+        values: this.#termValues,
+        regex: this.#combinedTermsRegex,
+      }),
+      isIgnoredElement: this.#ruleMatcher.isIgnoredElement.bind(
+        this.#ruleMatcher
+      ),
+    });
 
-    this.#parseTerms(this.#rule.terms);
+    const parsedTerms = parseTerms(this.#rule.terms);
+    this.#termValues = parsedTerms.values;
+    this.#combinedTermsRegex = parsedTerms.combinedRegex;
     // this.#parseAITerms(this.#rule.aiTerms);
     this.#glossary = parseAITerms(this.#rule.aiTerms);
     this.#createTextStyles();
@@ -985,43 +868,6 @@ export class Translator {
     style.id = fallbackStyleId;
     style.textContent = this.#textStylesRaw || "";
     shadowRoot.append(style);
-  }
-
-  // 解析专业术语字符串
-  #parseTerms(termsString) {
-    this.#termValues = [];
-    this.#combinedTermsRegex = null;
-
-    if (!termsString || typeof termsString !== "string") return;
-
-    const termPatterns = [];
-    const lines = termsString.split(/\n|;/); // 按换行或分号分割
-
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) continue;
-
-      let lastCommaIndex = trimmedLine.lastIndexOf(",");
-      if (lastCommaIndex === -1) {
-        lastCommaIndex = trimmedLine.length;
-      }
-      const key = trimmedLine.substring(0, lastCommaIndex).trim();
-      const value = trimmedLine.substring(lastCommaIndex + 1).trim();
-
-      if (key) {
-        try {
-          new RegExp(key);
-          termPatterns.push(`(${key})`);
-          this.#termValues.push(value);
-        } catch (err) {
-          appLog(`Invalid RegExp for term: "${key}"`, err);
-        }
-      }
-    }
-
-    if (termPatterns.length > 0) {
-      this.#combinedTermsRegex = new RegExp(termPatterns.join("|"), "g");
-    }
   }
 
   // #parseAITerms(termsString) {
@@ -1276,7 +1122,10 @@ export class Translator {
 
     let current = startNode;
     while (current && current !== document.body) {
-      if (this.#isBlockNode(current) || this.#observedNodes.has(current)) {
+      if (
+        this.#ruleMatcher.isBlockNode(current) ||
+        this.#observedNodes.has(current)
+      ) {
         // 确保找到的容器在我们监控的根节点内
         for (const root of this.#rootNodes) {
           if (root.contains(current)) {
@@ -1423,7 +1272,7 @@ export class Translator {
       }
     }
 
-    const hasBlock = this.#hasBlockNode(rootNode);
+    const hasBlock = this.#ruleMatcher.hasBlockNode(rootNode);
 
     if (hasText || !hasBlock) {
       this.#startObserveNode(rootNode);
@@ -1431,7 +1280,7 @@ export class Translator {
 
     if (hasBlock) {
       for (const child of rootNode.children) {
-        const isBlock = this.#isBlockNode(child);
+        const isBlock = this.#ruleMatcher.isBlockNode(child);
         if (!hasText || isBlock) {
           this.#scanNode(child);
         }
@@ -1451,7 +1300,7 @@ export class Translator {
     this.#processedNodes.set(node, { ...this.#rule });
 
     // 提前检测文本
-    if (this.#isInvalidText(node.textContent)) {
+    if (this.#ruleMatcher.isInvalidText(node.textContent)) {
       return;
     }
 
@@ -1485,7 +1334,7 @@ export class Translator {
 
     let nodeGroup = [];
     [...node.childNodes].forEach((child) => {
-      const shouldBreak = this.#shouldBreak(child);
+      const shouldBreak = this.#ruleMatcher.shouldBreak(child);
       const shouldGroup =
         child.nodeType === Node.ELEMENT_NODE ||
         child.nodeType === Node.TEXT_NODE;
@@ -1585,83 +1434,6 @@ export class Translator {
   }
 
   // 判断是否需要换行
-  #shouldBreak(node) {
-    if (!Translator.isElementOrFragment(node)) return false;
-
-    let matchesKeepSelector = false;
-    try {
-      matchesKeepSelector = node.matches(this.#rule.keepSelector);
-    } catch (err) {
-      appLog(
-        "keepSelector match error in shouldBreak",
-        this.#rule.keepSelector,
-        err
-      );
-    }
-    if (matchesKeepSelector) return false;
-
-    if (
-      Translator.TAGS.BREAK_LINE.has(node.nodeName?.toUpperCase()) ||
-      node.matches?.(this.#ignoreSelector) ||
-      node.nodeName?.toLowerCase() === this.#translationTagName
-    ) {
-      return true;
-    }
-
-    if (this.#rule.autoScan === "true" && this.#isBlockNode(node)) {
-      return true;
-    }
-
-    if (
-      this.#rule.autoScan === "false" &&
-      (node.matches(this.#rule.selector) ||
-        node.querySelector(this.#rule.selector))
-    ) {
-      return true;
-    }
-
-    return false;
-  }
-
-  // 过滤文本
-  #isInvalidText(text) {
-    if (typeof text !== "string") {
-      return true;
-    }
-
-    const trimmedText = text.trim();
-
-    if (!trimmedText) {
-      return true;
-    }
-
-    // 文本长度
-    if (
-      trimmedText.length < this.#setting.minLength ||
-      trimmedText.length > this.#setting.maxLength
-    ) {
-      return true;
-    }
-
-    // 单个非字母数字字符。
-    if (trimmedText.length === 1 && !trimmedText.match(/[a-zA-Z]/)) {
-      return true;
-    }
-
-    // 只是一个数字
-    if (!isNaN(parseFloat(trimmedText)) && isFinite(trimmedText)) {
-      return true;
-    }
-
-    // 正则匹配
-    if (this.#combinedSkipsRegex.test(trimmedText)) {
-      return true;
-    }
-
-    return false;
-  }
-
-  // 将不同来源的异常统一转成可展示、可复制的纯文本错误信息
   #formatTranslateError(error) {
     if (error instanceof Error) {
       const tag = error.name ? `[${error.name}]` : "[UnknownError]";
@@ -1952,11 +1724,9 @@ export class Translator {
     const hideOrigin = transOnly === "true";
 
     try {
-      const [processedString, placeholderMap] = this.#serializeForTranslation(
-        nodes,
-        termsStyle
-      );
-      if (this.#isInvalidText(processedString)) return;
+      const [processedString, placeholderMap] =
+        this.#renderer.serializeForTranslation(nodes, termsStyle);
+      if (this.#ruleMatcher.isInvalidText(processedString)) return;
 
       const wrapper = document.createElement(this.#translationTagName);
       wrapper.className = `${Translator.LINGOFLOW_CLASS.warpper} notranslate`;
@@ -2087,7 +1857,7 @@ export class Translator {
       }
 
       // 3. 将翻译后文本里的 {{1}}、<tag1> 等占位符还原为对应的 DOM 节点和 HTML 结构
-      const htmlString = this.#restoreFromTranslation(
+      const htmlString = this.#renderer.restoreFromTranslation(
         translatedText,
         placeholderMap
       );
@@ -2262,7 +2032,7 @@ overflow-wrap: anywhere !important;`;
     if (this.#hoverBubbleTarget === node && this.#hoverBubbleNode) return;
 
     const text = node.textContent || "";
-    if (this.#isInvalidText(text)) {
+    if (this.#ruleMatcher.isInvalidText(text)) {
       this.#hideHoverBubble();
       return;
     }
@@ -2315,206 +2085,6 @@ overflow-wrap: anywhere !important;`;
   }
 
   // 处理节点转为翻译字符串
-  #serializeForTranslation(nodes, termsStyle) {
-    let replaceCounter = 0; // {{n}}
-    let wrapCounter = 0; // <tagn>
-    const placeholderMap = new Map();
-    const { startDelimiter, endDelimiter } = this.#placeholderConfig;
-
-    const pushReplace = (html) => {
-      replaceCounter++;
-      const placeholder = `${startDelimiter}${replaceCounter}${endDelimiter}`;
-      placeholderMap.set(placeholder, html);
-      return placeholder;
-    };
-
-    const traverse = (node) => {
-      if (
-        node.nodeType !== Node.ELEMENT_NODE &&
-        node.nodeType !== Node.TEXT_NODE
-      ) {
-        return "";
-      }
-
-      // 文本节点
-      if (node.nodeType === Node.TEXT_NODE) {
-        let text = node.textContent;
-        if (!text.trim()) return "";
-
-        // 专业术语替换
-        if (this.#combinedTermsRegex) {
-          this.#combinedTermsRegex.lastIndex = 0;
-          text = text.replace(this.#combinedTermsRegex, (...args) => {
-            const groups = args.slice(1, -2);
-            const matchedIndex = groups.findIndex(
-              (group) => group !== undefined
-            );
-            const fullMatch = args[0];
-            const termValue = this.#termValues[matchedIndex];
-
-            return pushReplace(
-              `<i class="${Translator.LINGOFLOW_CLASS.term}" style="${termsStyle}">${termValue || fullMatch}</i>`
-            );
-          });
-        }
-
-        // 换行符替换
-        text = text.replace(/\r?\n/g, () => pushReplace(`&#10;`));
-
-        return escapeHTML(text);
-      }
-
-      // 元素节点
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        if (this.#isIgnoredElement(node)) {
-          return "";
-        }
-
-        let matchesKeepSelector = false;
-        try {
-          matchesKeepSelector = node.matches(this.#rule.keepSelector);
-        } catch (err) {
-          appLog("keepSelector match error", this.#rule.keepSelector, err);
-        }
-
-        if (
-          (this.#rule.hasRichText === "true" &&
-            Translator.TAGS.REPLACE.has(node.tagName)) ||
-          matchesKeepSelector ||
-          // node.matches(this.#ignoreSelector) ||
-          !node.textContent.trim()
-        ) {
-          if (
-            node.tagName?.toUpperCase() === "IMG" ||
-            node.tagName?.toUpperCase() === "SVG"
-          ) {
-            node.style.width = `${node.offsetWidth}px`;
-            node.style.height = `${node.offsetHeight}px`;
-          }
-          return pushReplace(node.outerHTML);
-        }
-
-        let innerContent = "";
-        node.childNodes.forEach((child) => {
-          try {
-            innerContent += traverse(child);
-          } catch (err) {
-            appLog("traverse child error", child.nodeName, err);
-          }
-        });
-
-        if (
-          this.#rule.hasRichText === "true" &&
-          Translator.TAGS.WARP.has(node.tagName?.toUpperCase())
-        ) {
-          wrapCounter++;
-          const { tagName, format } = this.#placeholderConfig;
-
-          // 存储序号对应的原始标签对（使用TAG_前缀避免与普通占位符{{1}}冲突）
-          placeholderMap.set(`TAG_${wrapCounter}`, {
-            openTag: buildOpeningTag(node),
-            closeTag: `</${node.localName}>`,
-          });
-
-          // 生成占位符
-          let startPlaceholder, endPlaceholder;
-          if (format === "attribute") {
-            // 属性格式：<a i=1>content</a>
-            startPlaceholder = `<${tagName} i=${wrapCounter}>`;
-            endPlaceholder = `</${tagName}>`;
-          } else {
-            // 简洁格式：<a1>content</a1>
-            startPlaceholder = `<${tagName}${wrapCounter}>`;
-            endPlaceholder = `</${tagName}${wrapCounter}>`;
-          }
-
-          return `${startPlaceholder}${innerContent}${endPlaceholder}`;
-        }
-
-        return innerContent;
-      }
-
-      return "";
-    };
-
-    function buildOpeningTag(node) {
-      const escapeAttr = (str) => str.replace(/"/g, "&quot;");
-      let tag = `<${node.tagName.toLowerCase()}`;
-      for (const attr of node.attributes) {
-        tag += ` ${attr.name}="${escapeAttr(attr.value)}"`;
-      }
-      tag += ">";
-      return tag;
-    }
-
-    const processedString = nodes.map(traverse).join("").trim();
-
-    return [processedString, placeholderMap];
-  }
-
-  // 将翻译后的文本与之前序列化时抽离的 HTML 占位符、标签和术语映射进行合并还原，恢复原网页的富文本格式与 DOM 结构
-  #restoreFromTranslation(translatedText, placeholderMap) {
-    if (!placeholderMap.size) {
-      return translatedText;
-    }
-
-    if (!translatedText) return "";
-
-    const { safeTag, openRegex, closeRegex } = this.#placeholderConfig;
-    const restoreAttr = "data-lingoflow-restore";
-    let textToParse = translatedText;
-    let result = translatedText;
-
-    try {
-      // 1. 规范化占位符：将不同翻译源返回的不同占位标签（如 <a1>... </a1> 或 <span i=1>...）统一替换为统一的临时标记格式 `<span data-lingoflow-restore="序号">`
-      textToParse = textToParse.replace(
-        openRegex,
-        `<${safeTag} ${restoreAttr}="$1">`
-      );
-      textToParse = textToParse.replace(closeRegex, `</${safeTag}>`);
-
-      // 2. DOM 静态解析：使用 DOMParser 将规范后的 HTML 字符串解析成一个虚拟 DOM 树，以便精确操作和避免正则嵌套标签还原出错的问题
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(
-        trustedTypesHelper.createHTML(textToParse),
-        "text/html"
-      );
-
-      // 3. 查找所有临时标记节点
-      const selector = `${safeTag}[${restoreAttr}]`;
-      const placeholders = Array.from(doc.querySelectorAll(selector));
-
-      // 4. 自底向上倒序还原：为了保证嵌套标签的父子包含层级不被破坏，必须从最深处的子节点开始依次向外层父节点还原。
-      // 这里的 placeholders.reverse() 正是实现了自底向上（倒序）替换 DOM 节点，逻辑非常严密！
-      placeholders.reverse().forEach((node) => {
-        const index = node.getAttribute(restoreAttr);
-        if (index) {
-          const tagPair = placeholderMap.get(`TAG_${index}`);
-          if (tagPair) {
-            // 使用原本的 HTML 标签对 (如 <a href="...">...</a>) 完整包裹当前节点的内容，并使用 outerHTML 替换整个临时 span 节点
-            node.outerHTML = trustedTypesHelper.createHTML(
-              `${tagPair.openTag}${node.innerHTML}${tagPair.closeTag}`
-            );
-          }
-        }
-      });
-
-      // 获取还原完毕后的富文本 HTML 字符串
-      result = doc.body.innerHTML;
-    } catch (e) {
-      appLog("DOMParser restore failed, fallback to raw", e);
-      // 如果 DOMParser 解析出错（比如翻译源返回了破碎的 HTML 片段），则回退，继续尝试用正则直接替换普通占位符
-    }
-
-    // 5. 还原普通无语义占位符（如术语、换行符、行内图片或不可翻译标记 {{1}}、{{2}} 等）
-    result = result.replace(
-      this.#placeholderConfig.placeholderRegex,
-      (match) => placeholderMap.get(match) || match
-    );
-
-    return result;
-  }
-
   // 发起翻译请求
   #translateFetch(text, deLang = "", onStreamChunk = null) {
     const { toLang, transStartHook } = this.#rule;
@@ -2598,7 +2168,7 @@ overflow-wrap: anywhere !important;`;
 
     while (current) {
       if (
-        this.#shouldBreak(current) &&
+        this.#ruleMatcher.shouldBreak(current) &&
         !Translator.TAGS.WARP.has(current.nodeName?.toUpperCase())
       ) {
         break;
@@ -3243,7 +2813,7 @@ overflow-wrap: anywhere !important;`;
 
     // 配置变更时清空正则缓存
     this.#placeholderCache = null;
-    this.#blockSelectorInvalid = false;
+    this.#ruleMatcher.resetBlockSelectorInvalid();
 
     const needsTriggerRescan =
       this.#enabled &&

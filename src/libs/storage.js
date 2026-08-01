@@ -2,9 +2,7 @@ import {
   APP_NAME,
   STOKEY_SETTING,
   STOKEY_SETTING_BACKUP_V1_BEFORE_V2,
-  STOKEY_SETTING_OLD,
   STOKEY_RULES,
-  STOKEY_RULES_OLD,
   STOKEY_FAB,
   STOKEY_TRANBOX,
   STOKEY_MSAUTH,
@@ -18,6 +16,7 @@ import { isExt } from "./client";
 import { browser } from "./browser";
 import { appLog } from "./log";
 import { debounce } from "./utils";
+import { normalizeSetting } from "../core/storage/schema";
 
 // 品牌更名前的应用名，用于一次性迁移旧 chrome.storage/localStorage 数据。
 const LEGACY_APP_NAME = "KISS-Translator";
@@ -124,15 +123,14 @@ export const storage = {
 
 // --- 应用设置 (Settings) 数据存取 ---
 export const getSetting = () => getObj(STOKEY_SETTING);
-export const getSettingOld = () => getObj(STOKEY_SETTING_OLD);
 const writeSettingBackupBeforeV2 = (setting) =>
   setObj(STOKEY_SETTING_BACKUP_V1_BEFORE_V2, setting);
 const mergeSettingWithDefault = (setting) => ({
   ...DEFAULT_SETTING,
-  ...(setting || {}),
+  ...normalizeSetting(setting || {}),
   version: setting?.version ?? DEFAULT_SETTING.version,
 });
-export const migrateStoredSettingToV2 = async (
+const migrateStoredSettingToV2 = async (
   setting,
   backupSetting = setting
 ) => {
@@ -197,27 +195,21 @@ export const getSettingWithDefault = async () => {
   return mergeSettingWithDefault(setting);
 };
 export const setSetting = async (val) => setObj(STOKEY_SETTING, val);
-export const putSetting = async (obj) => {
-  const cur = (await getSetting()) ?? {};
-  await setSetting({ ...cur, ...obj });
-};
 
 // --- 用户翻译规则 (Rules) 数据存取 ---
-export const getRules = () => getObj(STOKEY_RULES);
-export const getRulesOld = () => getObj(STOKEY_RULES_OLD);
+const getRules = () => getObj(STOKEY_RULES);
 export const getRulesWithDefault = async () =>
   (await getRules()) || DEFAULT_RULES;
 export const setRules = (val) => setObj(STOKEY_RULES, val);
 
 // --- 悬浮球 (Fab Button) 位置及偏好存取 ---
-export const getFab = () => getObj(STOKEY_FAB);
+const getFab = () => getObj(STOKEY_FAB);
 export const getFabWithDefault = async () => (await getFab()) || {};
-export const setFab = (obj) => setObj(STOKEY_FAB, obj);
 export const putFab = (obj) => putObj(STOKEY_FAB, obj);
 
 // --- 交互翻译框 (TranBox UI) 位置与大小存取 ---
 export const getTranBox = () => getObj(STOKEY_TRANBOX);
-export const putTranBox = (obj) => putObj(STOKEY_TRANBOX, obj);
+const putTranBox = (obj) => putObj(STOKEY_TRANBOX, obj);
 // 节流处理高频更新的 TranBox 位置写入
 export const debouncePutTranBox = debounce(putTranBox, 300);
 

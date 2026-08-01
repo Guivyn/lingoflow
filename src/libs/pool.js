@@ -183,7 +183,7 @@ export const getFetchPool = (interval, limit) => {
  * @param {number} interval - 最小间隔（毫秒）
  * @param {number} limit - 并发限制数
  */
-export const updateFetchPool = (interval, limit) => {
+const updateFetchPool = (interval, limit) => {
   fetchPool?.update(interval, limit);
 };
 

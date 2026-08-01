@@ -1,3 +1,8 @@
+import { fetchData, fetchStream } from "../libs/fetch";
+import { getStreamDelta } from "../libs/stream";
+import { DEFAULT_API_LIST, OPT_TRANS_OPENAI } from "../config";
+import { handleDict } from "./trans";
+
 jest.mock("query-string", () => ({
   stringify: (obj) => new URLSearchParams(obj).toString(),
 }));
@@ -19,11 +24,6 @@ jest.mock("../libs/stream", () => ({
   detectStreamFormat: jest.fn(),
   getStreamDelta: jest.fn(),
 }));
-
-import { fetchData, fetchStream } from "../libs/fetch";
-import { getStreamDelta } from "../libs/stream";
-import { DEFAULT_API_LIST, OPT_TRANS_OPENAI } from "../config";
-import { handleDict } from "./trans";
 
 const openaiApi = {
   ...DEFAULT_API_LIST.find((api) => api.apiType === OPT_TRANS_OPENAI),

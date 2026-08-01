@@ -14,7 +14,6 @@ export const DEFAULT_BATCH_CONCURRENCY = 1; // 同时执行的聚合批次数量
 export const DEFAULT_CONTEXT_SIZE = 3; // AI 翻译时保留的上下文会话历史轮数
 
 // --- 翻译内容替换占位符 ---
-export const INPUT_PLACE_URL = "{{url}}"; // 当前网页 URL 占位符
 export const INPUT_PLACE_FROM = "{{from}}"; // 源语言占位符
 export const INPUT_PLACE_TO = "{{to}}"; // 目标语言占位符
 export const INPUT_PLACE_FROM_LANG = "{{fromLang}}"; // 源语言代码占位符
@@ -25,12 +24,9 @@ export const INPUT_PLACE_TITLE = "{{title}}"; // 页面标题占位符
 export const INPUT_PLACE_DESCRIPTION = "{{description}}"; // 页面描述(Description)占位符
 export const INPUT_PLACE_SUMMARY = "{{summary}}"; // 页面摘要(Summary)占位符
 export const INPUT_PLACE_CONTEXT = "{{context}}"; // 当前选中文本所在上下文占位符
-export const INPUT_PLACE_KEY = "{{key}}"; // API Key 占位符
-export const INPUT_PLACE_MODEL = "{{model}}"; // AI 模型名称占位符
 export const INPUT_PLACE_GLOSSARY = "{{glossary}}"; // 专业术语表占位符
 
 // --- 划词翻译词典服务商 ---
-// export const OPT_DICT_BAIDU = "Baidu";
 export const OPT_DICT_BING = "Bing"; // 必应词典
 export const OPT_DICT_YOUDAO = "Youdao"; // 有道词典
 export const OPT_DICT_ALL = [OPT_DICT_BING, OPT_DICT_YOUDAO];
@@ -150,8 +146,6 @@ export const BUILTIN_STONES = [
 ];
 export const BUILTIN_PLACEHOLDERS = ["{ }", "{{ }}", "[ ]", "[[ ]]"];
 export const BUILTIN_PLACETAGS = ["i", "a", "b", "x", "span"];
-export const PLACETAG_FORMATS = ["compact", "attribute"]; // 占位符格式：简洁格式、属性格式
-
 export const OPT_LANGS_TO = [
   ["en", "English - English"],
   ["zh-CN", "Simplified Chinese - 简体中文"],
@@ -208,13 +202,13 @@ export const OPT_LANGS_FROM_REVERSED = OPT_LANGS_FROM.map(([code, name]) => [
 ]);
 
 // CODE->名称
-export const OPT_LANGS_SPEC_NAME = new Map(
+const OPT_LANGS_SPEC_NAME = new Map(
   OPT_LANGS_FROM.map(([key, val]) => [key, val.split(" - ")[0]])
 );
 export const OPT_LANGS_SPEC_DEFAULT = new Map(
   OPT_LANGS_FROM.map(([key]) => [key, key])
 );
-export const OPT_LANGS_SPEC_DEFAULT_UC = new Map(
+const OPT_LANGS_SPEC_DEFAULT_UC = new Map(
   OPT_LANGS_FROM.map(([key]) => [key, key.toUpperCase()])
 );
 export const OPT_LANGS_TO_SPEC = {
@@ -263,7 +257,6 @@ Object.entries(OPT_LANGS_TO_SPEC).forEach(([t, m]) => {
 });
 
 export const defaultNobatchPrompt = `You are a professional, authentic machine translation engine.`;
-export const DEFAULT_TRANSLATE_PROMPT = defaultNobatchPrompt;
 export const defaultNobatchUserPrompt = `# Context
 Title: ${INPUT_PLACE_TITLE}
 Description: ${INPUT_PLACE_DESCRIPTION}
@@ -613,7 +606,7 @@ export const DEFAULT_API_LIST = OPT_ALL_TRANS_TYPES.map((apiType) => ({
  * @param {object} apiSetting 单个翻译接口配置
  * @returns {object} 补齐后的接口配置；如果无需修改，则返回原对象引用
  */
-export function fillDefaultApiModelListUrl(apiSetting) {
+function fillDefaultApiModelListUrl(apiSetting) {
   if (!apiSetting || typeof apiSetting !== "object") {
     return apiSetting;
   }
@@ -660,7 +653,7 @@ export function normalizeApiModelListUrls(transApis = []) {
   return hasChanges ? nextApis : transApis;
 }
 
-export const DEFAULT_API_TYPE = OPT_TRANS_MICROSOFT;
+const DEFAULT_API_TYPE = OPT_TRANS_MICROSOFT;
 export const DEFAULT_API_SETTING = DEFAULT_API_LIST.find(
   (a) => a.apiType === DEFAULT_API_TYPE
 );

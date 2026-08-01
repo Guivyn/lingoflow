@@ -57,13 +57,3 @@ export const injectInternalCss = (styles) => {
   el.textContent = styles;
   document.head?.appendChild(el);
 };
-
-// 向页面注入外部 CSS 样式文件链接。
-export const injectExternalCss = (href) => {
-  const el = document.createElement("link");
-  el.setAttribute("data-source", "lingoflow-inject injectExternalCss");
-  el.setAttribute("rel", "stylesheet");
-  el.setAttribute("type", "text/css");
-  el.setAttribute("href", href);
-  document.head?.appendChild(el);
-};

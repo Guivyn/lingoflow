@@ -174,7 +174,7 @@ export const throttle = (
  * @param {number} i 起始检测索引，默认为 0
  * @returns {boolean}
  */
-export const isAllchar = (s, c, i = 0) => {
+const isAllchar = (s, c, i = 0) => {
   while (i < s.length) {
     if (s[i] !== c) {
       return false;
@@ -278,46 +278,6 @@ export const isSameSet = (a, b) => {
  * @returns
  */
 /**
- * 去掉字符串末尾若干个特定字符
- * @param {string} s 输入字符串
- * @param {string} c 要删除的目标尾部字符
- * @param {number} count 最多连续删除的数量限制
- * @returns {string}
- */
-export const removeEndchar = (s, c, count = 1) => {
-  if (!s) return "";
-
-  let i = s.length;
-  while (i > s.length - count && s[i - 1] === c) {
-    i--;
-  }
-  return s.slice(0, i);
-};
-
-/**
- * 在输入框即时翻译时，解析匹配包含翻译目标语言代码和翻译内容的字符串
- * @param {string} str 输入框当前输入的整句字符串
- * @param {string} sign 触发翻译前缀符号 (如 "/", "//", ">" 等)
- * @returns {RegExpMatchArray|null}
- */
-export const matchInputStr = (str, sign) => {
-  switch (sign) {
-    case "//":
-      return str.match(/\/\/([\w-]+)\s+([^]+)/); // 例：//en Hello -> 捕获 "en" 和 "Hello"
-    case "\\":
-      return str.match(/\\([\w-]+)\s+([^]+)/);
-    case "\\\\":
-      return str.match(/\\\\([\w-]+)\s+([^]+)/);
-    case ">":
-      return str.match(/>([\w-]+)\s+([^]+)/);
-    case ">>":
-      return str.match(/>>([\w-]+)\s+([^]+)/);
-    default:
-  }
-  return str.match(/\/([\w-]+)\s+([^]+)/); // 默认符号 "/"
-};
-
-/**
  * 判断字符串是否为合法的纯英文单词（仅支持字母及中划线，用于跳过单单词翻译或词典单独查词）
  * @param {string} str 待检测文本
  * @returns {boolean}
@@ -384,39 +344,6 @@ export const scheduleIdle = (cb, timeout = 200) => {
     return requestIdleCallback(cb, { timeout });
   }
   return setTimeout(cb, timeout);
-};
-
-/**
- * 根据页面 URL，提取通用的主机名/域名 Pattern
- * @param {string} href
- * @returns {string}
- */
-export const parseUrlPattern = (href) => {
-  if (href.startsWith("file")) {
-    const filename = href.substring(href.lastIndexOf("/") + 1);
-    return filename; // 本地文件取文件名
-  } else if (href.startsWith("http")) {
-    const url = new URL(href);
-    return url.host; // HTTP/HTTPS 提取 host
-  }
-  return href;
-};
-
-/**
- * 为异步 Promise 任务或待执行的闭包设置超时边界
- * @param {Promise|Function} task 异步任务
- * @param {number} timeout 超时时间（毫秒）
- * @param {string} [timeoutMsg] 超时错误描述
- * @returns {Promise}
- */
-export const withTimeout = (task, timeout, timeoutMsg = "Task timed out") => {
-  const promise = typeof task === "function" ? task() : task;
-  return Promise.race([
-    promise,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(timeoutMsg)), timeout)
-    ),
-  ]);
 };
 
 /**

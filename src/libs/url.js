@@ -11,7 +11,7 @@
  * isIPAddress("::1") -> true
  * isIPAddress("example.com") -> false
  */
-export const isIPAddress = (hostname) => {
+const isIPAddress = (hostname) => {
   const isIPv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
   const isIPv6 = hostname.includes(":");
   return isIPv4 || isIPv6;

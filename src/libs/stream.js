@@ -4,7 +4,7 @@
  */
 
 import { JSONParser } from "@streamparser/json";
-import { OPT_TRANS_OPENAI, OPT_TRANS_DEEPSEEK } from "../config";
+import { getProvider } from "../providers";
 import {
   normalizeTranslationItem,
   parseLineTranslationSegments,
@@ -117,14 +117,7 @@ export const createAsyncQueue = () => {
  * @returns {string} 字符增量，无增量则返回空字符串 ""
  */
 export function getStreamDelta(json, apiType) {
-  switch (apiType) {
-    case OPT_TRANS_OPENAI:
-    case OPT_TRANS_DEEPSEEK:
-      // OpenAI 兼容协议的大模型 delta 提取逻辑
-      return json.choices?.[0]?.delta?.content || "";
-    default:
-      return "";
-  }
+  return getProvider(apiType)?.parseStreamDelta?.(json) || "";
 }
 
 /**

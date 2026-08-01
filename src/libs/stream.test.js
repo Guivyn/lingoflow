@@ -1,7 +1,3 @@
-jest.mock("@streamparser/json", () => ({
-  JSONParser: jest.fn(),
-}));
-
 import {
   createSSEParser,
   createStreamingSubtitleParser,
@@ -9,6 +5,10 @@ import {
   parseStreamingSegments,
 } from "./stream";
 import { OPT_TRANS_DEEPSEEK } from "../config";
+
+jest.mock("@streamparser/json", () => ({
+  JSONParser: jest.fn(),
+}));
 
 describe("createSSEParser", () => {
   test("parses data fields with or without a following space", () => {

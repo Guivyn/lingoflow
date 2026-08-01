@@ -104,26 +104,3 @@ export function usePromptList() {
     isPresetPromptSlug,
   };
 }
-
-export function usePromptItem(promptSlug) {
-  const {
-    prompts,
-    updatePrompt,
-    deletePrompt,
-    copyPrompt,
-    isPresetPromptSlug,
-  } = usePromptList();
-
-  const prompt = useMemo(
-    () => prompts.find((item) => normalizePrompt(item).slug === promptSlug),
-    [prompts, promptSlug]
-  );
-
-  return {
-    prompt,
-    updatePrompt,
-    deletePrompt,
-    copyPrompt,
-    isPreset: isPresetPromptSlug(promptSlug),
-  };
-}

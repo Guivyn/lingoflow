@@ -8,7 +8,7 @@ import { I18N } from "../config";
  * @param {string} defaultText 默认备用文本
  * @returns {string} 本地化后的文本
  */
-export const getI18n = (uiLang, key, defaultText = "") => {
+const getI18n = (uiLang, key, defaultText = "") => {
   return I18N?.[key]?.[uiLang] ?? defaultText;
 };
 

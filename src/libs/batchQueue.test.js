@@ -93,6 +93,7 @@ describe("BatchQueue batch concurrency", () => {
 
     const failed = queue.addTask("failed");
     const next = queue.addTask("next");
+    // eslint-disable-next-line jest/valid-expect -- assertion is awaited below
     const failedExpectation = expect(failed).rejects.toThrow("batch failed");
 
     batches[0].reject(error);

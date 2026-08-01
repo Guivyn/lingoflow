@@ -55,4 +55,3 @@ export const getContext = () => {
 
 // 辅助环境判定变量
 export const isBg = () => getContext() === "background";
-export const isOptions = () => getContext() === "options";

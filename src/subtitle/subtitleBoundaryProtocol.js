@@ -3,14 +3,14 @@ import { isNonSpeechSegment } from "./subtitleTextClassification.js";
 const NO_SPACE_LANGUAGES = ["zh", "ja", "ko", "th", "lo", "km", "my"];
 
 /** 判断源语言是否通常不以空格分隔词语，用于重建自然的原文。 */
-export const isNoSpaceSubtitleLanguage = (lang = "") =>
+const isNoSpaceSubtitleLanguage = (lang = "") =>
   NO_SPACE_LANGUAGES.some((code) => String(lang).startsWith(code));
 
 /** 判断一条字幕是否完全由 `[Music]` 等非语音标记组成。 */
-export const isOnlyNonSpeechSubtitle = (text = "") => isNonSpeechSegment(text);
+const isOnlyNonSpeechSubtitle = (text = "") => isNonSpeechSegment(text);
 
 /** 按语言书写习惯合并 boundary-v2/v3 边界范围内的原始事件文本。 */
-export function mergeSubtitleEventText(
+function mergeSubtitleEventText(
   events,
   startIndex,
   endIndex,

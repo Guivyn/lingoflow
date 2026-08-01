@@ -857,16 +857,5 @@ export function intelligentSentenceBreak(data, params = {}) {
 }
 
 export {
-  DEFAULT_PARAMS,
   Word,
-  WordGap,
-  GapStats,
-  SubtitleSentence,
-  parseYoutubeData,
-  computeGapStats,
-  computeBoundaryScore,
-  findSentenceBoundaries,
-  mergeShortSentences,
-  buildSubtitleSentences,
-  detectDefaultFillValues,
 };

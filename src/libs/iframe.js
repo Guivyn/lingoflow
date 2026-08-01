@@ -17,13 +17,3 @@ export const sendIframeMsg = (action, args) => {
     iframe.contentWindow.postMessage({ action, args }, "*");
   });
 };
-
-/**
- * 从当前 iframe 子页面向父 window 窗口发送 postMessage 消息。
- * REVIEW: 同上，此处 targetOrigin 为 "*"，存在信息越权截获风险。
- * @param {string} action 指令动作名称
- * @param {Object} args 指令参数
- */
-export const sendParentMsg = (action, args) => {
-  window.parent.postMessage({ action, args }, "*");
-};

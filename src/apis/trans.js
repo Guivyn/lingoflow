@@ -1,44 +1,32 @@
-import queryString from "query-string";
 import {
-  OPT_TRANS_GOOGLE,
-  OPT_TRANS_GOOGLE_2,
   OPT_TRANS_MICROSOFT,
-  OPT_TRANS_DEEPL,
-  OPT_TRANS_DEEPLX,
-  OPT_TRANS_DEEPSEEK,
-  OPT_TRANS_OPENAI,
-  OPT_TRANS_CUSTOMIZE,
-  API_SPE_TYPES,
-  INPUT_PLACE_FROM,
-  INPUT_PLACE_TO,
-  INPUT_PLACE_TEXT,
   defaultSystemPrompt,
   defaultSubtitlePrompt,
   defaultNobatchPrompt,
   defaultNobatchUserPrompt,
   defaultDictUserPrompt,
-  INPUT_PLACE_TONE,
-  INPUT_PLACE_TITLE,
-  INPUT_PLACE_DESCRIPTION,
-  INPUT_PLACE_TO_LANG,
-  INPUT_PLACE_FROM_LANG,
-  INPUT_PLACE_GLOSSARY,
   defaultSystemPromptXml,
   defaultSystemPromptLines,
-  INPUT_PLACE_SUMMARY,
-  INPUT_PLACE_CONTEXT,
-  THINKING_PARAM_MAP,
 } from "../config";
+import { getProvider, getProviderCapability } from "../providers";
+import {
+  buildSubtitleSystemPrompt,
+  buildSubtitleUserPrompt,
+  buildSystemPrompt,
+  buildUserPrompt,
+} from "../core/prompt/PromptBuilder";
+import {
+  getPauseLevel,
+  parseAIRes,
+  parseSTRes,
+} from "../providers/shared";
 import { msAuth } from "../libs/auth";
 import { interpreter } from "../libs/interpreter";
 import {
   parseJsonObj,
   extractJson,
   stripMarkdownCodeBlock,
-  parseAITerms,
 } from "../libs/utils";
-import { decodeHTMLEntities } from "../libs/html";
-import { parseCompleteTranslationSegments } from "../libs/aiResponseParser";
 import {
   parseStreamingSegments,
   createStreamingJsonParser,
@@ -47,16 +35,12 @@ import {
   detectStreamFormat,
   getStreamDelta,
 } from "../libs/stream";
-import { createSubtitleIndexAligner } from "../libs/subtitleIndexAlign";
 import { appLog } from "../libs/log";
 import { fetchData, fetchStream } from "../libs/fetch";
 import { getMsgHistory } from "./translationContext";
-import { parseBilingualVtt } from "../subtitle/vtt";
 import { getDocInfo } from "../libs/docInfo";
-import {
-  isLegacyIndexSubtitleItem,
-  mapBoundaryItemToCue,
-} from "../subtitle/subtitleBoundaryProtocol";
+
+export { buildSubtitleSystemPrompt };
 
 const keyMap = new Map();
 const urlMap = new Map();
@@ -80,159 +64,6 @@ const keyPick = (apiSlug, key = "", cacheMap) => {
   cacheMap.set(apiSlug, curIndex);
 
   return keys[curIndex];
-};
-
-/**
- * 依据配置参数和当前页面元数据生成大模型 Prompt 系统指示。
- */
-const genSystemPrompt = ({
-  systemPrompt,
-  tone,
-  from,
-  to,
-  fromLang,
-  toLang,
-  texts,
-  docInfo: { title = "", description = "", summary = "", context = "" } = {},
-}) =>
-  String(systemPrompt || "")
-    .replaceAll(INPUT_PLACE_TITLE, title)
-    .replaceAll(INPUT_PLACE_DESCRIPTION, description)
-    .replaceAll(INPUT_PLACE_SUMMARY, summary)
-    .replaceAll(INPUT_PLACE_CONTEXT, context)
-    .replaceAll(INPUT_PLACE_TONE, tone)
-    .replaceAll(INPUT_PLACE_FROM, from)
-    .replaceAll(INPUT_PLACE_TO, to)
-    .replaceAll(INPUT_PLACE_FROM_LANG, fromLang)
-    .replaceAll(INPUT_PLACE_TO_LANG, toLang)
-    .replaceAll(INPUT_PLACE_TEXT, texts[0]);
-
-const genUserPrompt = ({
-  nobatchUserPrompt,
-  useBatchFetch,
-  tone,
-  glossary = {}, // 规则中的AI专业术语
-  aiTerms = "", // 接口中的AI专业术语
-  from,
-  to,
-  fromLang,
-  toLang,
-  texts,
-  docInfo: { title = "", description = "", summary = "", context = "" } = {},
-}) => {
-  // 合并规则与接口中的AI专业术语
-  if (aiTerms) {
-    const aiGlossary = parseAITerms(aiTerms);
-    glossary = { ...glossary, ...aiGlossary };
-  }
-
-  if (useBatchFetch) {
-    const promptObj = {
-      targetLanguage: toLang,
-      segments: texts.map((text, i) => ({ id: i, text })),
-    };
-
-    title && (promptObj.title = title);
-    description && (promptObj.description = description);
-
-    Object.keys(glossary).length !== 0 && (promptObj.glossary = glossary);
-    tone && (promptObj.tone = tone);
-
-    return JSON.stringify(promptObj);
-  }
-
-  const glossaryStr = Object.entries(glossary)
-    .map(([term, definition]) => `- ${term}: ${definition}`)
-    .join("\n");
-
-  return String(nobatchUserPrompt || "")
-    .replaceAll(INPUT_PLACE_TITLE, title)
-    .replaceAll(INPUT_PLACE_DESCRIPTION, description)
-    .replaceAll(INPUT_PLACE_SUMMARY, summary)
-    .replaceAll(INPUT_PLACE_CONTEXT, context)
-    .replaceAll(INPUT_PLACE_TONE, tone)
-    .replaceAll(INPUT_PLACE_GLOSSARY, glossaryStr)
-    .replaceAll(INPUT_PLACE_FROM, from)
-    .replaceAll(INPUT_PLACE_TO, to)
-    .replaceAll(INPUT_PLACE_FROM_LANG, fromLang)
-    .replaceAll(INPUT_PLACE_TO_LANG, toLang)
-    .replaceAll(INPUT_PLACE_TEXT, texts[0]);
-};
-
-// 统一生成最终字幕系统提示词；缓存签名与实际请求必须复用同一结果。
-export const buildSubtitleSystemPrompt = ({
-  subtitlePrompt,
-  tone,
-  from,
-  to,
-  fromLang,
-  toLang,
-  docInfo: { title = "", description = "", summary = "" } = {},
-  aiTerms = "",
-}) => {
-  const aiGlossary = parseAITerms(aiTerms);
-  const glossaryStr = Object.entries(aiGlossary)
-    .map(([term, definition]) => `- ${term}: ${definition}`)
-    .join("\n");
-  return String(subtitlePrompt || "")
-    .replaceAll(INPUT_PLACE_TITLE, title)
-    .replaceAll(INPUT_PLACE_DESCRIPTION, description)
-    .replaceAll(INPUT_PLACE_SUMMARY, summary)
-    .replaceAll(INPUT_PLACE_TONE, tone)
-    .replaceAll(INPUT_PLACE_GLOSSARY, glossaryStr)
-    .replaceAll(INPUT_PLACE_FROM, from)
-    .replaceAll(INPUT_PLACE_TO, to)
-    .replaceAll(INPUT_PLACE_FROM_LANG, fromLang)
-    .replaceAll(INPUT_PLACE_TO_LANG, toLang);
-};
-
-// 字幕用户消息保持为纯 JSON，避免只读上下文污染模型的边界编号。
-const buildSubtitleUserPrompt = ({ formattedEvents }) =>
-  JSON.stringify(formattedEvents);
-
-/**
- * 强健的大模型翻译结果解析器 (AI Response Robust Parser)。
- * 完美解决大模型在翻译时常混杂的 Markdown、未闭合 JSON、XML、数字列表及无规换行文本的纠错与规避问题。
- * @param {string} raw 大模型返回的原始字符串内容
- * @param {boolean} useBatchFetch 是否为批量翻译模式
- * @returns {Array<[string, string]>} 解析后的双元组列表 [译文, 源语言检测结果]
- */
-const parseAIRes = (raw, useBatchFetch = true) => {
-  if (!raw) {
-    return [];
-  }
-
-  // 纯覆盖单段模式，直接包装返回
-  if (!useBatchFetch) {
-    return [[raw]];
-  }
-
-  // 剥离 Markdown 常用的 ```json...``` 代码块包裹
-  let content = stripMarkdownCodeBlock(raw).trim();
-
-  // JSON/XML/LINE 三种聚合格式统一交给共享字符串解析器处理。
-  // 这里不再直接使用 DOMParser 解析 XML，避免浏览器 Trusted Types / DOMPurify
-  // 清洗自定义标签后导致非流式路径拿不到 <t> 译文。
-  const structuredSegments = parseCompleteTranslationSegments(content, {
-    decodeText: decodeHTMLEntities,
-  });
-  if (structuredSegments.length > 0) {
-    return structuredSegments.map((segment) => segment.translation);
-  }
-
-  // 兜底策略：纯文本按行切割解析
-  return content.split("\n").map((line) => {
-    const text = decodeHTMLEntities(line.replace(/<br\s*\/?>/gi, "\n").trim());
-    return [text, ""];
-  });
-};
-
-/** 依据时间差计算旧版字幕输入使用的停顿等级。 */
-const getPauseLevel = (gapMs) => {
-  if (!Number.isFinite(gapMs) || gapMs <= 300) return 0;
-  if (gapMs <= 600) return 1;
-  if (gapMs <= 1200) return 2;
-  return 3;
 };
 
 /**
@@ -279,277 +110,10 @@ const usesIndexSubtitleInput = (prompt = "") => {
   return detectSubtitleProtocol(prompt) !== "vtt-legacy";
 };
 
-const parseIndexSubtitleRes = (raw, events, fromLang = "auto") => {
-  // 对齐器只建一次词表：buildResult 在截断修复兜底时可能执行两次。
-  const aligner = createSubtitleIndexAligner(events);
-  const buildResult = (data) => {
-    if (!Array.isArray(data) || !data.length) return null;
-    const legacyItems = data.map(isLegacyIndexSubtitleItem);
-    // 同一响应混用新旧协议会使游标语义不明确，直接交给尾部恢复逻辑处理。
-    if (legacyItems.some(Boolean) && !legacyItems.every(Boolean)) return null;
-
-    if (!legacyItems[0]) {
-      const result = [];
-      let nextIndex = 0;
-      for (const item of data) {
-        const cue = mapBoundaryItemToCue(item, events, nextIndex, fromLang);
-        // 新协议一旦出现非法边界，停止接收后续对象，保留已验证的连续前缀。
-        if (!cue) break;
-        result.push(cue);
-        nextIndex = cue._ei + 1;
-      }
-      return result.length ? result : null;
-    }
-
-    const result = [];
-    for (const seg of data) {
-      const s = Number(seg.s ?? seg.start_id);
-      const e = Number(seg.e ?? seg.end_id);
-      if (!Number.isInteger(s) || !Number.isInteger(e)) continue;
-      const startIdx = Math.max(0, Math.min(s, events.length - 1));
-      const endIdx = Math.max(startIdx, Math.min(e, events.length - 1));
-      const text = String(seg.o ?? seg.original ?? "");
-      const fixed = aligner.realign(s, e, text);
-      result.push({
-        start: events[fixed?.startIdx ?? startIdx].start,
-        end: events[fixed?.endIdx ?? endIdx].end,
-        text,
-        translation: String(seg.t ?? seg.translation ?? ""),
-        // _si/_ei 保留模型原始索引：去重键与尾句重试语义依赖它们。
-        _si: s,
-        _ei: e,
-        // 仅在确实发生纠偏时记录覆盖索引，避免扩大普通结果的数据表面。
-        ...(fixed && {
-          _alignedSi: fixed.startIdx,
-          _alignedEi: fixed.endIdx,
-        }),
-      });
-    }
-    return result.length ? result : null;
-  };
-
-  const stripped = stripMarkdownCodeBlock(String(raw ?? "")).trim();
-  // AI 有时在 JSON 值以 >> 开头时丢掉冒号和引号: "o">> → "o":">>
-  const repaired = stripped.replace(/"([a-z_]+)">>/g, '"$1":">>');
-
-  try {
-    return buildResult(JSON.parse(repaired));
-  } catch {
-    try {
-      // 响应被截断时，从最后一个完整对象闭合处补上数组尾括号，保留可验证前缀。
-      const arrayStart = repaired.indexOf("[");
-      const lastObjectEnd = repaired.lastIndexOf("}");
-      if (arrayStart < 0 || lastObjectEnd < arrayStart) return null;
-      return buildResult(
-        JSON.parse(repaired.slice(arrayStart, lastObjectEnd + 1) + "]")
-      );
-    } catch {
-      return null;
-    }
-  }
-};
-
-const parseSTRes = (raw, events = null, fromLang = "auto") => {
-  if (!raw) {
-    return [];
-  }
-
-  if (events?.length) {
-    const indexed = parseIndexSubtitleRes(raw, events, fromLang);
-    if (indexed) return indexed;
-  }
-
-  try {
-    const data = parseBilingualVtt(raw);
-    if (Array.isArray(data)) {
-      return data;
-    }
-  } catch (err) {
-    appLog("parse AI Res: subtitle", err);
-  }
-
-  return [];
-};
-
 /**
  * 注入推理模式（Thinking）的专用控制参数。
  * 将 DeepSeek 与 OpenAI 的推理模式/强度配置统一映射为请求参数。
  */
-const injectThinking = (body, { apiType, thinkingMode, thinkingEffort }) => {
-  if (thinkingMode === "auto") return; // 留空由模型网关自动决定
-
-  const param = THINKING_PARAM_MAP[apiType];
-  if (!param) return;
-
-  const hasEffort = thinkingEffort && thinkingEffort !== "_default";
-
-  switch (param.type) {
-    case "deepseek":
-      body.thinking = {
-        type: thinkingMode === "enabled" ? "enabled" : "disabled",
-      };
-      if (thinkingMode === "enabled" && hasEffort) {
-        body.reasoning_effort = thinkingEffort;
-      }
-      break;
-    case "openai":
-      if (thinkingMode === "disabled") {
-        body.reasoning_effort = "none";
-      } else if (thinkingMode === "enabled" && hasEffort) {
-        body.reasoning_effort = thinkingEffort;
-      }
-      break;
-    default:
-      break;
-  }
-};
-
-const genGoogle = ({ texts, from, to, url, key }) => {
-  const params = queryString.stringify({
-    client: "gtx",
-    dt: "t",
-    dj: 1,
-    ie: "UTF-8",
-    sl: from,
-    tl: to,
-    q: texts.join(" "),
-  });
-  url = `${url}?${params}`;
-  const headers = {
-    "Content-type": "application/json",
-  };
-  if (key) {
-    headers.Authorization = `Bearer ${key}`;
-  }
-
-  return { url, headers, method: "GET" };
-};
-
-const genGoogle2 = ({ texts, from, to, url, key }) => {
-  const body = [[texts, from, to], "wt_lib"];
-  const headers = {
-    "Content-Type": "application/json+protobuf",
-    "X-Goog-API-Key": key,
-  };
-
-  return { url, body, headers };
-};
-
-const genMicrosoft = ({ texts, from, to, token }) => {
-  const params = queryString.stringify({
-    from,
-    to,
-    "api-version": "3.0",
-  });
-  const url = `https://api-edge.cognitive.microsofttranslator.com/translate?${params}`;
-  const headers = {
-    "Content-type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  const body = texts.map((text) => ({ Text: text }));
-
-  return { url, body, headers };
-};
-
-const genDeepl = ({ texts, from, to, url, key }) => {
-  const body = {
-    text: texts,
-    target_lang: to,
-    source_lang: from,
-    // split_sentences: "0",
-  };
-  const headers = {
-    "Content-type": "application/json",
-    Authorization: `DeepL-Auth-Key ${key}`,
-  };
-
-  return { url, body, headers };
-};
-
-const genDeeplX = ({ texts, from, to, url, key }) => {
-  const body = {
-    text: texts.join(" "),
-    target_lang: to,
-    source_lang: from,
-  };
-
-  const headers = {
-    "Content-type": "application/json",
-  };
-  if (key) {
-    headers.Authorization = `Bearer ${key}`;
-  }
-
-  return { url, body, headers };
-};
-
-const genOpenAI = ({
-  url,
-  key,
-  systemPrompt,
-  userPrompt,
-  model,
-  temperature,
-  maxTokens,
-  hisMsgs = [],
-  useStream = false,
-  apiType,
-  thinkingMode,
-  thinkingEffort,
-}) => {
-  const userMsg = {
-    role: "user",
-    content: userPrompt,
-  };
-  const body = {
-    model,
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      ...hisMsgs,
-      userMsg,
-    ],
-    temperature,
-    max_completion_tokens: maxTokens,
-    stream: useStream,
-  };
-
-  injectThinking(body, { apiType, thinkingMode, thinkingEffort });
-
-  const headers = {
-    "Content-type": "application/json",
-    Authorization: `Bearer ${key}`, // OpenAI
-    // "api-key": key, // Azure OpenAI
-  };
-
-  return { url, body, headers, userMsg };
-};
-
-const genCustom = ({ texts, fromLang, toLang, url, key, useBatchFetch }) => {
-  const body = useBatchFetch
-    ? { texts, from: fromLang, to: toLang }
-    : { text: texts[0], from: fromLang, to: toLang };
-  const headers = {
-    "Content-type": "application/json",
-    Authorization: `Bearer ${key}`,
-  };
-
-  return { url, body, headers };
-};
-
-const genReqFuncs = {
-  [OPT_TRANS_GOOGLE]: genGoogle,
-  [OPT_TRANS_GOOGLE_2]: genGoogle2,
-  [OPT_TRANS_MICROSOFT]: genMicrosoft,
-  [OPT_TRANS_DEEPL]: genDeepl,
-  [OPT_TRANS_DEEPSEEK]: genOpenAI,
-  [OPT_TRANS_DEEPLX]: genDeeplX,
-  [OPT_TRANS_OPENAI]: genOpenAI,
-  [OPT_TRANS_CUSTOMIZE]: genCustom,
-};
-
 /**
  * 构建统一的 Fetch init 对象。
  * 对请求体和方法做健全处理。
@@ -596,7 +160,7 @@ const genInit = ({
  * @param {*}
  * @returns
  */
-export const genTransReq = async ({ reqHook, ...args }) => {
+const genTransReq = async ({ reqHook, ...args }) => {
   const {
     apiType,
     apiSlug,
@@ -621,15 +185,15 @@ export const genTransReq = async ({ reqHook, ...args }) => {
     docInfo: externalDocInfo,
   } = args;
 
-  if (API_SPE_TYPES.mulkeys.has(apiType)) {
+  if (getProviderCapability(apiType, "mulkeys")) {
     args.key = keyPick(apiSlug, key, keyMap);
   }
 
-  if (apiType === OPT_TRANS_DEEPLX) {
+  if (getProviderCapability(apiType, "multipleUrls")) {
     args.url = keyPick(apiSlug, args.url, urlMap);
   }
 
-  if (API_SPE_TYPES.ai.has(apiType)) {
+  if (getProviderCapability(apiType, "ai")) {
     const docInfo = externalDocInfo || getDocInfo();
 
     let baseSystemPrompt = events
@@ -644,7 +208,7 @@ export const genTransReq = async ({ reqHook, ...args }) => {
           tone,
           aiTerms,
         })
-      : genSystemPrompt({
+      : buildSystemPrompt({
           systemPrompt: useBatchFetch ? systemPrompt : nobatchPrompt,
           from,
           to,
@@ -662,7 +226,7 @@ export const genTransReq = async ({ reqHook, ...args }) => {
             ? formatIndexSubtitleEvents(events, subtitlePrompt)
             : events,
         })
-      : genUserPrompt({
+      : buildUserPrompt({
           nobatchUserPrompt,
           useBatchFetch,
           from,
@@ -677,13 +241,18 @@ export const genTransReq = async ({ reqHook, ...args }) => {
         });
   }
 
+  const provider = getProvider(apiType);
+  if (!provider) {
+    throw new Error(`Unknown API type: ${apiType}`);
+  }
+
   const {
     url = "",
     body = null,
     headers = {},
     userMsg = null,
     method = "POST",
-  } = genReqFuncs[apiType](args);
+  } = provider.buildRequest(args);
 
   // 合并用户自定义headers和body
   if (customHeader?.trim()) {
@@ -735,7 +304,7 @@ export const genTransReq = async ({ reqHook, ...args }) => {
  * @param {*} param3
  * @returns
  */
-export const parseTransRes = async (
+const parseTransRes = async (
   res,
   {
     texts,
@@ -782,70 +351,13 @@ export const parseTransRes = async (
     }
   }
 
-  let modelMsg = "";
-
-  // todo: 根据结果抛出实际异常信息
-  switch (apiType) {
-    case OPT_TRANS_GOOGLE:
-      return [[res?.sentences?.map((item) => item.trans).join(" "), res?.src]];
-    case OPT_TRANS_GOOGLE_2:
-      return res?.[0]?.map((_, i) => [res?.[0]?.[i], res?.[1]?.[i]]);
-    case OPT_TRANS_MICROSOFT:
-      return res?.map((item) => [
-        item.translations.map((item) => item.text).join(" "),
-        item.detectedLanguage?.language,
-      ]);
-    case OPT_TRANS_DEEPL:
-      return res?.translations?.map((item) => [
-        item.text,
-        item.detected_source_language,
-      ]);
-    case OPT_TRANS_DEEPLX:
-      return [[res?.data, res?.source_lang]];
-    case OPT_TRANS_OPENAI:
-    case OPT_TRANS_DEEPSEEK:
-      modelMsg = res?.choices?.[0]?.message;
-      if (history && userMsg && modelMsg) {
-        history.add(userMsg, {
-          role: modelMsg.role,
-          content: modelMsg.content,
-        });
-      }
-      return parseAIRes(modelMsg?.content, useBatchFetch);
-    case OPT_TRANS_CUSTOMIZE:
-      if (useBatchFetch) {
-        return (res?.translations ?? res)?.map((item) => [item.text, item.src]);
-      }
-      return [[res.text, res.src || res.from]];
-    default:
+  const provider = getProvider(apiType);
+  if (!provider) {
+    throw new Error("parse translate result: apiType not matched", apiType);
   }
 
-  throw new Error("parse translate result: apiType not matched", apiType);
+  return provider.parseTranslate(res, { history, userMsg, useBatchFetch });
 };
-
-/**
- * 从各家 AI 接口响应中抽取 AI 词典正文。
- *
- * AI 词典使用 Markdown 原文展示，不走翻译结果的 JSON 行解析逻辑，
- * 因此这里只提取模型 message/content 文本并保留其格式。
- *
- * @param {*} res 接口原始响应
- * @param {string} apiType API 类型
- * @returns {string} 模型生成的 Markdown 内容
- */
-function parseDictRes(res, apiType) {
-  switch (apiType) {
-    case OPT_TRANS_OPENAI:
-    case OPT_TRANS_DEEPSEEK:
-      return res?.choices?.[0]?.message?.content || "";
-    case OPT_TRANS_CUSTOMIZE:
-      if (typeof res === "string") return res;
-      return res?.text || res?.result || "";
-    default:
-  }
-
-  throw new Error("parse dictionary result: apiType not matched", apiType);
-}
 
 /**
  * 发起 AI 词典请求并返回 Markdown 结果。
@@ -893,7 +405,7 @@ export const handleDict = async ({
   const enableStream =
     Boolean(onStreamChunk) &&
     apiSetting.useStream &&
-    API_SPE_TYPES.stream.has(apiType);
+    getProviderCapability(apiType, "stream");
   if (!dictPrompt) {
     throw new Error("AI dictionary prompt is empty.");
   }
@@ -989,7 +501,7 @@ export const handleDict = async ({
       throw new Error("dictionary got empty response");
     }
 
-    const fallbackMarkdown = parseDictRes(fallbackRes, apiType);
+    const fallbackMarkdown = getProvider(apiType)?.parseDict?.(fallbackRes);
     if (!fallbackMarkdown) {
       throw new Error("dictionary got empty content");
     }
@@ -1009,7 +521,7 @@ export const handleDict = async ({
     throw new Error("dictionary got empty response");
   }
 
-  const markdown = parseDictRes(res, apiType);
+  const markdown = getProvider(apiType)?.parseDict?.(res);
   if (!markdown) {
     throw new Error("dictionary got empty content");
   }
@@ -1054,12 +566,12 @@ export async function* handleTranslate(
     httpTimeout,
     useStream,
   } = apiSetting;
-  if (useContext && API_SPE_TYPES.context.has(apiType)) {
+  if (useContext && getProviderCapability(apiType, "context")) {
     history = getMsgHistory(apiSlug, contextSize);
     hisMsgs = history.getAll();
   }
 
-  const enableStream = useStream && API_SPE_TYPES.stream.has(apiType);
+  const enableStream = useStream && getProviderCapability(apiType, "stream");
 
   let token = "";
   if (apiType === OPT_TRANS_MICROSOFT) {
@@ -1331,7 +843,9 @@ export const handleSubtitle = async ({
   const { apiType, fetchInterval, fetchLimit, httpTimeout, useStream } =
     apiSetting;
   const enableStream =
-    Boolean(onSubtitleChunk) && useStream && API_SPE_TYPES.stream.has(apiType);
+    Boolean(onSubtitleChunk) &&
+    useStream &&
+    getProviderCapability(apiType, "stream");
 
   const [input, init] = await genTransReq({
     ...apiSetting,
@@ -1390,20 +904,7 @@ export const handleSubtitle = async ({
     return [];
   }
 
-  switch (apiType) {
-    case OPT_TRANS_OPENAI:
-    case OPT_TRANS_DEEPSEEK:
-      return parseSTRes(
-        res?.choices?.[0]?.message?.content ?? "",
-        events,
-        from
-      );
-    case OPT_TRANS_CUSTOMIZE:
-      return res;
-    default:
-  }
-
-  return [];
+  return getProvider(apiType)?.parseSubtitle?.(res, { events, from }) || [];
 };
 
 /**
@@ -1547,14 +1048,5 @@ export const handleSummarize = async ({
 
   if (!res) return "";
 
-  switch (apiType) {
-    case OPT_TRANS_OPENAI:
-    case OPT_TRANS_DEEPSEEK:
-      return res?.choices?.[0]?.message?.content?.trim() || "";
-    case OPT_TRANS_CUSTOMIZE:
-      if (typeof res === "string") return res.trim();
-      return res?.choices?.[0]?.message?.content?.trim() || "";
-    default:
-      return "";
-  }
+  return getProvider(apiType)?.parseSummarize?.(res) || "";
 };

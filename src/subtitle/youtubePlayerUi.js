@@ -10,7 +10,7 @@ import { Menus } from "./Menus.js";
 
 export const VIDEO_SELECTOR = "#container video";
 export const CONTROLS_SELECTOR = ".ytp-right-controls";
-export const YT_CAPTION_SELECTOR = "#ytp-caption-window-container";
+const YT_CAPTION_SELECTOR = "#ytp-caption-window-container";
 export const YT_AD_SELECTOR = ".video-ads";
 export const YT_SUBTITLE_BUTTON_SELECTOR = "button.ytp-subtitles-button";
 
