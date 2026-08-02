@@ -1,14 +1,17 @@
-import Box from "@mui/material/Box";
-import Stack from "@mui/material/Stack";
 import { useI18n } from "../../hooks/I18n";
-import ShortcutInput from "./ShortcutInput";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import TextField from "@mui/material/TextField";
-import Switch from "@mui/material/Switch";
-import MenuItem from "@mui/material/MenuItem";
 import { useMouseHoverSetting } from "../../hooks/MouseHover";
 import { useCallback } from "react";
-import Grid from "@mui/material/Grid";
+import {
+  Box,
+  FormControlLabel,
+  Grid,
+  Input,
+  MenuItem,
+  Select,
+  ShortcutInput,
+  Stack,
+  Switch,
+} from "../../ui";
 import {
   DEFAULT_MOUSEHOVER_KEY,
   DEFAULT_MOUSE_HOVER_BUBBLE_STYLE,
@@ -119,9 +122,8 @@ export default function MouseHoverSetting() {
         <Box>
           <Grid container spacing={2} columns={12}>
             <Grid item xs={12} sm={12} md={4} lg={4}>
-              <TextField
+              <Select
                 fullWidth
-                select
                 size="small"
                 name="displayMode"
                 value={displayMode}
@@ -134,13 +136,13 @@ export default function MouseHoverSetting() {
                 <MenuItem value={OPT_MOUSE_HOVER_DISPLAY_BUBBLE}>
                   {i18n("mousehover_display_bubble")}
                 </MenuItem>
-              </TextField>
+              </Select>
             </Grid>
           </Grid>
         </Box>
 
         {displayMode === OPT_MOUSE_HOVER_DISPLAY_BUBBLE && (
-          <TextField
+          <Input
             size="small"
             label={i18n("mousehover_bubble_style")}
             helperText={i18n("mousehover_bubble_style_helper")}
@@ -153,7 +155,7 @@ export default function MouseHoverSetting() {
         )}
 
         {/* 黑名单域名/规则排除输入框 (一行一条规则) */}
-        <TextField
+        <Input
           size="small"
           label={i18n("blacklist")}
           helperText={i18n("pattern_helper")}
