@@ -1,21 +1,23 @@
 import { useState, useEffect, useMemo } from "react";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import CodeField from "./CodeField";
-import Button from "@mui/material/Button";
 import { useI18n } from "../../hooks/I18n";
-import Typography from "@mui/material/Typography";
-import Accordion from "@mui/material/Accordion";
-import AccordionSummary from "@mui/material/AccordionSummary";
-import AccordionDetails from "@mui/material/AccordionDetails";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import AddIcon from "@mui/icons-material/Add";
 import { useConfirm } from "../../hooks/Confirm";
-import Box from "@mui/material/Box";
 import { useAllTextStyles, useStyleList } from "../../hooks/CustomStyles";
 import { css } from "@emotion/css";
 import { getRandomQuote } from "../../config/quotes";
 import { useSetting } from "../../hooks/Setting";
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  AddIcon,
+  Box,
+  Button,
+  CodeField,
+  ExpandMoreIcon,
+  Input,
+  Stack,
+  Typography,
+} from "../../ui";
 
 /**
  * 单个自定义 CSS 样式编辑表单区域
@@ -108,7 +110,7 @@ function StyleFields({ customStyle, deleteStyle, updateStyle, isBuiltin }) {
       </Box>
 
       {/* 样式名称输入框 */}
-      <TextField
+      <Input
         size="small"
         label={i18n("style_name")}
         name="styleName"
