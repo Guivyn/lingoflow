@@ -1,9 +1,30 @@
-import Box from "@mui/material/Box";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import CodeField from "./CodeField";
-import Button from "@mui/material/Button";
-import Alert from "@mui/material/Alert";
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  AddIcon,
+  Alert,
+  Box,
+  Button,
+  CancelIcon,
+  ClearAllIcon,
+  CodeField,
+  DeleteIcon,
+  EditIcon,
+  ExpandMoreIcon,
+  Grid,
+  Input,
+  MenuItem,
+  SaveIcon,
+  Select,
+  ShowMoreButton,
+  Stack,
+  Switch,
+  Tab,
+  Tabs,
+  Typography,
+  ValidationInput,
+} from "../../ui";
 import {
   GLOBAL_KEY,
   DEFAULT_RULE,
@@ -16,28 +37,10 @@ import {
 } from "../../config";
 import { useState, useEffect, useMemo } from "react";
 import { useI18n } from "../../hooks/I18n";
-import Typography from "@mui/material/Typography";
-import Accordion from "@mui/material/Accordion";
-import AccordionSummary from "@mui/material/AccordionSummary";
-import AccordionDetails from "@mui/material/AccordionDetails";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useRules } from "../../hooks/Rules";
-import MenuItem from "@mui/material/MenuItem";
-import Grid from "@mui/material/Grid";
-import Switch from "@mui/material/Switch";
-import Tabs from "@mui/material/Tabs";
-import Tab from "@mui/material/Tab";
 import { useAlert } from "../../hooks/Alert";
 import { debounce } from "../../libs/utils";
-import ClearAllIcon from "@mui/icons-material/ClearAll";
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import CancelIcon from "@mui/icons-material/Cancel";
-import SaveIcon from "@mui/icons-material/Save";
-import DeleteIcon from "@mui/icons-material/Delete";
-import ValidationInput from "../../hooks/ValidationInput";
 import { useApiList } from "../../hooks/Api";
-import ShowMoreButton from "./ShowMoreButton";
 import { useConfirm } from "../../hooks/Confirm";
 import { useAllTextStyles } from "../../hooks/CustomStyles";
 
@@ -300,8 +303,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
           <Grid container spacing={2} columns={12}>
             {/* 翻译开关设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="transOpen"
@@ -313,12 +315,11 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 {GlobalItem}
                 <MenuItem value={"true"}>{i18n("default_enabled")}</MenuItem>
                 <MenuItem value={"false"}>{i18n("default_disabled")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 翻译引擎服务设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="apiSlug"
@@ -333,12 +334,11 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                     {api.apiName}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
             {/* 源语言设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="fromLang"
@@ -353,12 +353,11 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                     {name}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
             {/* 目标语言设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="toLang"
@@ -373,13 +372,12 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                     {name}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
 
             {/* 自动扫描页面设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="autoScan"
@@ -391,12 +389,11 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 {GlobalItem}
                 <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
                 <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 是否翻译富文本设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="hasRichText"
@@ -408,12 +405,11 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 {GlobalItem}
                 <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
                 <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 是否支持 Shadow Root 内部文本翻译设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="hasShadowroot"
@@ -425,12 +421,11 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 {GlobalItem}
                 <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
                 <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 是否扫描处理页面中所有的节点设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="scanAll"
@@ -442,13 +437,12 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 {GlobalItem}
                 <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
                 <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
 
             {/* 是否以纯文本模式翻译 <pre> 内容 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="isPlainText"
@@ -460,13 +454,12 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 {GlobalItem}
                 <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
                 <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
 
             {/* 仅显示译文设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="transOnly"
@@ -478,13 +471,12 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 {GlobalItem}
                 <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
                 <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
 
             {/* 文本顺序设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="transOrder"
@@ -500,13 +492,12 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 <MenuItem value="translation-first">
                   {i18n("translation_first")}
                 </MenuItem>
-              </TextField>
+              </Select>
             </Grid>
 
             {/* 悬停恢复原文设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="transOnlyRevert"
@@ -518,12 +509,12 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 {GlobalItem}
                 <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
                 <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
 
             {/* 悬停恢复原文延迟时长配置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
+              <Input
                 size="small"
                 fullWidth
                 name="transOnlyRevertDelay"
@@ -538,8 +529,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
 
             {/* 长段落切分翻译配置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="splitParagraph"
@@ -554,7 +544,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                     {i18n(item)}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
             {/* 长段落切分翻译的触发长度阈值 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
@@ -573,8 +563,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
             </Grid>
             {/* 是否翻译网页 title 标签配置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="transTitle"
@@ -586,12 +575,11 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 {GlobalItem}
                 <MenuItem value={"false"}>{i18n("disable")}</MenuItem>
                 <MenuItem value={"true"}>{i18n("enable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 插入译文所用的 HTML 标签设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="transTag"
@@ -603,13 +591,12 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                 {GlobalItem}
                 <MenuItem value={"span"}>{`<span>`}</MenuItem>
                 <MenuItem value={"font"}>{`<font>`}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
 
             {/* 自定义译文样式模板设置 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 size="small"
                 fullWidth
                 name="textStyle"
@@ -624,7 +611,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
                     {item.styleName}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
           </Grid>
         </Box>
@@ -633,7 +620,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
         {showMore && (
           <>
             {/* 专有名词对照翻译设置 */}
-            <TextField
+            <Input
               size="small"
               label={i18n("terms")}
               helperText={i18n("terms_helper")}
@@ -645,7 +632,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
               maxRows={10}
             />
             {/* AI 翻译专有名词对照翻译设置 */}
-            <TextField
+            <Input
               size="small"
               label={i18n("ai_terms")}
               helperText={i18n("ai_terms_helper")}
