@@ -11,10 +11,11 @@ export interface SelectOption<T extends string | number = string> {
 }
 
 export interface SelectProps<T extends string | number>
-  extends Omit<MuiSelectProps<T>, "label"> {
+  extends Omit<MuiSelectProps<T>, "label" | "value"> {
   label?: string;
   options: ReadonlyArray<SelectOption<T>>;
   helperText?: ReactNode;
+  value?: T | ReadonlyArray<T> | "";
 }
 
 /**
@@ -27,6 +28,7 @@ export default function Select<T extends string | number>({
   helperText,
   size = "small",
   sx,
+  value,
   ...props
 }: SelectProps<T>) {
   const generatedId = useId();
@@ -48,6 +50,7 @@ export default function Select<T extends string | number>({
         label={label}
         labelId={label ? labelId : undefined}
         size={size}
+        value={value as unknown as T | ""}
         {...props}
       >
         {options.map((option) => (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ChangeEvent, ComponentType, ReactNode } from "react";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import EditIcon from "@mui/icons-material/Edit";
@@ -10,11 +11,10 @@ import { useSetting } from "../../hooks/Setting";
 import { useI18n } from "../../hooks/I18n";
 import { useAlert } from "../../hooks/Alert";
 import { isExt } from "../../libs/client";
-import { browser } from "../../libs/browser";
+import { browser as browserApi } from "../../libs/browser";
 import Grid from "@mui/material/Grid";
 
 import {
-  UI_LANGS,
   TRANS_NEWLINE_LENGTH,
   CACHE_NAME,
   OPT_LANGDETECTOR_ALL,
@@ -29,20 +29,51 @@ import {
   MSG_CONTEXT_MENUS,
   MSG_UPDATE_CSP,
   DEFAULT_HTTP_TIMEOUT,
-  OPT_LANGS_TO_REVERSED as OPT_LANGS_TO,
 } from "../../config";
 import { useShortcut } from "../../hooks/Shortcut";
-import ShortcutInput from "./ShortcutInput";
+import ShortcutInputBase from "./ShortcutInput";
 import { useFab } from "../../hooks/Fab";
-import { sendBgMsg } from "../../libs/msg";
+import { sendBgMsg as sendBgMsgBase } from "../../libs/msg";
 import { appLog, LogLevel } from "../../libs/log";
 import ValidationInput from "../../hooks/ValidationInput";
+import LanguageSettings from "./LanguageSettings";
+
+type BrowserCommand = {
+  name?: string;
+  description?: string;
+  shortcut?: string;
+};
+
+type BrowserApi = {
+  commands?: {
+    getAll: () => Promise<BrowserCommand[]>;
+  };
+  tabs?: {
+    create: (options: { url: string }) => void;
+  };
+};
+
+const browser = browserApi as unknown as BrowserApi;
+
+const sendBgMsg = sendBgMsgBase as unknown as (
+  type: string,
+  payload?: unknown
+) => Promise<unknown>;
+
+const ShortcutInput = ShortcutInputBase as unknown as ComponentType<{
+  value: unknown;
+  onChange: (value: unknown) => void;
+  label: string;
+}>;
 
 /**
  * 包装单个快捷键录入表单项组件
  */
-function ShortcutItem({ action, label }) {
-  const { shortcut, setShortcut } = useShortcut(action);
+function ShortcutItem({ action, label }: { action: string; label: string }) {
+  const { shortcut, setShortcut } = useShortcut(action) as unknown as {
+    shortcut: unknown;
+    setShortcut: (value: unknown) => void;
+  };
   return (
     <ShortcutInput value={shortcut} onChange={setShortcut} label={label} />
   );
@@ -52,18 +83,18 @@ function ShortcutItem({ action, label }) {
  * 展示扩展版快捷键的组件 (仅 Extension 模式)
  */
 function ExtCommands() {
-  const [commands, setCommands] = useState([]);
+  const [commands, setCommands] = useState<BrowserCommand[]>([]);
 
   useEffect(() => {
     if (browser?.commands?.getAll) {
       browser.commands
         .getAll()
-        .then((cmds) => {
+        .then((cmds: BrowserCommand[]) => {
           if (cmds) {
             setCommands(cmds.filter((c) => c.description));
           }
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           console.error("fetch commands error:", err);
         });
     }
@@ -119,17 +150,30 @@ function ExtCommands() {
  * 基本查词/运行设置中心页面 (Settings)
  */
 export default function Settings() {
-  const i18n = useI18n();
-  // 设置 Hook
-  const { setting, updateSetting } = useSetting();
-  const alert = useAlert();
-  // 悬浮查词 FAB 浮球设置 Hook
-  const { fab, updateFab } = useFab();
+  const i18n = useI18n() as (key: string, fallback?: string) => string;
+  const { setting, updateSetting } = useSetting() as unknown as {
+    setting: Record<string, unknown>;
+    updateSetting: (patch: Record<string, unknown>) => void;
+  };
+  const alert = useAlert() as unknown as {
+    success: (node: ReactNode) => void;
+    error: (node: ReactNode) => void;
+  };
+  const { fab, updateFab } = useFab() as unknown as {
+    fab: {
+      isHide?: boolean;
+      fabClickAction?: number;
+      hideExceptionList?: string;
+    } | null;
+    updateFab: (patch: Record<string, unknown>) => void;
+  };
 
   // 基础表单输入状态更改回调
-  const handleChange = (e) => {
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     e.preventDefault();
-    let { name, value } = e.target;
+    const { name, value } = e.target;
 
     // 特定联动：若是浏览器扩展模式，且修改了右键菜单或CSP规则列表，立即向后台 content script / background 发送同步消息
     switch (name) {
@@ -161,7 +205,6 @@ export default function Settings() {
 
   // 解构当前基础查词偏好设置
   const {
-    uiLang,
     minLength,
     maxLength,
     clearCache,
@@ -176,7 +219,6 @@ export default function Settings() {
     langDetector = "-",
     logLevel = 1,
     preInit = true,
-    skipLangs = [],
   } = setting;
   // 解构 FAB 悬浮球的显隐状态及点击后的默认交互行为
   const {
@@ -188,27 +230,11 @@ export default function Settings() {
   return (
     <Box>
       <Stack spacing={3}>
+        <LanguageSettings />
+
         {/* 基础参数网格配置区 */}
         <Box>
           <Grid container spacing={2} columns={12}>
-            {/* 设置面板用户界面语言 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                name="uiLang"
-                value={uiLang}
-                label={i18n("ui_lang")}
-                onChange={handleChange}
-              >
-                {UI_LANGS.map(([lang, name]) => (
-                  <MenuItem key={lang} value={lang}>
-                    {name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
             {/* 页面打开时是否预先初始化运行环境 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
               <TextField
@@ -220,8 +246,12 @@ export default function Settings() {
                 label={i18n("if_pre_init")}
                 onChange={handleChange}
               >
-                <MenuItem value={true}>{i18n("enable")}</MenuItem>
-                <MenuItem value={false}>{i18n("disable")}</MenuItem>
+                <MenuItem value={true as unknown as string}>
+                  {i18n("enable")}
+                </MenuItem>
+                <MenuItem value={false as unknown as string}>
+                  {i18n("disable")}
+                </MenuItem>
               </TextField>
             </Grid>
             {/* 点击悬浮球时触发的行为 (直接展示菜单或立即启动全文双语翻译) */}
@@ -386,26 +416,6 @@ export default function Settings() {
           </Grid>
         </Box>
 
-        {/* 翻译跳过语言：遇到选中的目标语言时跳过自动网页翻译 */}
-        <TextField
-          select
-          size="small"
-          label={i18n("skip_langs")}
-          helperText={i18n("skip_langs_helper")}
-          name="skipLangs"
-          value={skipLangs}
-          onChange={handleChange}
-          SelectProps={{
-            multiple: true,
-          }}
-        >
-          {OPT_LANGS_TO.map(([langKey, langName]) => (
-            <MenuItem key={langKey} value={langKey}>
-              {langName}
-            </MenuItem>
-          ))}
-        </TextField>
-
         {/* 是否全局隐藏内容页面右侧的悬浮查词小图标 FAB */}
         <TextField
           select
@@ -418,8 +428,12 @@ export default function Settings() {
             updateFab({ isHide: e.target.value });
           }}
         >
-          <MenuItem value={false}>{i18n("show")}</MenuItem>
-          <MenuItem value={true}>{i18n("hide")}</MenuItem>
+                <MenuItem value={false as unknown as string}>
+                  {i18n("show")}
+                </MenuItem>
+                <MenuItem value={true as unknown as string}>
+                  {i18n("hide")}
+                </MenuItem>
         </TextField>
 
         <TextField
@@ -464,8 +478,12 @@ export default function Settings() {
                 </Link>
               }
             >
-              <MenuItem value={false}>{i18n("clear_cache_never")}</MenuItem>
-              <MenuItem value={true}>{i18n("clear_cache_restart")}</MenuItem>
+              <MenuItem value={false as unknown as string}>
+                {i18n("clear_cache_never")}
+              </MenuItem>
+              <MenuItem value={true as unknown as string}>
+                {i18n("clear_cache_restart")}
+              </MenuItem>
             </TextField>
 
             {/* 跨域安全 CSP 旁路加载白名单与 Ori 白名单 */}
