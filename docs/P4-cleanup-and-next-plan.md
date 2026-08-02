@@ -187,6 +187,8 @@ Apis（最复杂，放最后）
 - 遇到 `CodeField`、`ValidationInput`、`ReusableAutocomplete`、`ShortcutInput`、拖拽列表等控件时，按需补进 `src/ui`，而不是让页面直接 import MUI。
 - 每个页面一个 commit，保持 lint / test / build 全绿。
 
+执行记录（2026-08-02）：Rules、StylesSetting、Tranbox、MouseHover、Subtitle、Apis 已全部迁移到 `src/ui`，旧页面保持 `.js`；`CodeField`、`ValidationInput`、`ShortcutInput`、`ReusableAutocomplete`、`ShowMoreButton` 已收进 `src/ui`。每页一个 commit，`tsc` / eslint / 全量测试（42 suites / 284 tests）/ 生产构建全绿。
+
 ## 8. Git 策略
 
 ```text
