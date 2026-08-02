@@ -36,6 +36,12 @@ export default function Navigator(props) {
   // 选项设置页的菜单列表项配置
   const memus = [
     {
+      id: "providers_setting",
+      label: i18n("providers_setting", "Providers"),
+      url: "/providers",
+      icon: <ApiIcon />,
+    },
+    {
       id: "basic_setting",
       label: i18n("basic_setting"),
       url: "/",

@@ -11,6 +11,7 @@ import Tranbox from "./Tranbox";
 import MouseHoverSetting from "./MouseHover";
 import SubtitleSetting from "./Subtitle";
 import StylesSetting from "./StylesSetting";
+import Providers from "./Providers";
 
 /**
  * 选项设置中心 (Options) 根入口组件
@@ -31,6 +32,7 @@ export default function Options() {
                   <Route path="mousehover" element={<MouseHoverSetting />} />
                   <Route path="subtitle" element={<SubtitleSetting />} />
                   <Route path="apis" element={<Apis />} />
+                  <Route path="providers" element={<Providers />} />
                 </Route>
               </Routes>
             </HashRouter>
