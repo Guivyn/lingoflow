@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
-import type { ChangeEvent, ComponentType, ReactNode } from "react";
-import Box from "@mui/material/Box";
-import IconButton from "@mui/material/IconButton";
-import EditIcon from "@mui/icons-material/Edit";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import MenuItem from "@mui/material/MenuItem";
-import Link from "@mui/material/Link";
+import {
+  Box,
+  EditIcon,
+  Grid,
+  IconButton,
+  Input,
+  Link,
+  MenuItem,
+  Select,
+  ShortcutInput,
+  Stack,
+  ValidationInput,
+} from "../../ui";
 import { useSetting } from "../../hooks/Setting";
 import { useI18n } from "../../hooks/I18n";
 import { useAlert } from "../../hooks/Alert";
 import { isExt } from "../../libs/client";
-import { browser as browserApi } from "../../libs/browser";
-import Grid from "@mui/material/Grid";
+import { browser } from "../../libs/browser";
 
 import {
   TRANS_NEWLINE_LENGTH,
@@ -31,49 +35,16 @@ import {
   DEFAULT_HTTP_TIMEOUT,
 } from "../../config";
 import { useShortcut } from "../../hooks/Shortcut";
-import ShortcutInputBase from "./ShortcutInput";
 import { useFab } from "../../hooks/Fab";
-import { sendBgMsg as sendBgMsgBase } from "../../libs/msg";
+import { sendBgMsg } from "../../libs/msg";
 import { appLog, LogLevel } from "../../libs/log";
-import ValidationInput from "../../hooks/ValidationInput";
 import LanguageSettings from "./LanguageSettings";
-
-type BrowserCommand = {
-  name?: string;
-  description?: string;
-  shortcut?: string;
-};
-
-type BrowserApi = {
-  commands?: {
-    getAll: () => Promise<BrowserCommand[]>;
-  };
-  tabs?: {
-    create: (options: { url: string }) => void;
-  };
-};
-
-const browser = browserApi as unknown as BrowserApi;
-
-const sendBgMsg = sendBgMsgBase as unknown as (
-  type: string,
-  payload?: unknown
-) => Promise<unknown>;
-
-const ShortcutInput = ShortcutInputBase as unknown as ComponentType<{
-  value: unknown;
-  onChange: (value: unknown) => void;
-  label: string;
-}>;
 
 /**
  * 包装单个快捷键录入表单项组件
  */
-function ShortcutItem({ action, label }: { action: string; label: string }) {
-  const { shortcut, setShortcut } = useShortcut(action) as unknown as {
-    shortcut: unknown;
-    setShortcut: (value: unknown) => void;
-  };
+function ShortcutItem({ action, label }) {
+  const { shortcut, setShortcut } = useShortcut(action);
   return (
     <ShortcutInput value={shortcut} onChange={setShortcut} label={label} />
   );
@@ -83,18 +54,18 @@ function ShortcutItem({ action, label }: { action: string; label: string }) {
  * 展示扩展版快捷键的组件 (仅 Extension 模式)
  */
 function ExtCommands() {
-  const [commands, setCommands] = useState<BrowserCommand[]>([]);
+  const [commands, setCommands] = useState([]);
 
   useEffect(() => {
     if (browser?.commands?.getAll) {
       browser.commands
         .getAll()
-        .then((cmds: BrowserCommand[]) => {
+        .then((cmds) => {
           if (cmds) {
             setCommands(cmds.filter((c) => c.description));
           }
         })
-        .catch((err: unknown) => {
+        .catch((err) => {
           console.error("fetch commands error:", err);
         });
     }
@@ -128,7 +99,7 @@ function ExtCommands() {
         {commands.map((cmd) => (
           <Grid item xs={12} sm={12} md={6} lg={3} key={cmd.name}>
             <Stack direction="row" alignItems="flex-start">
-              <TextField
+              <Input
                 size="small"
                 label={cmd.description}
                 value={cmd.shortcut || ""}
@@ -150,28 +121,13 @@ function ExtCommands() {
  * 基本查词/运行设置中心页面 (Settings)
  */
 export default function Settings() {
-  const i18n = useI18n() as (key: string, fallback?: string) => string;
-  const { setting, updateSetting } = useSetting() as unknown as {
-    setting: Record<string, unknown>;
-    updateSetting: (patch: Record<string, unknown>) => void;
-  };
-  const alert = useAlert() as unknown as {
-    success: (node: ReactNode) => void;
-    error: (node: ReactNode) => void;
-  };
-  const { fab, updateFab } = useFab() as unknown as {
-    fab: {
-      isHide?: boolean;
-      fabClickAction?: number;
-      hideExceptionList?: string;
-    } | null;
-    updateFab: (patch: Record<string, unknown>) => void;
-  };
+  const i18n = useI18n();
+  const { setting, updateSetting } = useSetting();
+  const alert = useAlert();
+  const { fab, updateFab } = useFab();
 
   // 基础表单输入状态更改回调
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e) => {
     e.preventDefault();
     const { name, value } = e.target;
 
@@ -237,8 +193,7 @@ export default function Settings() {
           <Grid container spacing={2} columns={12}>
             {/* 页面打开时是否预先初始化运行环境 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="preInit"
@@ -246,18 +201,13 @@ export default function Settings() {
                 label={i18n("if_pre_init")}
                 onChange={handleChange}
               >
-                <MenuItem value={true as unknown as string}>
-                  {i18n("enable")}
-                </MenuItem>
-                <MenuItem value={false as unknown as string}>
-                  {i18n("disable")}
-                </MenuItem>
-              </TextField>
+                <MenuItem value={true}>{i18n("enable")}</MenuItem>
+                <MenuItem value={false}>{i18n("disable")}</MenuItem>
+              </Select>
             </Grid>
             {/* 点击悬浮球时触发的行为 (直接展示菜单或立即启动全文双语翻译) */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="fabClickAction"
@@ -267,7 +217,7 @@ export default function Settings() {
               >
                 <MenuItem value={0}>{i18n("fab_click_menu")}</MenuItem>
                 <MenuItem value={1}>{i18n("fab_click_translate")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 单个 DOM 文本块触发网页翻译的最小有效文本长度 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
@@ -341,29 +291,25 @@ export default function Settings() {
             </Grid>
             {/* 移动端/触屏端特定的触摸手势快捷翻译触发方式 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="touchModes"
                 value={touchModes}
                 label={i18n("touch_translate_shortcut")}
                 onChange={handleChange}
-                SelectProps={{
-                  multiple: true,
-                }}
+                multiple
               >
                 {[0, 2, 3, 4, 5, 6, 7].map((item) => (
                   <MenuItem key={item} value={item}>
                     {i18n(`touch_tap_${item}`)}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
             {/* 浏览器右键上下文菜单的展示层级 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="contextMenuType"
@@ -374,12 +320,11 @@ export default function Settings() {
                 <MenuItem value={0}>{i18n("hide_context_menus")}</MenuItem>
                 <MenuItem value={1}>{i18n("simple_context_menus")}</MenuItem>
                 <MenuItem value={2}>{i18n("secondary_context_menus")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 网页首选的语言自动检测服务组件 (如 Chrome Builtin, FastText 或 API) */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="langDetector"
@@ -393,12 +338,11 @@ export default function Settings() {
                     {item}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
             {/* 日志记录详细层级 (Error/Info/Debug 等) */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="logLevel"
@@ -411,14 +355,13 @@ export default function Settings() {
                     {name}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
           </Grid>
         </Box>
 
         {/* 是否全局隐藏内容页面右侧的悬浮查词小图标 FAB */}
-        <TextField
-          select
+        <Select
           fullWidth
           size="small"
           name="isHide"
@@ -428,15 +371,11 @@ export default function Settings() {
             updateFab({ isHide: e.target.value });
           }}
         >
-                <MenuItem value={false as unknown as string}>
-                  {i18n("show")}
-                </MenuItem>
-                <MenuItem value={true as unknown as string}>
-                  {i18n("hide")}
-                </MenuItem>
-        </TextField>
+          <MenuItem value={false}>{i18n("show")}</MenuItem>
+          <MenuItem value={true}>{i18n("hide")}</MenuItem>
+        </Select>
 
-        <TextField
+        <Input
           fullWidth
           size="small"
           multiline
@@ -449,7 +388,7 @@ export default function Settings() {
         />
 
         {/* 网页翻译的黑名单域名正则排除列表 (一行一条) */}
-        <TextField
+        <Input
           size="small"
           label={i18n("translate_blacklist")}
           helperText={i18n("pattern_helper")}
@@ -464,8 +403,7 @@ export default function Settings() {
         {isExt ? (
           <>
             {/* 是否在浏览器关闭/重启时自动清空网页翻译的已缓存译文 */}
-            <TextField
-              select
+            <Select
               fullWidth
               size="small"
               name="clearCache"
@@ -478,16 +416,12 @@ export default function Settings() {
                 </Link>
               }
             >
-              <MenuItem value={false as unknown as string}>
-                {i18n("clear_cache_never")}
-              </MenuItem>
-              <MenuItem value={true as unknown as string}>
-                {i18n("clear_cache_restart")}
-              </MenuItem>
-            </TextField>
+              <MenuItem value={false}>{i18n("clear_cache_never")}</MenuItem>
+              <MenuItem value={true}>{i18n("clear_cache_restart")}</MenuItem>
+            </Select>
 
             {/* 跨域安全 CSP 旁路加载白名单与 Ori 白名单 */}
-            <TextField
+            <Input
               size="small"
               label={i18n("disabled_orilist")}
               helperText={i18n("pattern_helper")}
@@ -496,7 +430,7 @@ export default function Settings() {
               onChange={handleChange}
               multiline
             />
-            <TextField
+            <Input
               size="small"
               label={i18n("disabled_csplist")}
               helperText={
