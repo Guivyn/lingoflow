@@ -10,10 +10,12 @@ import {
   STOKEY_SETTING,
   DEFAULT_SETTING,
   MSG_SET_LOGLEVEL,
-  SETTINGS_VERSION_V2,
   getSettingVersion,
-  migrateSettingPromptsToV2,
 } from "../config";
+import {
+  CURRENT_SETTINGS_VERSION,
+  runSettingMigrations,
+} from "../core/storage/migrations";
 import { useStorage } from "./Storage";
 import Loading from "./Loading";
 import { logger } from "../libs/log";
@@ -47,19 +49,19 @@ export function SettingProvider({ children, context }) {
 
   // 兼容直接从 Storage 或云同步回填进来的旧版设置，确保进入界面的配置已经升级到 V2。
   useEffect(() => {
-    if (!hasSetting || settingVersion >= SETTINGS_VERSION_V2) {
+    if (!hasSetting || settingVersion >= CURRENT_SETTINGS_VERSION) {
       return;
     }
 
     update((currentSetting) => {
       if (
         !currentSetting ||
-        getSettingVersion(currentSetting) >= SETTINGS_VERSION_V2
+        getSettingVersion(currentSetting) >= CURRENT_SETTINGS_VERSION
       ) {
         return currentSetting;
       }
 
-      return migrateSettingPromptsToV2(currentSetting);
+      return runSettingMigrations(currentSetting);
     });
   }, [hasSetting, settingVersion, update]);
 

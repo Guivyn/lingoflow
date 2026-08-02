@@ -1,4 +1,7 @@
+import { CURRENT_SETTINGS_VERSION } from "../../config/prompt";
+
 export const SETTINGS_SCHEMA_VERSION = 2;
+export { CURRENT_SETTINGS_VERSION };
 
 export const SETTINGS_SCHEMA = {
   uiLang: { type: "string" },

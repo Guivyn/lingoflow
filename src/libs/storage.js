@@ -9,9 +9,11 @@ import {
   DEFAULT_SETTING,
   DEFAULT_RULES,
   getSettingVersion,
-  migrateSettingPromptsToV2,
-  SETTINGS_VERSION_V2,
 } from "../config";
+import {
+  CURRENT_SETTINGS_VERSION,
+  runSettingMigrations,
+} from "../core/storage/migrations";
 import { isExt } from "./client";
 import { browser } from "./browser";
 import { appLog } from "./log";
@@ -130,16 +132,16 @@ const mergeSettingWithDefault = (setting) => ({
   ...normalizeSetting(setting || {}),
   version: setting?.version ?? DEFAULT_SETTING.version,
 });
-const migrateStoredSettingToV2 = async (
+const migrateStoredSetting = async (
   setting,
   backupSetting = setting
 ) => {
-  if (getSettingVersion(setting) >= SETTINGS_VERSION_V2) {
+  if (getSettingVersion(setting) >= CURRENT_SETTINGS_VERSION) {
     return setting;
   }
 
   await writeSettingBackupBeforeV2(backupSetting);
-  return migrateSettingPromptsToV2(setting);
+  return runSettingMigrations(setting);
 };
 
 const migrateLegacyAppStorage = async () => {
@@ -167,16 +169,13 @@ export const runDataMigration = async () => {
   await migrateLegacyAppStorage();
 
   const rawSetting = await getSetting();
-  if (rawSetting && getSettingVersion(rawSetting) < SETTINGS_VERSION_V2) {
+  if (rawSetting && getSettingVersion(rawSetting) < CURRENT_SETTINGS_VERSION) {
     try {
-      const nextSetting = await migrateStoredSettingToV2(
-        rawSetting,
-        rawSetting
-      );
+      const nextSetting = await migrateStoredSetting(rawSetting, rawSetting);
       await setObj(STOKEY_SETTING, nextSetting);
-      appLog("Migration to V2 completed.");
+      appLog("Settings migration completed.");
     } catch (err) {
-      appLog("Data migration to V2 failed:", err);
+      appLog("Data migration failed:", err);
     }
   }
 };
@@ -188,8 +187,8 @@ export const getSettingWithDefault = async () => {
   }
 
   const setting =
-    getSettingVersion(rawSetting) < SETTINGS_VERSION_V2
-      ? migrateSettingPromptsToV2(rawSetting)
+    getSettingVersion(rawSetting) < CURRENT_SETTINGS_VERSION
+      ? runSettingMigrations(rawSetting)
       : rawSetting;
 
   return mergeSettingWithDefault(setting);
