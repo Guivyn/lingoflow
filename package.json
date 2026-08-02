@@ -52,7 +52,9 @@
     "overrides": [
       {
         "files": [
-          "src/**/*.test.js"
+          "src/**/*.test.js",
+          "src/**/*.test.jsx",
+          "src/**/*.test.tsx"
         ],
         "rules": {
           "testing-library/no-container": "off",
@@ -87,6 +89,7 @@
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@babel/preset-env": "^7.22.20",
     "@types/chrome": "^0.2.5",
+    "@types/jest": "^27.5.2",
     "@types/node": "^18.19.130",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
