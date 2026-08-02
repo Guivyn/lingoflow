@@ -549,7 +549,7 @@ const defaultApiOpts = {
   [OPT_TRANS_GOOGLE_2]: {
     ...defaultApi,
     url: "https://translate-pa.googleapis.com/v1/translateHtml",
-    key: "GOOGLE_API_KEY_REMOVED",
+    key: "",
     useBatchFetch: true,
     placetag: "a",
     placetagFormat: "attribute",

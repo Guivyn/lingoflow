@@ -323,7 +323,7 @@ https://translate-pa.googleapis.com/v1/translateHtml
 KEY
 
 ```sh
-GOOGLE_API_KEY_REMOVED
+<YOUR_API_KEY>
 ```
 
 Request Hook
@@ -344,4 +344,3 @@ Response Hook
 ```js
 (res, text, from, to) => [res?.[0]?.join(" ") || "Translation unavailable", to === res?.[1]?.[0]]
 ```
-
