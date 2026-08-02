@@ -19,6 +19,7 @@ export interface SelectProps<T extends string | number | boolean = string>
   helperText?: ReactNode;
   helperTextProps?: FormHelperTextProps;
   value?: T | ReadonlyArray<T> | "";
+  fullWidth?: boolean;
 }
 
 /**
@@ -35,6 +36,7 @@ export default function Select<T extends string | number | boolean>({
   value,
   error,
   children,
+  fullWidth = true,
   ...props
 }: SelectProps<T>) {
   const generatedId = useId();
@@ -42,7 +44,7 @@ export default function Select<T extends string | number | boolean>({
   const labelId = `${selectId}-label`;
 
   return (
-    <FormControl fullWidth size={size} sx={sx} error={error}>
+    <FormControl fullWidth={fullWidth} size={size} sx={sx} error={error}>
       {label ? (
         <InputLabel
           id={labelId}
