@@ -1,16 +1,3 @@
-import Box from "@mui/material/Box";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import CodeField from "./CodeField";
-import MenuItem from "@mui/material/MenuItem";
-import Grid from "@mui/material/Grid";
-import Typography from "@mui/material/Typography";
-import Slider from "@mui/material/Slider";
-import Accordion from "@mui/material/Accordion";
-import AccordionSummary from "@mui/material/AccordionSummary";
-import AccordionDetails from "@mui/material/AccordionDetails";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import Divider from "@mui/material/Divider";
 import { useI18n } from "../../hooks/I18n";
 import {
   OPT_LANGS_TO_REVERSED as OPT_LANGS_TO,
@@ -23,14 +10,30 @@ import {
   getPromptDisplayName,
   getSubtitlePromptOptions,
 } from "../../config";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Alert from "@mui/material/Alert";
-import Switch from "@mui/material/Switch";
 import { useSubtitle } from "../../hooks/Subtitle";
 import { useApiList } from "../../hooks/Api";
 import { usePromptList } from "../../hooks/Prompt";
-import ValidationInput from "../../hooks/ValidationInput";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Alert,
+  Box,
+  CodeField,
+  Divider,
+  ExpandMoreIcon,
+  FormControlLabel,
+  Grid,
+  Input,
+  MenuItem,
+  Select,
+  Slider,
+  Stack,
+  Switch,
+  Typography,
+  ValidationInput,
+} from "../../ui";
 import { normalizeSubtitleMode } from "../../subtitle/modes";
 
 /**
@@ -585,7 +588,7 @@ export default function SubtitleSetting() {
                 bgcolor: "transparent",
               }}
             />
-            <TextField
+            <Input
               size="small"
               value={cssObj["color"] || ""}
               onChange={(e) => updateCss("color", e.target.value)}
@@ -632,8 +635,7 @@ export default function SubtitleSetting() {
           <Grid container spacing={2} columns={12}>
             {/* 是否在获取字幕后立即启动翻译 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="autoTranslate"
@@ -644,12 +646,11 @@ export default function SubtitleSetting() {
               >
                 <MenuItem value={false}>{i18n("disable")}</MenuItem>
                 <MenuItem value={true}>{i18n("enable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 字幕翻译首选的翻译引擎服务商 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="apiSlug"
@@ -662,12 +663,11 @@ export default function SubtitleSetting() {
                     {api.apiName}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
             {/* 字幕长句断句首选的大语言 AI 引擎服务商 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="segSlug"
@@ -682,7 +682,7 @@ export default function SubtitleSetting() {
                       "断句和翻译服务不同，翻译引擎会重复翻译字幕"
                     : ""
                 }
-                FormHelperTextProps={{
+                helperTextProps={{
                   sx: { color: "error.main" },
                 }}
               >
@@ -692,12 +692,11 @@ export default function SubtitleSetting() {
                     {api.apiName}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
             {segSlug !== "-" && (
               <Grid item xs={12} sm={12} md={6} lg={3}>
-                <TextField
-                  select
+                <Select
                   fullWidth
                   size="small"
                   name="segPromptSlug"
@@ -713,14 +712,13 @@ export default function SubtitleSetting() {
                       {getPromptDisplayName(prompt, i18n)}
                     </MenuItem>
                   ))}
-                </TextField>
+                </Select>
               </Grid>
             )}
             {/* AI 断句服务与翻译服务不同时，是否丢弃 AI 断句返回的译文并交给翻译服务重翻 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
+              <Select
                 fullWidth
-                select
                 size="small"
                 name="forceSubtitleRetranslate"
                 value={forceSubtitleRetranslate}
@@ -729,12 +727,11 @@ export default function SubtitleSetting() {
               >
                 <MenuItem value={true}>{i18n("enable")}</MenuItem>
                 <MenuItem value={false}>{i18n("disable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 系统内置的轻量断句算法类型 (基于固定句尾符号断句，或统计学概率断句) */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="useAlgorithmBreaker"
@@ -748,12 +745,11 @@ export default function SubtitleSetting() {
                 <MenuItem value={"statistical"}>
                   {i18n("statistical_sentence_break")}
                 </MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 字幕翻译是否使用 AI 增强上下文，并指定提供服务的 AI 引擎 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="aiContextSlug"
@@ -767,7 +763,7 @@ export default function SubtitleSetting() {
                     {api.apiName}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
             {/* 一批提交给 AI 进行断句的最长原始字幕文本长度阈值 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
@@ -827,9 +823,8 @@ export default function SubtitleSetting() {
             </Grid>
             {/* 目标翻译出的双语字幕语言 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
+              <Select
                 fullWidth
-                select
                 size="small"
                 name="toLang"
                 value={toLang}
@@ -841,14 +836,13 @@ export default function SubtitleSetting() {
                     {name}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
 
             {/* 是否保留双语字幕 (若禁用则在视频窗口上仅显示翻译后的目标语字幕) */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
+              <Select
                 fullWidth
-                select
                 size="small"
                 name="isBilingual"
                 value={isBilingual}
@@ -857,13 +851,12 @@ export default function SubtitleSetting() {
               >
                 <MenuItem value={true}>{i18n("enable")}</MenuItem>
                 <MenuItem value={false}>{i18n("disable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 双语字幕在视频画面中的显示顺序 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
+              <Select
                 fullWidth
-                select
                 size="small"
                 name="displayOrder"
                 value={displayOrder}
@@ -876,13 +869,12 @@ export default function SubtitleSetting() {
                 <MenuItem value={"translation-first"}>
                   {i18n("translation_first")}
                 </MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 是否开启磨砂模糊译文字幕显示效果 (鼠标划过时才高亮看清译文，用于英语听力训练备考) */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
+              <Select
                 fullWidth
-                select
                 size="small"
                 name="blurTranslation"
                 value={blurTranslation}
@@ -891,13 +883,12 @@ export default function SubtitleSetting() {
               >
                 <MenuItem value={true}>{i18n("enable")}</MenuItem>
                 <MenuItem value={false}>{i18n("disable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 视频插播商业广告时是否自动识别并跳过翻译网络请求 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
+              <Select
                 fullWidth
-                select
                 size="small"
                 name="skipAd"
                 value={skipAd}
@@ -906,13 +897,12 @@ export default function SubtitleSetting() {
               >
                 <MenuItem value={true}>{i18n("enable")}</MenuItem>
                 <MenuItem value={false}>{i18n("disable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 鼠标悬停在视频窗口字幕单字词上时是否允许悬浮框划词查词解释 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
+              <Select
                 fullWidth
-                select
                 size="small"
                 name="hoverLookupMode"
                 value={hoverLookupModeValue}
@@ -924,13 +914,12 @@ export default function SubtitleSetting() {
                 <MenuItem value={OPT_ENHANCE_MOBILE_OFF}>
                   {i18n("disable_on_mobile")}
                 </MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 视频侧边/下方的独立字幕全文滚动列表显示模式 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
+              <Select
                 fullWidth
-                select
                 size="small"
                 name="showList"
                 value={showListValue}
@@ -942,13 +931,12 @@ export default function SubtitleSetting() {
                 <MenuItem value={OPT_ENHANCE_MOBILE_OFF}>
                   {i18n("disable_on_mobile")}
                 </MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 网页加载完毕且成功识别到视频字幕流时，是否在右下角弹出载入成功的横幅提示 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
+              <Select
                 fullWidth
-                select
                 size="small"
                 name="showLoadNotification"
                 value={showLoadNotification}
@@ -957,13 +945,12 @@ export default function SubtitleSetting() {
               >
                 <MenuItem value={true}>{i18n("show")}</MenuItem>
                 <MenuItem value={false}>{i18n("hide")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             {/* 是否隐藏 YouTube 播放器控制栏中的 KT 字幕功能按钮 */}
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
+              <Select
                 fullWidth
-                select
                 size="small"
                 name="hideSubtitleButton"
                 value={hideSubtitleButton}
@@ -972,7 +959,7 @@ export default function SubtitleSetting() {
               >
                 <MenuItem value={true}>{i18n("enable")}</MenuItem>
                 <MenuItem value={false}>{i18n("disable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
           </Grid>
         </Box>
