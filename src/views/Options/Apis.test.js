@@ -46,7 +46,7 @@ jest.mock("../../libs/modelList", () => ({
   fetchModelList: jest.fn(),
 }));
 
-jest.mock("./ReusableAutocomplete", () => {
+jest.mock("../../ui/components/ReusableAutocomplete/ReusableAutocomplete", () => {
   return function MockReusableAutocomplete({
     name,
     label,

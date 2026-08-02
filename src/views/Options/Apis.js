@@ -6,35 +6,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import CodeField from "./CodeField";
-import Button from "@mui/material/Button";
-import LoadingButton from "@mui/lab/LoadingButton";
-import MenuItem from "@mui/material/MenuItem";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Switch from "@mui/material/Switch";
-import Checkbox from "@mui/material/Checkbox";
 import { useI18n } from "../../hooks/I18n";
-import Typography from "@mui/material/Typography";
-import StarIcon from "@mui/icons-material/Star";
-import AddIcon from "@mui/icons-material/Add";
-import SwapVertIcon from "@mui/icons-material/SwapVert";
-import PushPinIcon from "@mui/icons-material/PushPin";
-import DeleteIcon from "@mui/icons-material/Delete";
-import BlockIcon from "@mui/icons-material/Block";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import Alert from "@mui/material/Alert";
-import Menu from "@mui/material/Menu";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemButton from "@mui/material/ListItemButton";
-import Tooltip from "@mui/material/Tooltip";
-import Grid from "@mui/material/Grid";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import ApiIcon from "@mui/icons-material/Api";
-import Link from "@mui/material/Link";
 import { useSetting } from "../../hooks/Setting";
 import { useAlert } from "../../hooks/Alert";
 import { useApiList, useApiItem } from "../../hooks/Api";
@@ -42,9 +14,41 @@ import { useConfirm } from "../../hooks/Confirm";
 import { resolveApiPromptSettings } from "../../config/prompt";
 import { apiTranslate } from "../../apis";
 import { fetchModelList } from "../../libs/modelList";
-import Box from "@mui/material/Box";
-import ReusableAutocomplete from "./ReusableAutocomplete";
-import ShowMoreButton from "./ShowMoreButton";
+import {
+  AddIcon,
+  Alert,
+  ApiIcon,
+  BlockIcon,
+  Box,
+  Button,
+  CheckCircleOutlineIcon,
+  Checkbox,
+  CodeField,
+  DeleteIcon,
+  DragIndicatorIcon,
+  FormControlLabel,
+  Grid,
+  Input,
+  KeyboardArrowDownIcon,
+  Link,
+  List,
+  ListItem,
+  ListItemButton,
+  LoadingButton,
+  Menu,
+  MenuItem,
+  PushPinIcon,
+  ReusableAutocomplete,
+  Select,
+  ShowMoreButton,
+  Stack,
+  StarIcon,
+  SwapVertIcon,
+  Switch,
+  Tooltip,
+  Typography,
+  ValidationInput,
+} from "../../ui";
 import {
   OPT_TRANS_DEEPLX,
   OPT_TRANS_CUSTOMIZE,
@@ -79,7 +83,6 @@ import {
   getPromptDisplayName,
   getSubtitlePromptOptions,
 } from "../../config";
-import ValidationInput from "../../hooks/ValidationInput";
 import { usePromptList } from "../../hooks/Prompt";
 
 const API_ICON_SIZE = 22;
@@ -242,7 +245,7 @@ function SensitiveTextField({ value = "", onChange, inputProps, ...props }) {
         .join("\n");
 
   return (
-    <TextField
+    <Input
       {...props}
       value={displayValue}
       onFocus={() => setEditing(true)}
@@ -533,7 +536,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
       <Box>
         <Grid container spacing={2} columns={12}>
           <Grid item xs={12} sm={12} md={6} lg={3}>
-            <TextField
+            <Input
               size="small"
               fullWidth
               label={i18n("api_name")}
@@ -543,8 +546,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
             />
           </Grid>
           <Grid item xs={12} sm={12} md={6} lg={3}>
-            <TextField
-              select
+            <Select
               fullWidth
               size="small"
               name="transAllnow"
@@ -554,7 +556,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
             >
               <MenuItem value={false}>{i18n("mk_pagescroll")}</MenuItem>
               <MenuItem value={true}>{i18n("mk_pageopen")}</MenuItem>
-            </TextField>
+            </Select>
           </Grid>
           <Grid item xs={12} sm={12} md={6} lg={3}>
             <ValidationInput
@@ -574,7 +576,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
 
       {!API_SPE_TYPES.machine.has(apiType) && (
         <>
-          <TextField
+          <Input
             size="small"
             label={"URL"}
             name="url"
@@ -601,7 +603,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
 
       {API_SPE_TYPES.ai.has(apiType) && (
         <>
-          <TextField
+          <Input
             size="small"
             fullWidth
             label={i18n("model_list_url")}
@@ -719,8 +721,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
         <Box>
           <Grid container spacing={2} columns={12}>
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="useBatchFetch"
@@ -730,7 +731,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
               >
                 <MenuItem value={false}>{i18n("disable")}</MenuItem>
                 <MenuItem value={true}>{i18n("enable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
             <Grid item xs={12} sm={12} md={6} lg={3}>
               <ValidationInput
@@ -798,8 +799,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
         <Grid container spacing={2} columns={12}>
           {API_SPE_TYPES.stream.has(apiType) && (
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="useStream"
@@ -809,14 +809,13 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
               >
                 <MenuItem value={false}>{i18n("disable")}</MenuItem>
                 <MenuItem value={true}>{i18n("enable")}</MenuItem>
-              </TextField>
+              </Select>
             </Grid>
           )}
 
           {API_SPE_TYPES.stream.has(apiType) && useStream && (
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="streamRenderMode"
@@ -831,7 +830,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
                 <MenuItem value="segment">
                   {i18n("stream_render_segment")}
                 </MenuItem>
-              </TextField>
+              </Select>
             </Grid>
           )}
 
@@ -839,8 +838,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
             <>
               <Grid item xs={12} sm={12} md={6} lg={3}>
                 {" "}
-                <TextField
-                  select
+                <Select
                   size="small"
                   fullWidth
                   name="useContext"
@@ -850,11 +848,11 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
                 >
                   <MenuItem value={false}>{i18n("disable")}</MenuItem>
                   <MenuItem value={true}>{i18n("enable")}</MenuItem>
-                </TextField>
+                </Select>
               </Grid>
               <Grid item xs={12} sm={12} md={6} lg={3}>
                 {" "}
-                <TextField
+                <Input
                   size="small"
                   fullWidth
                   label={i18n("context_size")}
@@ -920,8 +918,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
         <Box>
           <Grid container spacing={2} columns={12}>
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="nobatchPromptSlug"
@@ -934,12 +931,11 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
                     {getPromptDisplayName(prompt, i18n)}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
             <Grid item xs={12} sm={12} md={6} lg={3}>
               {/* AI 词典使用独立提示词，避免复用普通翻译提示词时输出格式不可控。 */}
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="batchPromptSlug"
@@ -952,11 +948,10 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
                     {getPromptDisplayName(prompt, i18n)}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="subtitlePromptSlug"
@@ -969,11 +964,10 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
                     {getPromptDisplayName(prompt, i18n)}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="dictPromptSlug"
@@ -986,7 +980,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
                     {getPromptDisplayName(prompt, i18n)}
                   </MenuItem>
                 ))}
-              </TextField>
+              </Select>
             </Grid>
           </Grid>
         </Box>
@@ -996,8 +990,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
         <Box>
           <Grid container spacing={2} columns={12}>
             <Grid item xs={12} sm={12} md={6} lg={3}>
-              <TextField
-                select
+              <Select
                 fullWidth
                 size="small"
                 name="thinkingMode"
@@ -1017,12 +1010,11 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
                     {i18n("thinking_mode_disabled")}
                   </MenuItem>
                 )}
-              </TextField>
+              </Select>
             </Grid>
             {thinkingMode === "enabled" && thinkingParam.efforts && (
               <Grid item xs={12} sm={12} md={6} lg={3}>
-                <TextField
-                  select
+                <Select
                   fullWidth
                   size="small"
                   name="thinkingEffort"
@@ -1038,7 +1030,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
                   <MenuItem value="_default">
                     {i18n("thinking_effort_default")}
                   </MenuItem>
-                </TextField>
+                </Select>
               </Grid>
             )}
           </Grid>
@@ -1050,8 +1042,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
           <Box>
             <Grid container spacing={2} columns={12}>
               <Grid item xs={12} sm={12} md={6} lg={3}>
-                <TextField
-                  select
+                <Select
                   fullWidth
                   size="small"
                   name="placeholder"
@@ -1064,11 +1055,10 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
                       {item}
                     </MenuItem>
                   ))}
-                </TextField>
+                </Select>
               </Grid>
               <Grid item xs={12} sm={12} md={6} lg={3}>
-                <TextField
-                  select
+                <Select
                   fullWidth
                   size="small"
                   name="placetag"
@@ -1081,11 +1071,10 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
                       {`<${item}>`}
                     </MenuItem>
                   ))}
-                </TextField>
+                </Select>
               </Grid>
               <Grid item xs={12} sm={12} md={6} lg={3}>
-                <TextField
-                  select
+                <Select
                   fullWidth
                   size="small"
                   name="placetagFormat"
@@ -1099,13 +1088,13 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
                   <MenuItem value="attribute">
                     {i18n("format_attribute") || "属性格式 <a i=1>"}
                   </MenuItem>
-                </TextField>
+                </Select>
               </Grid>
             </Grid>
           </Box>
 
           {API_SPE_TYPES.ai.has(apiType) && (
-            <TextField
+            <Input
               size="small"
               label={i18n("ai_terms")}
               helperText={i18n("ai_terms_helper")}
