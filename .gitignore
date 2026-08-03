@@ -18,6 +18,7 @@
 # misc
 .DS_Store
 /.chrome-popup-v2/
+.env
 .env.local
 .env.development.local
 .env.test.local

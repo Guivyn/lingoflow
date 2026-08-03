@@ -1,6 +1,6 @@
 # 自定义接口示例（本文档已过期，新版不再适用）
 
-V2版的示例请查看这里：[custom-api_v2.md](https://github.com/Guivyn/lingoflow/blob/master/custom-api_v2.md)
+V2版的示例请查看这里：[custom-api_v2.md](https://github.com/Guivyn/lingoflow/blob/main/custom-api_v2.md)
 
 以下示例为网友提供，仅供学习参考。
 
