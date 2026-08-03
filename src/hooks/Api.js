@@ -46,26 +46,7 @@ function getDisplayOrderedApis(apis = []) {
 export function useApiList() {
   const { setting, transApis, updateSetting } = useApiState();
 
-  // 当发现持久化的翻译 API 列表里缺失某些内置 API 时（例如由于新版本升级增加了新翻译源），自动将它们合并补全。
-  // REVIEW: React 状态无限递归（Infinite Loop）风险。
-  // 在 useEffect 中，当 transApis 改变时会触发该 Effect。
-  // 如果 Effect 内部的 `updateSetting` 调用修改了底层 Setting 并在 transApis 里产生了某些无法被 Set(apiSlug) 正确识别的 api（例如 Slug 重复或为空），
-  // 导致下一次循环中 `missApis.length > 0` 依然成立，这将会导致该 React 组件陷入无限重渲染和更新设置的死循环。
-  // 推荐将该内置 API 自动对齐的校验与合并工作放在应用层初始化（如 Background 启动）时一次性完成，而不是放在 React 交互 Hook 的副作用中高频执行。
-  useEffect(() => {
-    const deletedSlugs = new Set(setting?.deletedTransApiSlugs || []);
-    const curSlugs = new Set(transApis.map((api) => api.apiSlug));
-    const missApis = DEFAULT_API_LIST.filter(
-      (api) => !curSlugs.has(api.apiSlug) && !deletedSlugs.has(api.apiSlug)
-    );
-    if (missApis.length > 0) {
-      updateSetting((prev) => ({
-        ...prev,
-        transApis: [...(prev?.transApis || []), ...missApis],
-      }));
-    }
-  }, [setting?.deletedTransApiSlugs, transApis, updateSetting]);
-
+  // 内置 API 补全已下沉到 storage 读取层，这里只保留 modelListUrl 字段归一化。
   useEffect(() => {
     if (!Array.isArray(setting?.transApis)) {
       return;

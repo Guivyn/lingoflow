@@ -10,7 +10,7 @@ export default function Card({ variant = "outlined", sx, ...props }: CardProps) 
   return (
     <MuiPaper
       variant={variant}
-      sx={{ borderRadius: tokens.radius.md, ...sx }}
+      sx={{ borderRadius: `${tokens.radius.md}px`, ...sx }}
       {...props}
     />
   );

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" font-family="'Segoe UI','Microsoft YaHei UI',sans-serif">
+  <rect width="1280" height="800" fill="#141416"/>
+
+  <text x="72" y="64" font-size="13" letter-spacing="2" fill="#77767f">LOGO DIRECTION 02</text>
+  <text x="72" y="92" font-size="26" font-weight="700" fill="#f2f1ea">语言流动 · 流式丝带</text>
+  <text x="72" y="118" font-size="14" fill="#b0afb7">一条折成「L」的流式丝带，尾端带方向箭头，呼应逐字流出的翻译过程。</text>
+
+  <!-- hero mark -->
+  <g>
+    <circle cx="176" cy="232" r="20" fill="#ef9f3d"/>
+    <path d="M 196 232 C 236 232 250 184 282 184 C 322 184 322 246 282 246 C 244 246 244 300 282 300 C 314 300 320 268 344 268" fill="none" stroke="#ef9f3d" stroke-width="30" stroke-linecap="round"/>
+    <path d="M 196 232 C 236 232 250 184 282 184 C 322 184 322 246 282 246 C 244 246 244 300 282 300 C 314 300 320 268 344 268" fill="none" stroke="#39b995" stroke-width="8" stroke-linecap="round" stroke-dasharray="2 14"/>
+    <path d="M 330 240 L 358 262 L 330 284 Z" fill="#f2f1ea"/>
+  </g>
+
+  <text x="148" y="452" font-size="44" font-weight="800" fill="#f2f1ea" letter-spacing="1">LingoFlow</text>
+  <text x="148" y="492" font-size="18" fill="#b0afb7" letter-spacing="6">灵语 · 流动的语言</text>
+
+  <line x1="560" y1="120" x2="560" y2="700" stroke="#2b2b33" stroke-width="1"/>
+
+  <text x="640" y="180" font-size="13" letter-spacing="2" fill="#77767f">APP ICON · 128PX</text>
+  <g>
+    <rect x="640" y="204" width="128" height="128" rx="28" fill="#202027" stroke="#2b2b33" stroke-width="1"/>
+    <path d="M 668 268 C 682 268 688 248 700 248 C 714 248 714 270 700 270 C 688 270 688 292 700 292 C 710 292 714 282 724 282" fill="none" stroke="#ef9f3d" stroke-width="16" stroke-linecap="round"/>
+    <path d="M 718 276 L 730 288 L 718 300 Z" fill="#f2f1ea"/>
+  </g>
+
+  <text x="640" y="380" font-size="13" letter-spacing="2" fill="#77767f">FAVICON · 32PX</text>
+  <g>
+    <rect x="640" y="398" width="32" height="32" rx="7" fill="#202027" stroke="#2b2b33" stroke-width="1"/>
+    <path d="M 650 414 C 656 414 658 406 663 406 C 669 406 669 416 663 416 C 657 416 657 426 663 426 C 668 426 670 422 674 422" fill="none" stroke="#ef9f3d" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <text x="640" y="480" font-size="13" letter-spacing="2" fill="#77767f">LOCKUP</text>
+  <g>
+    <rect x="640" y="500" width="42" height="42" rx="10" fill="#202027" stroke="#2b2b33" stroke-width="1"/>
+    <path d="M 652 520 C 657 520 658 514 662 514 C 666 514 666 522 662 522 C 658 522 658 530 662 530 C 665 530 666 528 669 528" fill="none" stroke="#ef9f3d" stroke-width="6" stroke-linecap="round"/>
+    <text x="698" y="524" font-size="26" font-weight="800" fill="#f2f1ea">LingoFlow</text>
+    <text x="700" y="550" font-size="12" fill="#b0afb7" letter-spacing="4">灵语</text>
+  </g>
+
+  <g font-size="13" fill="#b0afb7">
+    <text x="640" y="612" font-weight="600" fill="#f2f1ea">识别要点</text>
+    <text x="640" y="638">· 丝带形状 = LingoFlow 的首字母 L</text>
+    <text x="640" y="662">· 虚线内芯 + 箭头 = 流式输出与方向</text>
+    <text x="640" y="686">· 暖炭黑 + 琥珀 / 青绿，避免冷蓝霓虹套路</text>
+  </g>
+</svg>

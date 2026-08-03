@@ -10,6 +10,14 @@ import {
   WordTooltipController,
   wrapWordsWithSpans,
 } from "./wordHover.js";
+import {
+  LEGACY_SUBTITLE_ORIGIN_STYLE,
+  LEGACY_SUBTITLE_TRANSLATION_STYLE,
+  LEGACY_SUBTITLE_WINDOW_STYLE,
+  SUBTITLE_ORIGIN_STYLE,
+  SUBTITLE_TRANSLATION_STYLE,
+  SUBTITLE_WINDOW_STYLE,
+} from "../config/setting";
 
 /**
  * @class BilingualSubtitleManager
@@ -41,7 +49,18 @@ export class BilingualSubtitleManager {
    * @param {object} options.setting - 配置对象
    */
   constructor({ videoEl, formattedSubtitles, setting }) {
-    this.#setting = setting;
+    this.#setting = { ...setting };
+    if (this.#setting.windowStyle === LEGACY_SUBTITLE_WINDOW_STYLE) {
+      this.#setting.windowStyle = SUBTITLE_WINDOW_STYLE;
+    }
+    if (this.#setting.originStyle === LEGACY_SUBTITLE_ORIGIN_STYLE) {
+      this.#setting.originStyle = SUBTITLE_ORIGIN_STYLE;
+    }
+    if (
+      this.#setting.translationStyle === LEGACY_SUBTITLE_TRANSLATION_STYLE
+    ) {
+      this.#setting.translationStyle = SUBTITLE_TRANSLATION_STYLE;
+    }
     this.#videoEl = videoEl;
     this.#formattedSubtitles = formattedSubtitles;
     this.#abortController = new AbortController();
@@ -207,6 +226,12 @@ export class BilingualSubtitleManager {
     this.#captionWindowEl.style.pointerEvents = "auto";
     this.#captionWindowEl.style.cursor = "grab";
     this.#captionWindowEl.style.opacity = "1";
+    const reduceMotion =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (!reduceMotion && !/transition/i.test(this.#setting.windowStyle || "")) {
+      this.#captionWindowEl.style.transition =
+        "opacity 200ms cubic-bezier(0.2, 0.7, 0.2, 1), transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1)";
+    }
 
     this.#paperEl.appendChild(this.#captionWindowEl);
     container.appendChild(this.#paperEl);
@@ -512,6 +537,7 @@ export class BilingualSubtitleManager {
     if (subtitle) {
       // 1. 创建字幕原文 (text) 显示节点
       const p1 = document.createElement("p");
+      p1.className = "lingoflow-caption-origin";
       p1.style.cssText = this.#setting.originStyle;
       p1.style.margin = "0";
 
@@ -529,6 +555,7 @@ export class BilingualSubtitleManager {
 
       // 2. 创建字幕译文 (translation) 显示节点
       const p2 = document.createElement("p");
+      p2.className = "lingoflow-caption-translation";
       p2.style.cssText = this.#setting.translationStyle;
       p2.style.margin = "0";
       if (isHoverLookupEnabled) {
@@ -568,7 +595,20 @@ export class BilingualSubtitleManager {
       }
 
       this.#paperEl.style.display = "block";
+      const reduceMotion =
+        window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      if (reduceMotion) {
+        this.#captionWindowEl.style.opacity = "1";
+      } else {
+        this.#captionWindowEl.style.opacity = "0";
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            this.#captionWindowEl.style.opacity = "1";
+          });
+        });
+      }
     } else {
+      this.#captionWindowEl.style.opacity = "0";
       this.#paperEl.style.display = "none";
     }
   }

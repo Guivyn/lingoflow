@@ -9,11 +9,20 @@ import {
   OPT_LANGS_FROM,
   OPT_LANGS_TO,
   DEFAULT_RULE,
-  GLOBLA_RULE,
+  GLOBAL_RULE,
   BUILTIN_RULES,
+  OPT_STYLE_NONE,
   OPT_SPLIT_PARAGRAPH_ALL,
 } from "../config";
 import { getRulesWithDefault, setRules } from "./storage";
+
+// 已移除的内置译文样式，导入旧规则时统一回退为无样式。
+const LEGACY_REMOVED_TEXT_STYLES = new Set([
+  "fuzzy",
+  "blink",
+  "marker",
+  "gradient_marker",
+]);
 
 /**
  * 差分合并 CSS 选择器。
@@ -170,6 +179,11 @@ const mergeRules = (baseRule, overrideRule) => {
     merged.pattern = overrideRule.pattern;
   }
 
+  // enableScripts 是布尔值，单独处理以便高优先级规则的 false 也能覆盖。
+  if (typeof overrideRule.enableScripts === "boolean") {
+    merged.enableScripts = overrideRule.enableScripts;
+  }
+
   return merged;
 };
 
@@ -185,7 +199,7 @@ export const matchRule = async (href) => {
 
   // 获取全局规则
   const globalRule = {
-    ...GLOBLA_RULE,
+    ...GLOBAL_RULE,
     ...(personalRules.find((r) => r.pattern === GLOBAL_KEY) || {}),
   };
 
@@ -258,6 +272,7 @@ export const checkRules = (rules) => {
         grandStyle,
         injectJs,
         injectCss,
+        enableScripts,
         apiSlug,
         fromLang,
         toLang,
@@ -297,6 +312,11 @@ export const checkRules = (rules) => {
         grandStyle: type(grandStyle) === "string" ? grandStyle : "",
         injectJs: type(injectJs) === "string" ? injectJs : "",
         injectCss: type(injectCss) === "string" ? injectCss : "",
+        // 旧规则若已带脚本但未声明开关，则保持启用以兼容历史配置；新规则默认关闭。
+        enableScripts:
+          type(enableScripts) === "boolean"
+            ? enableScripts
+            : Boolean(injectJs || transStartHook || transEndHook),
         apiSlug:
           type(apiSlug) === "string" && apiSlug.trim() !== ""
             ? apiSlug.trim()
@@ -305,7 +325,9 @@ export const checkRules = (rules) => {
         toLang: matchValue([GLOBAL_KEY, ...toLangs], toLang),
         textStyle:
           type(textStyle) === "string" && textStyle.trim() !== ""
-            ? textStyle.trim()
+            ? LEGACY_REMOVED_TEXT_STYLES.has(textStyle.trim())
+              ? OPT_STYLE_NONE
+              : textStyle.trim()
             : GLOBAL_KEY,
         transOpen: matchValue([GLOBAL_KEY, "true", "false"], transOpen),
         transOnly: matchValue([GLOBAL_KEY, "true", "false"], transOnly),
@@ -335,7 +357,8 @@ export const checkRules = (rules) => {
           [GLOBAL_KEY, ...OPT_SPLIT_PARAGRAPH_ALL],
           splitParagraph
         ),
-        splitLength: Number.isInteger(splitLength) ? splitLength : 0,
+        splitLength:
+          Number.isInteger(splitLength) && splitLength >= 0 ? splitLength : 0,
       })
     );
 
@@ -351,13 +374,12 @@ export const saveRule = async (curRule) => {
   // 获取当前所有的规则列表
   const rules = await getRulesWithDefault();
 
-  // 查找是否存在相同或模糊匹配 pattern 的已有规则
-  // REVIEW: 此处使用 isMatch(curRule.pattern, item.pattern) 进行判断。
-  // 如果 curRule.pattern 或 item.pattern 带有通配符，极易造成模糊匹配的误判，
-  // 导致非同名的其它规则被错误合并覆盖。建议改为精确的字符串对比：item.pattern === curRule.pattern。
+  // 查找是否存在相同 pattern 的已有规则。
+  // 使用精确字符串对比，避免通配符把两条不同规则误判成同一规则后互相覆盖。
   const index = rules.findIndex(
     (item) =>
-      item.pattern !== GLOBAL_KEY && isMatch(curRule.pattern, item.pattern)
+      item.pattern !== GLOBAL_KEY &&
+      String(item.pattern).trim() === String(curRule.pattern).trim()
   );
 
   if (index !== -1) {
@@ -378,12 +400,12 @@ export const saveRule = async (curRule) => {
   const newRule = {};
   // 获取当前的全局规则配置，用于做“冗余值过滤”
   const globalRule = {
-    ...GLOBLA_RULE,
+    ...GLOBAL_RULE,
     ...(rules.find((r) => r.pattern === GLOBAL_KEY) || {}),
   };
 
   // 遍历所有全局规则键值，若新规则的某项值与全局规则一致，则只保存 DEFAULT_RULE 中的占位符以优化存储大小
-  Object.keys(GLOBLA_RULE).forEach((key) => {
+  Object.keys(GLOBAL_RULE).forEach((key) => {
     if (key === "isPlainText") {
       const value =
         curRule[key] === true || curRule[key] === "true"
@@ -402,5 +424,29 @@ export const saveRule = async (curRule) => {
 
   // 将新规则插入到列表的最前端并保存
   rules.unshift(newRule);
+  await setRules(rules);
+};
+
+/**
+ * 直接持久化单条规则（兼容全局 "*" 规则，避免重复插入）。
+ * 弹窗等轻量入口用它把页面内的开关/样式选择写回本地存储。
+ */
+export const persistRule = async (rule) => {
+  if (!rule || typeof rule.pattern !== "string" || !rule.pattern.trim()) return;
+
+  const pattern = rule.pattern.trim();
+  const rules = await getRulesWithDefault();
+  const index = rules.findIndex(
+    (item) => String(item.pattern).trim() === pattern
+  );
+  const base =
+    index >= 0 ? rules[index] : { ...DEFAULT_RULE, pattern };
+  const next = { ...base, ...rule, pattern };
+
+  if (index >= 0) {
+    rules[index] = next;
+  } else {
+    rules.unshift(next);
+  }
   await setRules(rules);
 };

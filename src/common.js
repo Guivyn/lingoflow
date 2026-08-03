@@ -5,6 +5,7 @@ import { isInBlacklist } from "./libs/blacklist";
 import { runSubtitle } from "./subtitle/subtitle";
 import { logger } from "./libs/log";
 import TranslatorManager from "./libs/translatorManager";
+import { tokens } from "./ui/theme/tokens";
 
 /**
  * 在页面顶部弹出一个悬浮的红色错误提示 Banner 框，持续 10 秒后自动淡出。
@@ -26,14 +27,14 @@ function showErr(message) {
     top: "0",
     left: "0",
     width: "100%",
-    backgroundColor: "#f44336",
-    color: "white",
+    backgroundColor: tokens.color.danger,
+    color: tokens.translation.highlightText,
     textAlign: "center",
     padding: "8px 16px",
     zIndex: "1001",
     boxSizing: "border-box",
     fontSize: "16px",
-    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+    boxShadow: tokens.shadow.sm,
   });
 
   const closeButton = document.createElement("span");
@@ -173,9 +174,6 @@ export async function run() {
       setting.tranboxSetting.transOpen = false;
     }
 
-    if (isInBlacklist(href, setting.mouseHoverSetting?.blacklist)) {
-      setting.mouseHoverSetting.useMouseHover = false;
-    }
 
     // 7. 匹配当前网页专用的规则 (三级规则合并：个人 > 内置站点 > 全局)
     const rule = await matchRule(href, setting);

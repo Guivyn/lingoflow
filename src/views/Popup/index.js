@@ -6,7 +6,6 @@ import Typography from "@mui/material/Typography";
 import { sendBgMsg, sendTabMsg, getCurTab } from "../../libs/msg";
 import { browser } from "../../libs/browser";
 import { useI18n } from "../../hooks/I18n";
-import Divider from "@mui/material/Divider";
 import Header from "./Header";
 import {
   MSG_OPEN_SEPARATE_WINDOW,
@@ -19,13 +18,25 @@ import TranForm from "../Selection/TranForm";
 import { useSetting } from "../../hooks/Setting";
 import { getSettingWithDefault } from "../../libs/storage";
 import { matchRule } from "../../libs/rules";
+import { useTheme } from "@mui/material/styles";
 
 /**
  * 获取当前网页的规则与全局设置。
- * 夸克等环境对 Popup -> content script / background 的消息通道兼容不稳定，
- * 因此优先直接读取本地 storage 并匹配当前标签页 URL，避免依赖消息往返。
+ * 优先向内容脚本查询实时状态（网页翻译开关可能只在内存中变化，未写回存储），
+ * 消息通道不可用时再回退到本地 storage / background。
  */
 const fetchRule = async () => {
+  let contentRes;
+  try {
+    contentRes = await sendTabMsg(MSG_TRANS_GETRULE);
+  } catch (err) {
+    contentRes = { error: err?.message || String(err) };
+  }
+
+  if (contentRes && !contentRes.error) {
+    return contentRes;
+  }
+
   try {
     const tab = await getCurTab();
     const href = tab?.url;
@@ -38,17 +49,6 @@ const fetchRule = async () => {
     }
   } catch (err) {
     appLog("local rule fallback", err);
-  }
-
-  let contentRes;
-  try {
-    contentRes = await sendTabMsg(MSG_TRANS_GETRULE);
-  } catch (err) {
-    contentRes = { error: err?.message || String(err) };
-  }
-
-  if (contentRes && !contentRes.error) {
-    return contentRes;
   }
 
   try {
@@ -124,6 +124,7 @@ function Trantab() {
  */
 export default function Popup() {
   const i18n = useI18n();
+  const theme = useTheme();
   // 当前网页的翻译规则设置
   const [rule, setRule] = useState(null);
   // 全局通用设置
@@ -146,6 +147,31 @@ export default function Popup() {
     (async () => {
       setQueryError("");
       try {
+        // ?preview=1 仅用于 QA 截图：用示例数据渲染完整弹窗内容
+        if (new URLSearchParams(window.location.search).get("preview") === "1") {
+          setRule({
+            transOpen: "true",
+            autoScan: "true",
+            scanAll: "false",
+            hasRichText: "true",
+            transOnly: "false",
+            isPlainText: false,
+            apiSlug: "google",
+            fromLang: "auto",
+            toLang: "zh-CN",
+            textStyle: "underline",
+          });
+          setSetting({
+            transApis: [
+              { apiSlug: "google", apiName: "Google", isDisabled: false },
+              { apiSlug: "openai", apiName: "OpenAI", isDisabled: false },
+            ],
+            tranboxSetting: { transOpen: true },
+            shortcuts: {},
+          });
+          return;
+        }
+
         const cleanHash = window.location.hash.slice(1);
         if (cleanHash === "tranbox") {
           setIsSeparate(true);
@@ -158,7 +184,7 @@ export default function Popup() {
           setRule(res.rule);
           setSetting(res.setting);
         } else {
-          setQueryError(res?.error || "no response from content script");
+          setQueryError(i18n("popup_rule_load_error"));
         }
       } catch (err) {
         const message = err?.message || String(err);
@@ -166,6 +192,7 @@ export default function Popup() {
         setQueryError(message);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reloadTick]);
 
   // 切换“网页翻译配置”与“输入翻译面板”两个标签页
@@ -182,19 +209,22 @@ export default function Popup() {
   // 独立窗口模式下只显示文本翻译输入框组件
   if (isSeparate) {
     return (
-      <Box>
+      <Box sx={{ bgcolor: theme.palette.background.default, minHeight: "100vh" }}>
         <Trantab />
       </Box>
     );
   }
 
   return (
-    <Box width={360}>
+    <Box width={360} sx={{ bgcolor: theme.palette.background.default }}>
       {/* 头部组件 */}
-      <Header toggleTab={toggleTab} openSeparateWindow={openSeparateWindow} />
-      <Divider />
-      {/* 内容区域 (可垂直滚动) */}
-      <Box sx={{ overflowY: "auto", maxHeight: 500 }}>
+      <Header
+        toggleTab={toggleTab}
+        openSeparateWindow={openSeparateWindow}
+        showTrantab={showTrantab}
+      />
+      {/* 内容区域 */}
+      <Box>
         {showTrantab ? (
           <Trantab />
         ) : rule ? (

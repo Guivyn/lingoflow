@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { API_SPE_TYPES } from "../config";
+import { tokens } from "../ui/theme/tokens";
 
 /**
  * Label 组件 - 单行文本溢出省略包装标签
@@ -84,7 +85,9 @@ function Switch({ label, name, value, onChange, disabled }) {
           width: 40,
           height: 24,
           borderRadius: 12,
-          background: value ? "rgba(32,156,238,.8)" : "rgba(255,255,255,.3)",
+          background: value
+            ? "rgba(124, 150, 232, 0.55)"
+            : "rgba(255,255,255,.3)",
           position: "relative",
         }}
       >
@@ -165,7 +168,7 @@ function Select({ label, name, value, options, onChange, disabled }) {
             position: "absolute",
             right: 0,
             top: "100%",
-            background: "rgba(0,0,0,.8)",
+            background: tokens.dark.surface,
             borderRadius: 5,
             minWidth: 250,
             maxHeight: 200,
@@ -183,7 +186,7 @@ function Select({ label, name, value, options, onChange, disabled }) {
                 cursor: "pointer",
                 background:
                   option.value === value
-                    ? "rgba(32,156,238,.3)"
+                    ? "rgba(124, 150, 232, 0.35)"
                     : "transparent",
                 opacity: option.value === value ? 1 : 0.8,
                 transition: "all 0.2s",
@@ -194,7 +197,7 @@ function Select({ label, name, value, options, onChange, disabled }) {
               onMouseLeave={(e) => {
                 e.currentTarget.style.background =
                   option.value === value
-                    ? "rgba(32,156,238,.3)"
+                    ? "rgba(124, 150, 232, 0.35)"
                     : "transparent";
               }}
             >
@@ -310,7 +313,7 @@ export function Menus({
         position: "absolute",
         left: 0,
         bottom: 100,
-        background: "rgba(0,0,0,.6)",
+        background: "rgba(27, 25, 21, 0.86)",
         width: 250,
         lineHeight: "40px",
         fontSize: 16,

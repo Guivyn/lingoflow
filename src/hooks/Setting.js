@@ -10,6 +10,7 @@ import {
   STOKEY_SETTING,
   DEFAULT_SETTING,
   MSG_SET_LOGLEVEL,
+  MSG_RELOAD_SETTING,
   getSettingVersion,
 } from "../config";
 import {
@@ -46,6 +47,20 @@ export function SettingProvider({ children, context }) {
   const hasSetting = !!setting;
   const settingVersion = getSettingVersion(setting);
   const logLevel = setting?.logLevel;
+  const liveSyncSignature = useMemo(
+    () =>
+      [
+        "tranboxSetting",
+        "subtitleSetting",
+        "transApis",
+        "prompts",
+        "shortcuts",
+        "customStyles",
+      ]
+        .map((key) => JSON.stringify(setting?.[key] ?? null))
+        .join("|"),
+    [setting]
+  );
 
   // 兼容直接从 Storage 或云同步回填进来的旧版设置，确保进入界面的配置已经升级到 V2。
   useEffect(() => {
@@ -91,6 +106,17 @@ export function SettingProvider({ children, context }) {
       }
     })();
   }, [isOptionsPage, logLevel]);
+
+  // Options 保存关键运行时设置后，防抖通知前台内容脚本重读配置，避免改动要刷新页面才生效。
+  useEffect(() => {
+    if (!isOptionsPage || !isExt || isLoading) return;
+    const timer = setTimeout(() => {
+      sendBgMsg(MSG_RELOAD_SETTING).catch((err) => {
+        logger.error("Failed to notify content scripts to reload settings", err);
+      });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [isOptionsPage, isLoading, liveSyncSignature]);
 
   // 包装后的更新设置项函数，更新状态的同时异步触发防抖的云端同步机制 (KV 同步)
   const updateSetting = useCallback((objOrFn) => update(objOrFn), [update]);

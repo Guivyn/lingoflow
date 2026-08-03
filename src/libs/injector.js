@@ -17,24 +17,6 @@ export const injectInlineJs = (code, id = "lingoflow-inline-js") => {
   (document.head || document.documentElement).appendChild(el);
 };
 
-// 注入行内 JavaScript 脚本（免 Trusted Types 版）。
-// REVIEW: 此函数直接对 textContent 赋值了未做 Trusted Types 包装的原始 code 字符串。
-// 在严格启用了 CSP (Trusted Types 限制) 的网站（例如 GitHub/Google）中，该方法会抛出安全异常并导致注入失败。
-// 建议非必要时统一使用 injectInlineJs。
-export const injectInlineJsBg = (code, id = "lingoflow-inline-js") => {
-  if (document.getElementById(id)) {
-    return;
-  }
-
-  const el = document.createElement("script");
-  el.setAttribute("data-source", "lingoflow-inject injectInlineJsBg");
-  el.type = "text/javascript";
-  el.id = id;
-  el.textContent = code;
-  // 兼容 DOM 尚未加载完全的情况，若 document.head 不存在，则注入到 documentElement <html> 中
-  (document.head || document.documentElement).appendChild(el);
-};
-
 // 向页面注入外部引用的 JavaScript 脚本文件。
 export const injectExternalJs = (src, id = "lingoflow-external-js") => {
   if (document.getElementById(id)) {

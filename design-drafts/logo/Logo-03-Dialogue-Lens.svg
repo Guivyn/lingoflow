@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" font-family="'Segoe UI','Microsoft YaHei UI',sans-serif">
+  <rect width="1280" height="800" fill="#fafafa"/>
+
+  <text x="72" y="64" font-size="13" letter-spacing="2" fill="#9a9da3">LOGO DIRECTION 03</text>
+  <text x="72" y="92" font-size="26" font-weight="700" fill="#20242b">对话镜片 · 语言节点</text>
+  <text x="72" y="118" font-size="14" fill="#5b5f68">两个对话气泡交叠成一副镜片，气泡内是源语与译语的字节点，极简且耐缩放。</text>
+
+  <!-- hero mark -->
+  <g>
+    <path d="M 150 196 h 210 a 34 34 0 0 1 34 34 v 120 a 34 34 0 0 1 -34 34 h -88 l -44 46 v -46 h -78 a 34 34 0 0 1 -34 -34 v -120 a 34 34 0 0 1 34 -34 Z" fill="#20242b"/>
+    <path d="M 266 240 h 168 a 30 30 0 0 1 30 30 v 96 a 30 30 0 0 1 -30 30 h -72 l -38 38 v -38 h -58 a 30 30 0 0 1 -30 -30 v -96 a 30 30 0 0 1 30 -30 Z" fill="#ffffff" stroke="#2f5bd9" stroke-width="6"/>
+    <text x="236" y="296" font-size="64" font-weight="700" fill="#ffffff" text-anchor="middle">A</text>
+    <text x="386" y="322" font-size="52" font-weight="700" fill="#d9482c" text-anchor="middle">中</text>
+    <circle cx="310" cy="392" r="16" fill="#d9482c"/>
+  </g>
+
+  <text x="216" y="500" font-size="44" font-weight="800" fill="#20242b" letter-spacing="1">LingoFlow</text>
+  <text x="216" y="540" font-size="18" fill="#5b5f68" letter-spacing="6">灵语 · 对话与转换</text>
+
+  <line x1="560" y1="120" x2="560" y2="700" stroke="#e7e5e0" stroke-width="1"/>
+
+  <text x="640" y="180" font-size="13" letter-spacing="2" fill="#9a9da3">APP ICON · 128PX</text>
+  <g>
+    <rect x="640" y="204" width="128" height="128" rx="28" fill="#20242b"/>
+    <path d="M 672 256 h 52 a 10 10 0 0 1 10 10 v 36 a 10 10 0 0 1 -10 10 h -24 l -14 14 v -14 h -14 a 10 10 0 0 1 -10 -10 v -36 a 10 10 0 0 1 10 -10 Z" fill="#ffffff"/>
+    <path d="M 698 262 h 40 a 9 9 0 0 1 9 9 v 28 a 9 9 0 0 1 -9 9 h -18 l -10 10 v -10 h -12 a 9 9 0 0 1 -9 -9 v -28 a 9 9 0 0 1 9 -9 Z" fill="#fafafa" stroke="#8fa8f5" stroke-width="3"/>
+    <text x="694" y="288" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">A</text>
+    <text x="726" y="292" font-size="18" font-weight="700" fill="#e4673f" text-anchor="middle">中</text>
+  </g>
+
+  <text x="640" y="380" font-size="13" letter-spacing="2" fill="#9a9da3">FAVICON · 32PX</text>
+  <g>
+    <rect x="640" y="398" width="32" height="32" rx="7" fill="#20242b"/>
+    <path d="M 648 412 h 12 a 3 3 0 0 1 3 3 v 8 a 3 3 0 0 1 -3 3 h -5 l -4 4 v -4 h -3 a 3 3 0 0 1 -3 -3 v -8 a 3 3 0 0 1 3 -3 Z" fill="#ffffff"/>
+    <path d="M 662 415 h 10 a 3 3 0 0 1 3 3 v 5 a 3 3 0 0 1 -3 3 h -4 l -3 3 v -3 h -3 a 3 3 0 0 1 -3 -3 v -5 a 3 3 0 0 1 3 -3 Z" fill="#fafafa" stroke="#8fa8f5" stroke-width="1.5"/>
+    <text x="653" y="420" font-size="7" font-weight="700" fill="#ffffff" text-anchor="middle">A</text>
+    <text x="669" y="421" font-size="6" font-weight="700" fill="#e4673f" text-anchor="middle">中</text>
+  </g>
+
+  <text x="640" y="480" font-size="13" letter-spacing="2" fill="#9a9da3">LOCKUP</text>
+  <g>
+    <rect x="640" y="500" width="42" height="42" rx="10" fill="#20242b"/>
+    <path d="M 650 512 h 17 a 4 4 0 0 1 4 4 v 11 a 4 4 0 0 1 -4 4 h -7 l -5 5 v -5 h -5 a 4 4 0 0 1 -4 -4 v -11 a 4 4 0 0 1 4 -4 Z" fill="#ffffff"/>
+    <path d="M 668 515 h 13 a 3 3 0 0 1 3 3 v 7 a 3 3 0 0 1 -3 3 h -5 l -4 4 v -4 h -4 a 3 3 0 0 1 -3 -3 v -7 a 3 3 0 0 1 3 -3 Z" fill="#fafafa" stroke="#8fa8f5" stroke-width="1.5"/>
+    <text x="658" y="521" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">A</text>
+    <text x="675" y="522" font-size="8" font-weight="700" fill="#e4673f" text-anchor="middle">中</text>
+    <text x="698" y="524" font-size="26" font-weight="800" fill="#20242b">LingoFlow</text>
+    <text x="700" y="550" font-size="12" fill="#5b5f68" letter-spacing="4">灵语</text>
+  </g>
+
+  <g font-size="13" fill="#5b5f68">
+    <text x="640" y="612" font-weight="600" fill="#20242b">识别要点</text>
+    <text x="640" y="638">· 双气泡 = 对话，也像一副观察语言的镜片</text>
+    <text x="640" y="662">· 字节点 A / 中 = 具体语言，而非抽象图形</text>
+    <text x="640" y="686">· 墨色主形 + 一点朱红，延续现有气泡基因</text>
+  </g>
+</svg>

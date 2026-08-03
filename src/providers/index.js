@@ -24,7 +24,4 @@ export const getProvider = (apiType) => PROVIDER_MAP[apiType] || null;
 export const getProviderCapability = (apiType, key) =>
   Boolean(getProvider(apiType)?.capabilities?.[key]);
 
-export const getProviderThinking = (apiType) =>
-  getProvider(apiType)?.thinking || null;
-
 export const getAllProviders = () => Object.values(PROVIDER_MAP);

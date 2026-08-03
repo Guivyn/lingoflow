@@ -15,6 +15,7 @@ import { isExt } from "./client";
 import { isBg } from "./browser";
 import { sendBgMsg } from "./msg";
 import { parseResponse } from "./response";
+import { sha256 } from "./utils";
 
 /**
  * 清除翻译网络请求的本地缓存
@@ -35,14 +36,7 @@ export const tryClearCaches = async () => {
  * 构造缓存所用的 Request 对象。
  * 由于浏览器原生 CacheStorage (caches) 仅支持拦截/匹配 GET 类型的网络请求，而网页翻译接口大多使用 POST 方法。
  * 本函数通过将 POST 请求的 Body (包含待翻译原文的 JSON 字符串) 拼接在 URL 路径末尾，
- * 并将方法重置为 GET，从而巧妙实现了对 POST 翻译请求的本地缓存与命中。
- *
- * REVIEW:
- * 该转换方案在处理段落切分翻译（通常文本较短，限制在数千字符内）时工作极其良好，是一个非常有想象力的方案。
- * 但需注意：当单次发送的原文极长时，拼接了 Body 后的 URL 长度可能会超出浏览器或 Web 服务器对 URL 长度的限制（如 IE/Chrome 的 2083 字符上限），
- * 导致 Request 对象初始化抛错或匹配失效。
- * 后期若要支持不限制长度的自定义接口，建议将 Body 字符串进行 MD5 或 SHA-256 散列哈希处理，把哈希值拼在 URL 后面作为缓存 Key，
- * 这既能缩短 URL 规避限制，又能保障缓存安全性。
+ * 并将方法重置为 GET，从而实现对 POST 翻译请求的本地缓存与命中。
  * @param {string} input
  * @param {Object} init
  * @returns {Promise<Request>} 虚拟转换后的 GET 缓存 Request 对象
@@ -52,7 +46,9 @@ const newCacheReq = async (input, init) => {
   if (request.method !== "GET") {
     const body = await request.text();
     const cacheUrl = new URL(request.url);
-    cacheUrl.pathname += body;
+    // 用请求体哈希作为缓存键，避免长原文拼进 URL 触发长度上限。
+    const digest = await sha256(body, request.method);
+    cacheUrl.pathname += `/${digest}`;
     request = new Request(cacheUrl.toString(), { method: "GET" });
   }
 

@@ -24,10 +24,9 @@ export const MSG_TRANS_TOGGLE_STYLE = "toggle_styles"; // 广播切换译文样�
 export const MSG_OPEN_TRANBOX = "open_tranbox"; // 广播开启划词翻译面板消息
 export const MSG_TRANS_GETRULE = "trans_getrule"; // 获取网页匹配的特定规则
 export const MSG_TRANS_PUTRULE = "trans_putrule"; // 保存或应用网页翻译规则
+export const MSG_TRANS_PUTSETTING = "trans_putsetting"; // 更新全局设置并刷新已插入的译文
 export const MSG_TRANSBOX_TOGGLE = "toggle_transbox"; // 切换划词翻译框的显示与隐藏
 export const MSG_POPUP_TOGGLE = "toggle_popup"; // 切换 Popup 弹窗的显隐状态
-export const MSG_MOUSEHOVER_TOGGLE = "toggle_mousehover"; // 切换鼠标悬停翻译功能
-export const MSG_HOVERNODE_TOGGLE = "toggle_hover_node"; // 切换针对某节点的悬浮高亮状态
 export const MSG_CONTEXT_MENUS = "context_menus"; // 更新或创建右键上下文菜单
 export const MSG_COMMAND_SHORTCUTS = "command_shortcuts"; // 获取扩展注册的全局快捷键
 export const MSG_INJECT_JS = "inject_js"; // 在主文档环境中注入并运行 inline JS
@@ -39,10 +38,17 @@ export const MSG_OPEN_SEPARATE_WINDOW = "open_separate_window"; // 请求后台�
 export const PORT_STREAM_FETCH = "lingoflow_stream_fetch"; // 双向长连接端口名称：用于大模型翻译时的流式输出通道
 export const MSG_UPDATE_ICON = "update_icon"; // 通知后台脚本更新扩展的工具栏图标状态 (激活/灰色状态)
 export const MSG_SHA256 = "sha256"; // 请求后台脚本代算 SHA-256 签名
+export const MSG_RELOAD_SETTING = "reload_setting"; // 通知前台内容脚本重读本地配置并重启运行期模块
 
 // --- 用于 Window.postMessage 与自定义事件通信的事件名称 ---
 export const EVENT_LINGOFLOW_INNER = "lingoflow_inner"; // 插件沙箱/内容脚本内部事件
 export const EVENT_LINGOFLOW = "lingoflow"; // 暴露给网页环境的外部交互事件
+
+// 内容脚本内部 CustomEvent 的会话令牌。网页无法读取模块私有值，因此无法伪造内部事件。
+const INTERNAL_EVENT_SESSION = `lf-${Date.now().toString(36)}-${Math.random()
+  .toString(36)
+  .slice(2)}`;
+export const getInternalEventSession = () => INTERNAL_EVENT_SESSION;
 
 // --- 视频与字幕翻译特定消息类型 ---
 export const MSG_XHR_DATA_YOUTUBE = "LINGOFLOW_XHR_DATA_YOUTUBE"; // 传递 YouTube 拦截到的字幕 XHR 数据

@@ -7,7 +7,7 @@ export interface ButtonProps extends MuiButtonProps {}
  * 设计系统按钮，默认使用紧凑尺寸与统一圆角。
  */
 export default function Button({
-  size = "small",
+  size = "medium",
   sx,
   ...props
 }: ButtonProps) {
@@ -15,7 +15,7 @@ export default function Button({
     <MuiButton
       size={size}
       sx={{
-        borderRadius: tokens.radius.sm,
+        borderRadius: `${tokens.radius.sm}px`,
         textTransform: "none",
         ...sx,
       }}

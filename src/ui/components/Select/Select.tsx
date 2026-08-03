@@ -31,7 +31,7 @@ export default function Select<T extends string | number | boolean>({
   options = [],
   helperText,
   helperTextProps,
-  size = "small",
+  size = "medium",
   sx,
   value,
   error,

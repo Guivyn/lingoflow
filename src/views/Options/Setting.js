@@ -1,22 +1,20 @@
-import { useEffect, useState } from "react";
 import {
   Box,
-  EditIcon,
-  Grid,
-  IconButton,
   Input,
   Link,
   MenuItem,
   Select,
+  SettingRow,
+  SettingSection,
   ShortcutInput,
   Stack,
+  tokens,
   ValidationInput,
 } from "../../ui";
 import { useSetting } from "../../hooks/Setting";
 import { useI18n } from "../../hooks/I18n";
 import { useAlert } from "../../hooks/Alert";
 import { isExt } from "../../libs/client";
-import { browser } from "../../libs/browser";
 
 import {
   TRANS_NEWLINE_LENGTH,
@@ -47,73 +45,6 @@ function ShortcutItem({ action, label }) {
   const { shortcut, setShortcut } = useShortcut(action);
   return (
     <ShortcutInput value={shortcut} onChange={setShortcut} label={label} />
-  );
-}
-
-/**
- * 展示扩展版快捷键的组件 (仅 Extension 模式)
- */
-function ExtCommands() {
-  const [commands, setCommands] = useState([]);
-
-  useEffect(() => {
-    if (browser?.commands?.getAll) {
-      browser.commands
-        .getAll()
-        .then((cmds) => {
-          if (cmds) {
-            setCommands(cmds.filter((c) => c.description));
-          }
-        })
-        .catch((err) => {
-          console.error("fetch commands error:", err);
-        });
-    }
-  }, []);
-
-  if (!commands || commands.length === 0) return null;
-
-  const handleEdit = () => {
-    let url = "chrome://extensions/shortcuts";
-    const ua = navigator.userAgent;
-    if (ua.includes("Edg/")) {
-      url = "edge://extensions/shortcuts";
-    } else if (ua.includes("Firefox/")) {
-      url = "about:addons"; // Firefox 目前没有直接进入扩展快捷键的 URI
-    } else if (ua.includes("OPR/")) {
-      url = "opera://extensions/shortcuts";
-    } else if (ua.includes("Brave/")) {
-      url = "brave://extensions/shortcuts";
-    }
-
-    if (browser?.tabs?.create) {
-      browser.tabs.create({ url });
-    } else {
-      window.open(url, "_blank");
-    }
-  };
-
-  return (
-    <Box>
-      <Grid container spacing={2} columns={12}>
-        {commands.map((cmd) => (
-          <Grid item xs={12} sm={12} md={6} lg={3} key={cmd.name}>
-            <Stack direction="row" alignItems="flex-start">
-              <Input
-                size="small"
-                label={cmd.description}
-                value={cmd.shortcut || ""}
-                fullWidth
-                disabled
-              />
-              <IconButton onClick={handleEdit}>
-                <EditIcon />
-              </IconButton>
-            </Stack>
-          </Grid>
-        ))}
-      </Grid>
-    </Box>
   );
 }
 
@@ -185,45 +116,49 @@ export default function Settings() {
 
   return (
     <Box>
-      <Stack spacing={3}>
+      <Stack spacing={`${tokens.spacing.xl}px`}>
         <LanguageSettings />
 
-        {/* 基础参数网格配置区 */}
-        <Box>
-          <Grid container spacing={2} columns={12}>
-            {/* 页面打开时是否预先初始化运行环境 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+        {/* 基础参数：文档式两列设置行 */}
+        <SettingSection
+          title={i18n("basic_params", "基础参数")}
+          extra={i18n("basic_params_helper", "扫描、缓存与触发方式")}
+        >
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              columnGap: "6px",
+            }}
+          >
+            <SettingRow title={i18n("if_pre_init")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
                 name="preInit"
                 value={preInit}
-                label={i18n("if_pre_init")}
                 onChange={handleChange}
               >
                 <MenuItem value={true}>{i18n("enable")}</MenuItem>
                 <MenuItem value={false}>{i18n("disable")}</MenuItem>
               </Select>
-            </Grid>
-            {/* 点击悬浮球时触发的行为 (直接展示菜单或立即启动全文双语翻译) */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("fab_click_action")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
                 name="fabClickAction"
                 value={fabClickAction}
-                label={i18n("fab_click_action")}
                 onChange={(e) => updateFab({ fabClickAction: e.target.value })}
               >
                 <MenuItem value={0}>{i18n("fab_click_menu")}</MenuItem>
                 <MenuItem value={1}>{i18n("fab_click_translate")}</MenuItem>
               </Select>
-            </Grid>
-            {/* 单个 DOM 文本块触发网页翻译的最小有效文本长度 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("min_translate_length")}>
               <ValidationInput
                 fullWidth
-                size="small"
+                variant="standard"
                 label={i18n("min_translate_length")}
                 type="number"
                 name="minLength"
@@ -232,12 +167,11 @@ export default function Settings() {
                 min={1}
                 max={100}
               />
-            </Grid>
-            {/* 允许发起单次网页段落翻译的最长文本限制 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("max_translate_length")}>
               <ValidationInput
                 fullWidth
-                size="small"
+                variant="standard"
                 label={i18n("max_translate_length")}
                 type="number"
                 name="maxLength"
@@ -246,12 +180,11 @@ export default function Settings() {
                 min={100}
                 max={100000}
               />
-            </Grid>
-            {/* 网页中单个纯文本换行符被当作真换行截断句子的数量 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("num_of_newline_characters")}>
               <ValidationInput
                 fullWidth
-                size="small"
+                variant="standard"
                 label={i18n("num_of_newline_characters")}
                 type="number"
                 name="newlineLength"
@@ -260,12 +193,11 @@ export default function Settings() {
                 min={1}
                 max={1000}
               />
-            </Grid>
-            {/* DOM 段落网页翻译扫描定时查询轮询间隔时间 (ms) */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("translate_interval")}>
               <ValidationInput
                 fullWidth
-                size="small"
+                variant="standard"
                 label={i18n("translate_interval")}
                 type="number"
                 name="transInterval"
@@ -274,12 +206,11 @@ export default function Settings() {
                 min={1}
                 max={2000}
               />
-            </Grid>
-            {/* 全局接口 HTTP 网络请求超时阈值 (s) */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("http_timeout")}>
               <ValidationInput
                 fullWidth
-                size="small"
+                variant="standard"
                 label={i18n("http_timeout")}
                 type="number"
                 name="httpTimeout"
@@ -288,15 +219,13 @@ export default function Settings() {
                 min={1}
                 max={600}
               />
-            </Grid>
-            {/* 移动端/触屏端特定的触摸手势快捷翻译触发方式 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("touch_translate_shortcut")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
                 name="touchModes"
                 value={touchModes}
-                label={i18n("touch_translate_shortcut")}
                 onChange={handleChange}
                 multiple
               >
@@ -306,30 +235,26 @@ export default function Settings() {
                   </MenuItem>
                 ))}
               </Select>
-            </Grid>
-            {/* 浏览器右键上下文菜单的展示层级 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("context_menus")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
                 name="contextMenuType"
                 value={contextMenuType}
-                label={i18n("context_menus")}
                 onChange={handleChange}
               >
                 <MenuItem value={0}>{i18n("hide_context_menus")}</MenuItem>
                 <MenuItem value={1}>{i18n("simple_context_menus")}</MenuItem>
                 <MenuItem value={2}>{i18n("secondary_context_menus")}</MenuItem>
               </Select>
-            </Grid>
-            {/* 网页首选的语言自动检测服务组件 (如 Chrome Builtin, FastText 或 API) */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("detected_lang")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
                 name="langDetector"
                 value={langDetector}
-                label={i18n("detected_lang")}
                 onChange={handleChange}
               >
                 <MenuItem value={"-"}>{i18n("disable")}</MenuItem>
@@ -339,15 +264,13 @@ export default function Settings() {
                   </MenuItem>
                 ))}
               </Select>
-            </Grid>
-            {/* 日志记录详细层级 (Error/Info/Debug 等) */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("log_level")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
                 name="logLevel"
                 value={logLevel}
-                label={i18n("log_level")}
                 onChange={handleChange}
               >
                 {Object.values(LogLevel).map(({ value, name }) => (
@@ -356,133 +279,151 @@ export default function Settings() {
                   </MenuItem>
                 ))}
               </Select>
-            </Grid>
-          </Grid>
-        </Box>
+            </SettingRow>
+          </Box>
+        </SettingSection>
 
-        {/* 是否全局隐藏内容页面右侧的悬浮查词小图标 FAB */}
-        <Select
-          fullWidth
-          size="small"
-          name="isHide"
-          value={isHide}
-          label={i18n("hide_fab_button")}
-          onChange={(e) => {
-            updateFab({ isHide: e.target.value });
-          }}
+        {/* 网站与缓存：黑名单、例外与缓存策略 */}
+        <SettingSection
+          title={i18n("website_cache", "网站与缓存")}
+          extra={i18n("website_cache_helper", "黑名单、例外与缓存策略")}
         >
-          <MenuItem value={false}>{i18n("show")}</MenuItem>
-          <MenuItem value={true}>{i18n("hide")}</MenuItem>
-        </Select>
-
-        <Input
-          fullWidth
-          size="small"
-          multiline
-          maxRows={10}
-          name="hideExceptionList"
-          value={hideExceptionList}
-          label={i18n("fab_exception_list")}
-          helperText={i18n("fab_exception_list_helper")}
-          onChange={(e) => updateFab({ hideExceptionList: e.target.value })}
-        />
-
-        {/* 网页翻译的黑名单域名正则排除列表 (一行一条) */}
-        <Input
-          size="small"
-          label={i18n("translate_blacklist")}
-          helperText={i18n("pattern_helper")}
-          name="blacklist"
-          value={blacklist}
-          onChange={handleChange}
-          maxRows={10}
-          multiline
-        />
-
-        {/* 扩展专属的高级网络设置 (只在 Extension 模式下展示) */}
-        {isExt ? (
-          <>
-            {/* 是否在浏览器关闭/重启时自动清空网页翻译的已缓存译文 */}
+          <SettingRow title={i18n("hide_fab_button")}>
             <Select
               fullWidth
-              size="small"
-              name="clearCache"
-              value={clearCache}
-              label={i18n("if_clear_cache")}
-              onChange={handleChange}
-              helperText={
-                <Link component="button" onClick={handleClearCache}>
-                  {i18n("clear_all_cache_now")}
-                </Link>
-              }
+              variant="standard"
+              name="isHide"
+              value={isHide}
+              onChange={(e) => {
+                updateFab({ isHide: e.target.value });
+              }}
             >
-              <MenuItem value={false}>{i18n("clear_cache_never")}</MenuItem>
-              <MenuItem value={true}>{i18n("clear_cache_restart")}</MenuItem>
+              <MenuItem value={false}>{i18n("show")}</MenuItem>
+              <MenuItem value={true}>{i18n("hide")}</MenuItem>
             </Select>
-
-            {/* 跨域安全 CSP 旁路加载白名单与 Ori 白名单 */}
+          </SettingRow>
+          <SettingRow
+            title={i18n("fab_exception_list")}
+            description={i18n("fab_exception_list_helper")}
+            align="start"
+            controlMinWidth={420}
+            controlMaxWidth="100%"
+          >
             <Input
-              size="small"
-              label={i18n("disabled_orilist")}
-              helperText={i18n("pattern_helper")}
-              name="orilist"
-              value={orilist}
+              fullWidth
+              variant="standard"
+              multiline
+              maxRows={10}
+              name="hideExceptionList"
+              value={hideExceptionList}
+              onChange={(e) => updateFab({ hideExceptionList: e.target.value })}
+            />
+          </SettingRow>
+          <SettingRow
+            title={i18n("translate_blacklist")}
+            description={i18n("pattern_helper")}
+            align="start"
+            controlMinWidth={420}
+            controlMaxWidth="100%"
+          >
+            <Input
+              fullWidth
+              variant="standard"
+              name="blacklist"
+              value={blacklist}
               onChange={handleChange}
+              maxRows={10}
               multiline
             />
-            <Input
-              size="small"
-              label={i18n("disabled_csplist")}
-              helperText={
-                i18n("pattern_helper") + " " + i18n("disabled_csplist_helper")
-              }
-              name="csplist"
-              value={csplist}
-              onChange={handleChange}
-              multiline
-            />
+          </SettingRow>
 
-            <ExtCommands />
-          </>
-        ) : (
-          // 油猴脚本环境运行：渲染脚本侧注册的全局热键录入面板
-          <>
-            <Box>
-              <Grid container spacing={2} columns={12}>
-                <Grid item xs={12} sm={12} md={6} lg={3}>
-                  <ShortcutItem
-                    action={OPT_SHORTCUT_TRANSLATE}
-                    label={i18n("toggle_translate_shortcut")}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={12} md={6} lg={3}>
-                  <ShortcutItem
-                    action={OPT_SHORTCUT_TRANSONLY}
-                    label={i18n("toggle_transonly_shortcut")}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={12} md={6} lg={3}>
-                  <ShortcutItem
-                    action={OPT_SHORTCUT_STYLE}
-                    label={i18n("toggle_style_shortcut")}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={12} md={6} lg={3}>
-                  <ShortcutItem
-                    action={OPT_SHORTCUT_POPUP}
-                    label={i18n("toggle_popup_shortcut")}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={12} md={6} lg={3}>
-                  <ShortcutItem
-                    action={OPT_SHORTCUT_SETTING}
-                    label={i18n("open_setting_shortcut")}
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-          </>
-        )}
+          {/* 扩展专属的高级网络设置 (只在 Extension 模式下展示) */}
+          {isExt ? (
+            <>
+              <SettingRow title={i18n("if_clear_cache")}>
+                <Select
+                  fullWidth
+                  variant="standard"
+                  name="clearCache"
+                  value={clearCache}
+                  onChange={handleChange}
+                  helperText={
+                    <Link component="button" onClick={handleClearCache}>
+                      {i18n("clear_all_cache_now")}
+                    </Link>
+                  }
+                >
+                  <MenuItem value={false}>
+                    {i18n("clear_cache_never")}
+                  </MenuItem>
+                  <MenuItem value={true}>
+                    {i18n("clear_cache_restart")}
+                  </MenuItem>
+                </Select>
+              </SettingRow>
+              <SettingRow
+                title={i18n("disabled_orilist")}
+                description={i18n("pattern_helper")}
+                align="start"
+                controlMinWidth={420}
+                controlMaxWidth="100%"
+              >
+                <Input
+                  fullWidth
+                  variant="standard"
+                  name="orilist"
+                  value={orilist}
+                  onChange={handleChange}
+                  multiline
+                />
+              </SettingRow>
+              <SettingRow
+                title={i18n("disabled_csplist")}
+                description={
+                  i18n("pattern_helper") + " " + i18n("disabled_csplist_helper")
+                }
+                align="start"
+                controlMinWidth={420}
+                controlMaxWidth="100%"
+              >
+                <Input
+                  fullWidth
+                  variant="standard"
+                  name="csplist"
+                  value={csplist}
+                  onChange={handleChange}
+                  multiline
+                />
+              </SettingRow>
+            </>
+          ) : (
+            <SettingSection title={i18n("shortcuts", "快捷键")}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                  columnGap: "6px",
+                }}
+              >
+                <SettingRow title={i18n("toggle_translate_shortcut")}>
+                  <ShortcutItem action={OPT_SHORTCUT_TRANSLATE} />
+                </SettingRow>
+                <SettingRow title={i18n("toggle_transonly_shortcut")}>
+                  <ShortcutItem action={OPT_SHORTCUT_TRANSONLY} />
+                </SettingRow>
+                <SettingRow title={i18n("toggle_style_shortcut")}>
+                  <ShortcutItem action={OPT_SHORTCUT_STYLE} />
+                </SettingRow>
+                <SettingRow title={i18n("toggle_popup_shortcut")}>
+                  <ShortcutItem action={OPT_SHORTCUT_POPUP} />
+                </SettingRow>
+                <SettingRow title={i18n("open_setting_shortcut")}>
+                  <ShortcutItem action={OPT_SHORTCUT_SETTING} />
+                </SettingRow>
+              </Box>
+            </SettingSection>
+          )}
+        </SettingSection>
       </Stack>
     </Box>
   );

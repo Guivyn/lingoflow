@@ -1,9 +1,10 @@
 import { Stack, Typography, Chip, Box } from "@mui/material";
+import { useMemo } from "react";
 import { useI18n } from "../../hooks/I18n";
 import { useSetting } from "../../hooks/Setting";
 import { getAllProviders } from "../../providers";
 import { DEFAULT_API_LIST } from "../../config";
-import { Button, Card, Input, SettingItem, Switch } from "../../ui";
+import { Button, Input, SettingRow, SettingSection, Switch, tokens } from "../../ui";
 import type { ProviderConfig } from "../../core/storage/types";
 import type { TranslationProvider } from "../../providers/types";
 
@@ -23,8 +24,7 @@ type SettingShape = {
 };
 
 /**
- * Provider 设置页：基于现有 Provider Registry 提供开关、名称与基础连接配置。
- * 高级接口设置仍保留在 /apis。
+ * 接口设置页：基于 Provider Registry 提供开关、名称与基础连接配置。
  */
 export default function Providers() {
   const i18n = useI18n() as (key: string, fallback?: string) => string;
@@ -33,16 +33,17 @@ export default function Providers() {
     updateSetting: (patchOrFn: unknown) => void;
   };
   const providers = getAllProviders() as unknown as TranslationProvider[];
-  const transApis = Array.isArray(setting?.transApis)
-    ? setting.transApis
-    : [];
+  const transApis = useMemo(
+    () => (Array.isArray(setting?.transApis) ? setting.transApis : []),
+    [setting?.transApis]
+  );
 
-  const updateProvider = (apiType: string, patch: Partial<ProviderConfig>) => {
+  const updateProvider = (apiSlug: string, patch: Partial<ProviderConfig>) => {
     updateSetting((prev: Record<string, unknown>) => ({
       ...prev,
       transApis: (Array.isArray(prev?.transApis) ? prev.transApis : []).map(
         (api: ProviderConfig) =>
-          api.apiType === apiType ? { ...api, ...patch } : api
+          api.apiSlug === apiSlug ? { ...api, ...patch } : api
       ),
     }));
   };
@@ -67,140 +68,178 @@ export default function Providers() {
     }));
   };
 
+  const instancesByType = useMemo(() => {
+    const map = new Map<string, ProviderConfig[]>();
+    for (const api of transApis) {
+      const list = map.get(api.apiType) || [];
+      list.push(api);
+      map.set(api.apiType, list);
+    }
+    return map;
+  }, [transApis]);
+
   return (
-    <Stack spacing={2}>
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1}
-        justifyContent="space-between"
-        alignItems={{ xs: "stretch", sm: "center" }}
+    <Stack spacing={`${tokens.spacing.xl}px`}>
+      <Box
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: `${tokens.spacing.lg}px`,
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
       >
-        <Typography variant="h6">
-          {i18n("providers_setting", "Providers")}
-        </Typography>
-        <Button
-          component="a"
-          href="#/apis"
-          variant="outlined"
-          sx={{ alignSelf: { xs: "flex-start", sm: "auto" } }}
+        <Typography
+          component="h1"
+          sx={{
+            fontFamily: tokens.font.display,
+            fontSize: tokens.font.sizeDisplay,
+            fontWeight: tokens.font.weightSemibold,
+            letterSpacing: tokens.font.trackingDisplay,
+            lineHeight: 1.2,
+            margin: 0,
+          }}
         >
-          {i18n("advanced_api_settings", "Advanced API settings")}
+          {i18n("apis_setting", "接口设置")}
+        </Typography>
+        <Button component="a" href="#/apis" variant="outlined">
+          {i18n("advanced_api_settings", "高级接口设置")}
         </Button>
-      </Stack>
+      </Box>
 
       {providers.map((provider) => {
-        const providerConfig = transApis.find(
-          (api) => api.apiType === provider.apiType
-        );
+        const instances = instancesByType.get(provider.apiType) || [];
         const capabilities = provider.capabilities || {};
         const capabilityItems = CAPABILITY_ITEMS.filter(
           (item) => capabilities[item.key]
         );
 
+        if (instances.length === 0) {
+          return (
+            <SettingSection
+              key={provider.apiType}
+              title={provider.name}
+              extra={provider.apiType}
+            >
+              <SettingRow title={i18n("provider_not_configured", "尚未添加该服务商")}>
+                <Button
+                  variant="outlined"
+                  onClick={() => addProvider(provider.apiType)}
+                >
+                  {i18n("add", "Add")}
+                </Button>
+              </SettingRow>
+            </SettingSection>
+          );
+        }
+
         return (
-          <Card key={provider.apiType} sx={{ p: 2 }}>
-            <Stack spacing={2}>
-              <Stack
-                direction="row"
-                spacing={1}
-                justifyContent="space-between"
-                alignItems="center"
+          <Stack
+            key={provider.apiType}
+            spacing={`${tokens.spacing.xl}px`}
+          >
+            {instances.map((instance) => (
+              <SettingSection
+                key={instance.apiSlug}
+                title={instance.apiName || provider.name}
+                extra={provider.apiType}
               >
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="subtitle2">{provider.name}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {provider.apiType}
-                  </Typography>
-                </Box>
-                <Switch
-                  checked={!providerConfig?.isDisabled}
-                  disabled={!providerConfig}
-                  onChange={(event) =>
-                    updateProvider(provider.apiType, {
-                      isDisabled: !event.target.checked,
-                    })
-                  }
-                />
-              </Stack>
-
-              {capabilityItems.length > 0 ? (
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {capabilityItems.map((item) => (
-                    <Chip
-                      key={item.key}
-                      label={item.label}
-                      size="small"
-                      variant="outlined"
-                    />
-                  ))}
-                </Stack>
-              ) : null}
-
-              {providerConfig ? (
-                <>
-                  <SettingItem title={i18n("api_name", "Name")}>
-                    <Input
-                      fullWidth
-                      value={providerConfig.apiName || provider.name}
-                      onChange={(event) =>
-                        updateProvider(provider.apiType, {
-                          apiName: event.target.value,
-                        })
-                      }
-                    />
-                  </SettingItem>
-                  {!capabilities.machine ? (
-                    <>
-                      <SettingItem title="URL">
-                        <Input
-                          fullWidth
-                          value={providerConfig.url || ""}
-                          onChange={(event) =>
-                            updateProvider(provider.apiType, {
-                              url: event.target.value,
-                            })
-                          }
+                {capabilityItems.length > 0 ? (
+                  <SettingRow title={i18n("capabilities", "Capabilities")}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      flexWrap="wrap"
+                      useFlexGap
+                      sx={{ justifyContent: "flex-end" }}
+                    >
+                      {capabilityItems.map((item) => (
+                        <Chip
+                          key={item.key}
+                          label={item.label}
+                          size="small"
+                          variant="outlined"
                         />
-                      </SettingItem>
-                      <SettingItem title="Key">
-                        <Input
-                          fullWidth
-                          value={providerConfig.key || ""}
-                          onChange={(event) =>
-                            updateProvider(provider.apiType, {
-                              key: event.target.value,
-                            })
-                          }
-                        />
-                      </SettingItem>
-                    </>
-                  ) : null}
-                  {capabilities.ai ? (
-                    <SettingItem title="Model">
+                      ))}
+                    </Stack>
+                  </SettingRow>
+                ) : null}
+
+                <SettingRow title={i18n("enable", "Enable")}>
+                  <Switch
+                    checked={!instance.isDisabled}
+                    onChange={(event) =>
+                      updateProvider(instance.apiSlug, {
+                        isDisabled: !event.target.checked,
+                      })
+                    }
+                  />
+                </SettingRow>
+                <SettingRow title={i18n("api_name", "Name")}>
+                  <Input
+                    fullWidth
+                    variant="standard"
+                    value={instance.apiName || provider.name}
+                    onChange={(event) =>
+                      updateProvider(instance.apiSlug, {
+                        apiName: event.target.value,
+                      })
+                    }
+                  />
+                </SettingRow>
+                {!capabilities.machine ? (
+                  <>
+                    <SettingRow title="URL">
                       <Input
                         fullWidth
-                        value={providerConfig.model || ""}
+                        variant="standard"
+                        value={instance.url || ""}
                         onChange={(event) =>
-                          updateProvider(provider.apiType, {
-                            model: event.target.value,
+                          updateProvider(instance.apiSlug, {
+                            url: event.target.value,
                           })
                         }
                       />
-                    </SettingItem>
-                  ) : null}
-                </>
-              ) : (
-                <Box>
-                  <Button
-                    variant="outlined"
-                    onClick={() => addProvider(provider.apiType)}
-                  >
-                    {i18n("add", "Add")}
-                  </Button>
-                </Box>
-              )}
-            </Stack>
-          </Card>
+                    </SettingRow>
+                    <SettingRow title="Key">
+                      <Input
+                        fullWidth
+                        variant="standard"
+                        value={instance.key || ""}
+                        onChange={(event) =>
+                          updateProvider(instance.apiSlug, {
+                            key: event.target.value,
+                          })
+                        }
+                      />
+                    </SettingRow>
+                  </>
+                ) : null}
+                {capabilities.ai ? (
+                  <SettingRow title="Model">
+                    <Input
+                      fullWidth
+                      variant="standard"
+                      value={instance.model || ""}
+                      onChange={(event) =>
+                        updateProvider(instance.apiSlug, {
+                          model: event.target.value,
+                        })
+                      }
+                    />
+                  </SettingRow>
+                ) : null}
+              </SettingSection>
+            ))}
+            <SettingRow title={i18n("add_instance", "Add another")}>
+              <Button
+                variant="outlined"
+                onClick={() => addProvider(provider.apiType)}
+              >
+                {i18n("add", "Add")}
+              </Button>
+            </SettingRow>
+          </Stack>
         );
       })}
     </Stack>

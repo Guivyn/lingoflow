@@ -9,7 +9,6 @@ import { OPT_STYLE_NONE } from "./styles";
 // --- 规则模式关键字 ---
 export const GLOBAL_KEY = "*"; // 全局匹配键名，表示继承全局设置
 
-export const DEFAULT_COLOR = "#209CEE"; // 默认的生词高亮背景色/波浪线颜色
 
 export const DEFAULT_TRANS_TAG = "font"; // 默认翻译译文所外包的 HTML 标签名
 const DEFAULT_SELECT_STYLE =
@@ -59,6 +58,7 @@ export const DEFAULT_RULE = {
   parentStyle: "", // 改变翻译目标节点父级的 CSS 样式
   grandStyle: "", // 改变翻译目标节点祖父级的 CSS 样式
   injectJs: "", // 页面翻译开始时注入并运行的 JS 脚本
+  enableScripts: false, // 是否允许该规则执行 injectJs 与翻译 Hook 脚本
   // injectCss: "", // 注入CSS (作废)
   transOnly: GLOBAL_KEY, // 是否仅显示译文而不显示原文 (单语翻译)
   transOnlyRevert: GLOBAL_KEY, // 仅译文模式下，鼠标悬浮时是否临时恢复显示原文
@@ -87,7 +87,7 @@ export const DEFAULT_RULE = {
 };
 
 // 全局兜底规则：当网页没有匹配的特定规则时，采用此默认规则
-export const GLOBLA_RULE = {
+export const GLOBAL_RULE = {
   pattern: "*", // 匹配任意网址
   enabled: true,
   selector: DEFAULT_SELECTOR, // 默认的翻译元素
@@ -100,7 +100,6 @@ export const GLOBLA_RULE = {
   toLang: "zh-CN", // 默认翻译为简体中文
   textStyle: OPT_STYLE_NONE, // 默认译文不加额外线条/高亮背景
   transOpen: "false", // 默认不自动开始翻译网页 (需要手动点击或快捷键)
-  // bgColor: DEFAULT_COLOR, // 译文颜色 (作废)
   // textDiyStyle: DEFAULT_DIY_STYLE, // 自定义译文样式 (作废)
   textExtStyle: "",
   termsStyle: "font-weight: bold;", // 专业术语默认加粗
@@ -109,6 +108,7 @@ export const GLOBLA_RULE = {
   grandStyle: "",
   injectJs: "",
   injectCss: "",
+  enableScripts: false,
   transOnly: "false", // 默认保留原文，呈现双语对比形式
   transOnlyRevert: "false",
   transOnlyRevertDelay: "0.5",
@@ -135,8 +135,11 @@ export const GLOBLA_RULE = {
   transOrder: "original-first", // 文本顺序：原文在上 ("original-first") 或 译文在上 ("translation-first")
 };
 
+// 兼容历史拼写；新代码统一使用 GLOBAL_RULE。
+export const GLOBLA_RULE = GLOBAL_RULE;
+
 // 预设规则列表，初始化时直接注册
-export const DEFAULT_RULES = [GLOBLA_RULE];
+export const DEFAULT_RULES = [GLOBAL_RULE];
 
 // REVIEW: 针对特定高频复杂网页做特殊定制的内置规则映射表。
 // 这些预置规则解决了各大平台（如维基百科、黑客新闻、X/Twitter、YouTube直播、GitHub）由于动态加载、复杂的 CSS 结构、大量的干扰元素所导致的翻译错位或不完整问题。
@@ -177,10 +180,19 @@ const RULES_MAP = {
     selector: ".text-content, .embedded-text-wrapper",
     rootsSelector: ".Transition",
   },
+  "stackoverflow.com": {
+    autoScan: `false`,
+    selector: `#question-header h1, .s-prose p, .s-prose li, .s-prose h1, .s-prose h2, .s-prose h3, .s-prose blockquote, .s-post-summary--content-title, .s-post-summary--content-excerpt, .comment-copy, .question-hyperlink, .post-title, .question-summary .question-hyperlink, .answer .s-prose p, .answer .s-prose li`,
+    keepSelector: `code, pre, .post-tag, .s-tag, a[href*="/questions/tagged/"], .s-user-card, .user-info`,
+    ignoreSelector: `nav, header, footer, aside, .post-tag, .s-tag, a[href*="/questions/tagged/"], .js-tag, .vote-count, .js-vote-count, .s-user-card, .user-info, .user-action-time, .relativetime, .badge, .s-btn, .s-navigation, .js-user-name, .who-rep, .s-avatar, .post-signature`,
+  },
   "github.com": {
     autoScan: `false`,
     selector: `h1, h2, h3, h4, h5, h6, .markdown-body li, p, dd, blockquote, figcaption, label, legend, .user-profile-bio>div, [data-testid="results-list"] .search-match, .Subhead-description, [class^="prc-SelectPanel-Subtitle-"], [class^="prc-ActionList-ItemLabel-"], [role="dialog"] .overflow-auto, .h4, .repos-list-description, .discussion-title, [class*="PinnedIssue-module__Link"] span, .js-wiki-sidebar-page-container :is(.Truncate-text, .Link--primary)`,
     ignoreSelector: `button, p.pinned-item-desc+p`,
+    selectStyle: DEFAULT_SELECT_STYLE,
+    parentStyle: DEFAULT_SELECT_STYLE,
+    grandStyle: DEFAULT_SELECT_STYLE,
   },
 };
 

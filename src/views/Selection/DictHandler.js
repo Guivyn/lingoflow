@@ -2,6 +2,7 @@ import Typography from "@mui/material/Typography";
 import { AudioBtn, BaiduAudioBtn } from "./AudioBtn";
 import { OPT_DICT_BING, OPT_DICT_YOUDAO } from "../../config";
 import { apiMicrosoftDict, apiYoudaoDict } from "../../apis";
+import { tokens } from "../../ui/theme/tokens";
 
 /**
  * 各种英文词典的解析与渲染处理器策略映射表
@@ -23,9 +24,18 @@ export const dictHandlers = {
           <Typography
             component="div"
             key={key}
-            style={{ display: "inline-block", paddingRight: "1em" }}
+            sx={{ display: "inline-block", pr: `${tokens.spacing.sm}px` }}
           >
-            <Typography component="span">{`${key} [${phonetic || ""}]`}</Typography>
+            <Typography
+              component="span"
+              sx={{
+                fontFamily: tokens.font.mono,
+                fontSize: tokens.font.sizeCaption,
+                color: "text.secondary",
+              }}
+            >
+              {`${key} [${phonetic || ""}]`}
+            </Typography>
             {/* 音频发音按钮 */}
             <AudioBtn src={audio} />
           </Typography>
@@ -36,9 +46,20 @@ export const dictHandlers = {
     uiTrans: (data) => (
       <Typography component="div">
         {/* 词性及基本释义列表 */}
-        <Typography component="ul">
+        <Typography
+          component="ul"
+          sx={{
+            m: 0,
+            pl: `${tokens.spacing.lg}px`,
+            mt: `${tokens.spacing.xs}px`,
+          }}
+        >
           {data?.trs?.map(({ pos, def }, idx) => (
-            <Typography component="li" key={idx}>
+            <Typography
+              component="li"
+              key={idx}
+              sx={{ mb: `${tokens.spacing.xs}px`, fontSize: tokens.font.sizeMd }}
+            >
               {pos && `[${pos}] `}
               {def}
             </Typography>
@@ -47,17 +68,31 @@ export const dictHandlers = {
 
         {/* 单词的时态/变形展示 */}
         {data?.presents?.length > 0 && (
-          <Typography component="div" style={{ marginTop: "10px" }}>
+          <Typography
+            component="div"
+            sx={{
+              mt: `${tokens.spacing.md}px`,
+              fontFamily: tokens.font.mono,
+              fontSize: tokens.font.sizeCaption,
+              color: "text.secondary",
+            }}
+          >
             {data.presents.join(", ")}
           </Typography>
         )}
 
         {/* 英汉双解详细释义 */}
         {data?.ecs?.length > 0 && (
-          <Typography component="div" style={{ marginTop: "10px" }}>
+          <Typography component="div" sx={{ mt: `${tokens.spacing.md}px` }}>
             <Typography
               component="div"
-              style={{ fontWeight: "bold", marginBottom: "5px" }}
+              sx={{
+                fontFamily: tokens.font.mono,
+                fontSize: tokens.font.sizeKeycap,
+                letterSpacing: tokens.font.trackingCaption,
+                color: "text.disabled",
+                mb: `${tokens.spacing.xs}px`,
+              }}
             >
               英汉双解
             </Typography>
@@ -78,10 +113,16 @@ export const dictHandlers = {
 
         {/* 显示相关双语例句 */}
         {data?.sentences?.length > 0 && (
-          <Typography component="div" style={{ marginTop: "10px" }}>
+          <Typography component="div" sx={{ mt: `${tokens.spacing.md}px` }}>
             <Typography
               component="div"
-              style={{ fontWeight: "bold", marginBottom: "5px" }}
+              sx={{
+                fontFamily: tokens.font.mono,
+                fontSize: tokens.font.sizeKeycap,
+                letterSpacing: tokens.font.trackingCaption,
+                color: "text.disabled",
+                mb: `${tokens.spacing.xs}px`,
+              }}
             >
               例句
             </Typography>
@@ -90,15 +131,15 @@ export const dictHandlers = {
               <Typography
                 component="div"
                 key={idx}
-                style={{ marginBottom: "5px" }}
+                sx={{ mb: `${tokens.spacing.sm}px` }}
               >
                 {/* 英文例句中对查询单词进行高亮处理 */}
-                <Typography component="div">
+                <Typography component="div" sx={{ fontSize: tokens.font.sizeMd }}>
                   {/* REVIEW: 使用 split(data.word) 进行单词拆分高亮可能会失效，若例句中单词由于首字母大写或时态变化（例如 "Word" 或 "words"）而与 data.word 不完全相等时，将无法高亮。建议使用不区分大小写的正则匹配进行替换和高亮。 */}
                   {sentence.eng?.split(data.word)?.map((part, i, arr) => (
                     <span key={i}>
                       {i > 0 && (
-                        <span style={{ fontWeight: "bold", color: "#1e88e5" }}>
+                        <span style={{ fontWeight: "bold", color: tokens.color.blue }}>
                           {data.word}
                         </span>
                       )}
@@ -109,7 +150,12 @@ export const dictHandlers = {
                 {/* 中文例句对照 */}
                 <Typography
                   component="div"
-                  style={{ opacity: "0.6", fontStyle: "italic" }}
+                  sx={{
+                    mt: "2px",
+                    fontSize: tokens.font.sizeCaption,
+                    fontStyle: "italic",
+                    color: "text.secondary",
+                  }}
                 >
                   {sentence.chs}
                 </Typography>
@@ -137,16 +183,34 @@ export const dictHandlers = {
       <Typography component="div">
         <Typography
           component="div"
-          style={{ display: "inline-block", paddingRight: "1em" }}
+          sx={{ display: "inline-block", pr: `${tokens.spacing.sm}px` }}
         >
-          <Typography component="span">{`英 ${data?.ec?.word?.ukphone ? `[${data?.ec?.word?.ukphone}]` : ""}`}</Typography>
+          <Typography
+            component="span"
+            sx={{
+              fontFamily: tokens.font.mono,
+              fontSize: tokens.font.sizeCaption,
+              color: "text.secondary",
+            }}
+          >
+            {`英 ${data?.ec?.word?.ukphone ? `[${data?.ec?.word?.ukphone}]` : ""}`}
+          </Typography>
           <BaiduAudioBtn text={data?.ec?.word?.["return-phrase"]} lan="uk" />
         </Typography>
         <Typography
           component="div"
-          style={{ display: "inline-block", paddingRight: "1em" }}
+          sx={{ display: "inline-block", pr: `${tokens.spacing.sm}px` }}
         >
-          <Typography component="span">{`美 ${data?.ec?.word?.usphone ? `[${data?.ec?.word?.usphone}]` : ""}`}</Typography>
+          <Typography
+            component="span"
+            sx={{
+              fontFamily: tokens.font.mono,
+              fontSize: tokens.font.sizeCaption,
+              color: "text.secondary",
+            }}
+          >
+            {`美 ${data?.ec?.word?.usphone ? `[${data?.ec?.word?.usphone}]` : ""}`}
+          </Typography>
           <BaiduAudioBtn text={data?.ec?.word?.["return-phrase"]} lan="en" />
         </Typography>
       </Typography>
@@ -154,9 +218,20 @@ export const dictHandlers = {
     // 渲染有道的中文翻译与例句
     uiTrans: (data) => (
       <Typography component="div">
-        <Typography component="ul">
+        <Typography
+          component="ul"
+          sx={{
+            m: 0,
+            pl: `${tokens.spacing.lg}px`,
+            mt: `${tokens.spacing.xs}px`,
+          }}
+        >
           {data?.ec?.word?.trs?.map(({ pos, tran }, idx) => (
-            <Typography component="li" key={idx}>
+            <Typography
+              component="li"
+              key={idx}
+              sx={{ mb: `${tokens.spacing.xs}px`, fontSize: tokens.font.sizeMd }}
+            >
               {pos && `[${pos}] `}
               {tran}
             </Typography>
@@ -165,10 +240,16 @@ export const dictHandlers = {
 
         {/* 例句显示 */}
         {data?.blng_sents_part?.["sentence-pair"]?.length > 0 && (
-          <Typography component="div" style={{ marginTop: "10px" }}>
+          <Typography component="div" sx={{ mt: `${tokens.spacing.md}px` }}>
             <Typography
               component="div"
-              style={{ fontWeight: "bold", marginBottom: "5px" }}
+              sx={{
+                fontFamily: tokens.font.mono,
+                fontSize: tokens.font.sizeKeycap,
+                letterSpacing: tokens.font.trackingCaption,
+                color: "text.disabled",
+                mb: `${tokens.spacing.xs}px`,
+              }}
             >
               例句
             </Typography>
@@ -178,9 +259,9 @@ export const dictHandlers = {
                 <Typography
                   component="div"
                   key={idx}
-                  style={{ marginBottom: "5px" }}
+                  sx={{ mb: `${tokens.spacing.sm}px` }}
                 >
-                  <Typography component="div">
+                  <Typography component="div" sx={{ fontSize: tokens.font.sizeMd }}>
                     {/* 同样在英文例句中高亮当前词汇 */}
                     {/* REVIEW: 同样存在大小写不同导致 split 无法高亮的问题。 */}
                     {sentence.sentence
@@ -189,7 +270,7 @@ export const dictHandlers = {
                         <span key={i}>
                           {i > 0 && data.ec?.word?.["return-phrase"] && (
                             <span
-                              style={{ fontWeight: "bold", color: "#1e88e5" }}
+                              style={{ fontWeight: "bold", color: tokens.color.blue }}
                             >
                               {data.ec.word["return-phrase"]}
                             </span>
@@ -200,7 +281,12 @@ export const dictHandlers = {
                   </Typography>
                   <Typography
                     component="div"
-                    style={{ opacity: "0.6", fontStyle: "italic" }}
+                    sx={{
+                      mt: "2px",
+                      fontSize: tokens.font.sizeCaption,
+                      fontStyle: "italic",
+                      color: "text.secondary",
+                    }}
                   >
                     {sentence["sentence-translation"]}
                   </Typography>

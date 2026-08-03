@@ -8,6 +8,8 @@ import {
   STOKEY_MSAUTH,
   DEFAULT_SETTING,
   DEFAULT_RULES,
+  DEFAULT_API_LIST,
+  OPT_STYLE_NONE,
   getSettingVersion,
 } from "../config";
 import {
@@ -30,7 +32,7 @@ const LEGACY_APP_NAME = "KISS-Translator";
  * @param {*} val 待写入的字符串数据
  */
 async function set(key, val) {
-  if (isExt) {
+  if (isExt && browser?.storage?.local) {
     await browser.storage.local.set({ [key]: val });
   } else {
     window.localStorage.setItem(key, val);
@@ -43,7 +45,7 @@ async function set(key, val) {
  * @returns {Promise<string|null>} 读取到的原始字符串数据
  */
 async function get(key) {
-  if (isExt) {
+  if (isExt && browser?.storage?.local) {
     const val = await browser.storage.local.get([key]);
     return val[key];
   }
@@ -55,7 +57,7 @@ async function get(key) {
  * @param {string} key 键名
  */
 async function del(key) {
-  if (isExt) {
+  if (isExt && browser?.storage?.local) {
     await browser.storage.local.remove([key]);
   } else {
     window.localStorage.removeItem(key);
@@ -127,15 +129,26 @@ export const storage = {
 export const getSetting = () => getObj(STOKEY_SETTING);
 const writeSettingBackupBeforeV2 = (setting) =>
   setObj(STOKEY_SETTING_BACKUP_V1_BEFORE_V2, setting);
-const mergeSettingWithDefault = (setting) => ({
-  ...DEFAULT_SETTING,
-  ...normalizeSetting(setting || {}),
-  version: setting?.version ?? DEFAULT_SETTING.version,
-});
-const migrateStoredSetting = async (
-  setting,
-  backupSetting = setting
-) => {
+// 读取时补齐缺失的内置 API，尊重用户显式删除的记录，避免依赖 React effect 自愈。
+const mergeBuiltinApis = (setting) => {
+  const transApis = Array.isArray(setting.transApis) ? setting.transApis : [];
+  const deletedSlugs = new Set(setting.deletedTransApiSlugs || []);
+  const curSlugs = new Set(
+    transApis.map((api) => api && api.apiSlug).filter(Boolean)
+  );
+  const missingApis = DEFAULT_API_LIST.filter(
+    (api) => !curSlugs.has(api.apiSlug) && !deletedSlugs.has(api.apiSlug)
+  );
+  if (missingApis.length === 0) return setting;
+  return { ...setting, transApis: [...transApis, ...missingApis] };
+};
+const mergeSettingWithDefault = (setting) =>
+  mergeBuiltinApis({
+    ...DEFAULT_SETTING,
+    ...normalizeSetting(setting || {}),
+    version: setting?.version ?? DEFAULT_SETTING.version,
+  });
+const migrateStoredSetting = async (setting, backupSetting = setting) => {
   if (getSettingVersion(setting) >= CURRENT_SETTINGS_VERSION) {
     return setting;
   }
@@ -197,8 +210,22 @@ export const setSetting = async (val) => setObj(STOKEY_SETTING, val);
 
 // --- 用户翻译规则 (Rules) 数据存取 ---
 const getRules = () => getObj(STOKEY_RULES);
-export const getRulesWithDefault = async () =>
-  (await getRules()) || DEFAULT_RULES;
+// 已被移除的内置译文样式：旧配置读到这些值时自动回退为无样式。
+const LEGACY_REMOVED_TEXT_STYLES = new Set([
+  "fuzzy",
+  "blink",
+  "marker",
+  "gradient_marker",
+]);
+export const getRulesWithDefault = async () => {
+  const rules = (await getRules()) || DEFAULT_RULES;
+  if (!Array.isArray(rules)) return DEFAULT_RULES;
+  return rules.map((rule) =>
+    rule && LEGACY_REMOVED_TEXT_STYLES.has(rule.textStyle)
+      ? { ...rule, textStyle: OPT_STYLE_NONE }
+      : rule
+  );
+};
 export const setRules = (val) => setObj(STOKEY_RULES, val);
 
 // --- 悬浮球 (Fab Button) 位置及偏好存取 ---

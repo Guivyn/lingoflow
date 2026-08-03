@@ -17,6 +17,7 @@ import {
   PROMPT_MODE_FOLLOW_API,
 } from "./prompt";
 import { DEFAULT_CUSTOM_STYLES } from "./styles";
+import { tokens } from "../ui/theme/tokens";
 
 // --- 默认系统快捷键映射 ---
 export const OPT_SHORTCUT_TRANSLATE = "toggleTranslate"; // 切换整页双语翻译
@@ -33,7 +34,7 @@ export const DEFAULT_SHORTCUTS = {
 
 const TRANS_MIN_LENGTH = 2; // 触发网页翻译的最小文本字符数 (过短字符如单个字母不予处理)
 const TRANS_MAX_LENGTH = 100000; // 单次翻译的最大字符数
-export const TRANS_NEWLINE_LENGTH = 20; // 文本被认定为需要单独换行的长度限制
+export const TRANS_NEWLINE_LENGTH = 20; // 译文超过该字符数时与原文分行显示
 
 // 默认不参与整页翻译的网站黑名单 (例如翻译工具本身、特定系统页，避免死循环翻译)
 export const DEFAULT_BLACKLIST = [
@@ -93,15 +94,32 @@ export const DEFAULT_TRANBOX_SETTING = {
 };
 
 // --- 字幕默认样式属性 ---
-const SUBTITLE_WINDOW_STYLE = `padding: 0.5em 1em;
+export const LEGACY_SUBTITLE_WINDOW_STYLE = `padding: 0.5em 1em;
 background-color: rgba(0, 0, 0, 0.5);
 color: white;
 line-height: 1.3;
 text-shadow: 1px 1px 2px black;
-display: inline-block`; // 字幕外层窗口的 CSS 默认样式
+display: inline-block`;
+export const LEGACY_SUBTITLE_ORIGIN_STYLE = `font-size: clamp(1rem, 2cqw, 3rem);`;
+export const LEGACY_SUBTITLE_TRANSLATION_STYLE = `font-size: clamp(1rem, 2cqw, 3rem);`;
 
-const SUBTITLE_ORIGIN_STYLE = `font-size: clamp(1rem, 2cqw, 3rem);`; // 字幕原文的默认 CSS 样式
-const SUBTITLE_TRANSLATION_STYLE = `font-size: clamp(1rem, 2cqw, 3rem);`; // 字幕译文的默认 CSS 样式
+export const SUBTITLE_WINDOW_STYLE = `padding: 0.45em 0.9em;
+background: ${tokens.subtitle.panelBg};
+backdrop-filter: blur(10px);
+border: 1px solid ${tokens.subtitle.panelBorder};
+border-radius: ${tokens.radius.md}px;
+color: ${tokens.subtitle.translationText};
+font-family: ${tokens.font.family};
+line-height: 1.45;
+box-shadow: ${tokens.subtitle.shadow};
+display: inline-block;`; // 字幕外层窗口的 CSS 默认样式
+
+export const SUBTITLE_ORIGIN_STYLE = `font-size: clamp(0.8rem, 1.5cqw, 1.6rem);
+color: ${tokens.subtitle.originText};
+letter-spacing: ${tokens.font.trackingCaption};`; // 字幕原文的默认 CSS 样式
+export const SUBTITLE_TRANSLATION_STYLE = `font-size: clamp(1rem, 2cqw, 2.4rem);
+font-weight: ${tokens.font.weightMedium};
+color: ${tokens.subtitle.translationText};`; // 字幕译文的默认 CSS 样式
 
 export const OPT_ENHANCE_ON = "on";
 export const OPT_ENHANCE_OFF = "off";
@@ -136,37 +154,18 @@ export const DEFAULT_SUBTITLE_SETTING = {
   segPromptSlug: DEFAULT_SUBTITLE_PROMPT_SLUG, // 指定的 subtitle prompt slug，仅在指定提示词模式下生效
 };
 
-export const DEFAULT_MOUSEHOVER_KEY = ["ControlLeft"]; // 默认触发悬停翻译的触发按键 (左 Ctrl 键)
-export const OPT_MOUSE_HOVER_DISPLAY_BILINGUAL = "bilingual"; // 鼠标悬停翻译：把译文插入页面形成双语对照
-export const OPT_MOUSE_HOVER_DISPLAY_BUBBLE = "bubble"; // 鼠标悬停翻译：用悬浮气泡展示译文，不改变页面布局
-export const DEFAULT_MOUSE_HOVER_BUBBLE_STYLE = `max-width: min(420px, calc(100vw - 32px));
-padding: 10px 12px;
-border-radius: 8px;
-background: rgb(25, 118, 210);
-color: #fff;
-font-size: 14px;
-line-height: 1.5;
-box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-backdrop-filter: blur(8px);`;
-export const DEFAULT_MOUSE_HOVER_SETTING = {
-  useMouseHover: false, // 是否开启鼠标悬停翻译
-  blacklist: "", // 鼠标悬停翻译禁用的网页黑名单
-  mouseHoverKey: DEFAULT_MOUSEHOVER_KEY, // 主按键
-  mouseHoverKey2: [], // 备用快捷按键
-  displayMode: OPT_MOUSE_HOVER_DISPLAY_BILINGUAL, // 鼠标悬停翻译展示模式
-  bubbleStyle: DEFAULT_MOUSE_HOVER_BUBBLE_STYLE, // 气泡模式的容器 CSS
-};
 
 // --- 全局默认设置对象，存储于 local storage ---
 export const DEFAULT_SETTING = {
   version: CURRENT_SETTINGS_VERSION,
   darkMode: "auto", // 主题外观模式 ("light" 浅色, "dark" 深色, "auto" 跟随浏览器系统)
-  uiLang: "en", // 插件设置面板界面的显示语言
+  uiLang: "zh", // 插件设置面板界面的显示语言
   // fetchLimit: DEFAULT_FETCH_LIMIT, // 最大任务数量(移至rule，作废)
   // fetchInterval: DEFAULT_FETCH_INTERVAL, // 任务间隔时间(移至rule，作废)
   minLength: TRANS_MIN_LENGTH, // 整页翻译的段落最小有效长度限制
   maxLength: TRANS_MAX_LENGTH, // 整页翻译的段落最大有效长度限制
   newlineLength: TRANS_NEWLINE_LENGTH,
+  autoTransEnglish: true, // 检测到英文页面时自动开启翻译 (可在弹窗中切换，选择后持久保存)
   httpTimeout: DEFAULT_HTTP_TIMEOUT, // 接口请求超时时间
   clearCache: false, // 每次浏览器重启时，是否自动清空翻译结果的本地网络缓存
   fabClickAction: 0, // 工具栏悬浮球按钮双击或单击的默认响应行为 (如开启/关闭翻译)
@@ -192,7 +191,6 @@ export const DEFAULT_SETTING = {
   skipLangs: [], // 忽略翻译的语种代码列表 (即如果网页检测到是这些语言，则不触发自动整页翻译)
   transInterval: 100, // 两次段落翻译执行之间的等待延迟
   langDetector: "-", // 主动检测源语言的外部 API 服务选择 ("-" 表示由翻译 API 本身自动判定)
-  mouseHoverSetting: DEFAULT_MOUSE_HOVER_SETTING, // 鼠标悬浮段落翻译的详细配置
   preInit: true, // 是否在 DOMContentLoaded 之前预先加载核心拦截脚本以加快翻译响应
   transAllnow: false, // 兜底机制：无匹配规则下是否强行全页面立即翻译
   subtitleSetting: DEFAULT_SUBTITLE_SETTING, // 字幕翻译模块的具体参数设置

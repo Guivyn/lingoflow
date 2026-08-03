@@ -1,5 +1,9 @@
 import { useEffect, useCallback } from "react";
-import { MSG_OPEN_TRANBOX, EVENT_LINGOFLOW_INNER } from "../config";
+import {
+  MSG_OPEN_TRANBOX,
+  EVENT_LINGOFLOW_INNER,
+  getInternalEventSession,
+} from "../config";
 
 export default function useTranboxShortcuts({
   showBox,
@@ -21,7 +25,10 @@ export default function useTranboxShortcuts({
   // 副作用：监听自定义打开翻译面板的 DOM 通信事件（浏览器扩展快捷键触发时会广播此内部消息）
   useEffect(() => {
     const handleStatusUpdate = (event) => {
-      if (event.detail?.action === MSG_OPEN_TRANBOX) {
+      if (
+        event.detail?.token === getInternalEventSession() &&
+        event.detail?.action === MSG_OPEN_TRANBOX
+      ) {
         const text = event.detail?.args?.text?.trim();
         if (text) {
           handleOpenTranbox?.(text);

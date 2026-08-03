@@ -7,7 +7,7 @@ export const getPlainTextChunkLimit = (setting = {}) => {
   return Math.min(3000, hardLimit);
 };
 
-export const findPlainTextBreakIndex = (text, limit) => {
+const findPlainTextBreakIndex = (text, limit) => {
   const slice = text.slice(0, limit + 1);
   let breakIndex = -1;
   const naturalBreakRegex = /(?:[。！？]+|[.?!]+(?=\s+|$)|\n+)/g;
@@ -33,7 +33,7 @@ export const findPlainTextBreakIndex = (text, limit) => {
   return limit;
 };
 
-export const readPlainTextNewline = (source, offset) => {
+const readPlainTextNewline = (source, offset) => {
   let count = 0;
   let nextOffset = offset;
 
@@ -53,7 +53,7 @@ export const readPlainTextNewline = (source, offset) => {
   return count ? { count, nextOffset } : null;
 };
 
-export const findPlainTextLineEnd = (source, offset) => {
+const findPlainTextLineEnd = (source, offset) => {
   let cursor = offset;
 
   while (cursor < source.length) {

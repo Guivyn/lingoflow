@@ -12,17 +12,16 @@ export const OPT_STYLE_DASHBOX = "dash_box"; // 围绕译文的虚线线框
 export const OPT_STYLE_DASHBOX_BOLD = "dash_box_bold"; // 围绕译文的粗虚线线框
 export const OPT_STYLE_WAVYLINE = "wavy_line"; // 波浪下划线
 export const OPT_STYLE_WAVYLINE_BOLD = "wavy_line_bold"; // 粗波浪下划线
-export const OPT_STYLE_MARKER = "marker"; // 荧光笔/马克笔涂抹底色高亮效果
-export const OPT_STYLE_GRADIENT_MARKER = "gradient_marker"; // 渐变色荧光笔底色高亮效果
-export const OPT_STYLE_FUZZY = "fuzzy"; // 模糊滤镜效果 (鼠标悬浮时才清晰，常用于听力或背诵场景)
+export const OPT_STYLE_PAPER = "paper"; // 纸感高亮 (柔和底色 + 轻微投影，参考沉浸式翻译 paper 主题)
 export const OPT_STYLE_HIGHLIGHT = "highlight"; // 精致的背景色高亮
 export const OPT_STYLE_BLOCKQUOTE = "blockquote"; // 侧边竖线引用格式 (Markdown blockquote 风格)
+export const OPT_STYLE_SIDE_RAIL = "side_rail"; // 侧栏竖线 (无底色轻引用)
 export const OPT_STYLE_GRADIENT = "gradient"; // 译文字体自带渐变色填充
-export const OPT_STYLE_BLINK = "blink"; // 译文淡入淡出的呼吸灯动效
-export const OPT_STYLE_GLOW = "glow"; // 译文文字外发光效果
 export const OPT_STYLE_COLORFUL = "colorful"; // 多彩斑斓的视觉效果
+export const OPT_STYLE_BOLD = "bold"; // 加粗译文
 export const OPT_STYLE_ALL = [
   OPT_STYLE_NONE,
+  OPT_STYLE_BOLD,
   OPT_STYLE_LINE,
   OPT_STYLE_DOTLINE,
   OPT_STYLE_DASHLINE,
@@ -31,14 +30,11 @@ export const OPT_STYLE_ALL = [
   OPT_STYLE_WAVYLINE_BOLD,
   OPT_STYLE_DASHBOX,
   OPT_STYLE_DASHBOX_BOLD,
-  OPT_STYLE_MARKER,
-  OPT_STYLE_GRADIENT_MARKER,
-  OPT_STYLE_FUZZY,
+  OPT_STYLE_PAPER,
   OPT_STYLE_HIGHLIGHT,
   OPT_STYLE_BLOCKQUOTE,
+  OPT_STYLE_SIDE_RAIL,
   OPT_STYLE_GRADIENT,
-  OPT_STYLE_BLINK,
-  OPT_STYLE_GLOW,
   OPT_STYLE_COLORFUL,
 ];
 
@@ -47,6 +43,6 @@ export const DEFAULT_CUSTOM_STYLES = [
   {
     styleSlug: "custom",
     styleName: "Custom Style",
-    styleCode: `color: #209CEE;`, // 自定义样式的 CSS 原生规则字符串
+    styleCode: `color: #C96A4A;`, // 自定义样式的 CSS 原生规则字符串（默认主色）
   },
 ];

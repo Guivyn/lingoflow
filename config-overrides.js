@@ -52,6 +52,19 @@ const extWebpack = (config, env) => {
   );
 
   // 4. 重新注入为扩展程序定制的配置
+  // 本地开发时让根路径直接打开设置中心，避免 pnpm start 后看到空白页
+  if (!isEnvProduction) {
+    config.plugins.push(
+      new HtmlWebpackPlugin({
+        inject: true,
+        chunks: ["options"],
+        template: paths.appHtml,
+        filename: "index.html",
+        minify,
+      })
+    );
+  }
+
   config.plugins.push(
     // 为设置页定制生成对应的 HTML
     new HtmlWebpackPlugin({

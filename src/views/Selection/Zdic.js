@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import {
   Typography,
   Stack,
-  Divider,
   CircularProgress,
   Box,
 } from "@mui/material";
 import { apiZdic } from "../../apis/zdic";
 import { AudioBtn } from "./AudioBtn";
+import { useI18n } from "../../hooks/I18n";
+import { tokens } from "../../ui/theme/tokens";
 
 /**
  * 汉典释义渲染组件 (用于在查询单个中文字符时提供拼音、部首、五笔、繁体及字义释义)
@@ -16,6 +17,7 @@ import { AudioBtn } from "./AudioBtn";
  * @param {string} props.text - 查询的汉字
  */
 export default function Zdic({ text }) {
+  const i18n = useI18n();
   // 存放汉典接口返回的数据
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -60,12 +62,25 @@ export default function Zdic({ text }) {
   if (!data) {
     return (
       <Stack spacing={1}>
-        <Typography variant="subtitle1" style={{ fontWeight: "bold" }}>
+        <Typography
+          component="div"
+          sx={{
+            fontFamily: tokens.font.display,
+            fontSize: tokens.font.sizeLg,
+            fontWeight: tokens.font.weightSemibold,
+            lineHeight: 1.3,
+            color: "text.primary",
+          }}
+        >
           {text}
         </Typography>
-        <Divider />
-        <Typography variant="body2" color="text.secondary">
-          暂无字典数据或查询失败
+        <Typography
+          sx={{
+            fontSize: tokens.font.sizeCaption,
+            color: "text.secondary",
+          }}
+        >
+          {i18n("zdic_not_found")}
         </Typography>
       </Stack>
     );
@@ -74,14 +89,28 @@ export default function Zdic({ text }) {
   return (
     <Stack spacing={1}>
       {/* 汉字标题 */}
-      <Typography variant="subtitle1" style={{ fontWeight: "bold" }}>
+      <Typography
+        component="div"
+        sx={{
+          fontFamily: tokens.font.display,
+          fontSize: tokens.font.sizeLg,
+          fontWeight: tokens.font.weightSemibold,
+          lineHeight: 1.3,
+          color: "text.primary",
+        }}
+      >
         {data.text}
       </Typography>
-      <Divider />
 
       {/* 部首与五笔信息 */}
       {(data.bushou || data.wubi) && (
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          sx={{
+            fontFamily: tokens.font.mono,
+            fontSize: tokens.font.sizeCaption,
+            color: "text.secondary",
+          }}
+        >
           {data.bushou && `[部首]: ${data.bushou}  `}
           {data.wubi && `[五笔]: ${data.wubi}`}
         </Typography>
@@ -89,7 +118,13 @@ export default function Zdic({ text }) {
 
       {/* 繁体与异体字信息 */}
       {(data.fanti || data.yiti) && (
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          sx={{
+            fontFamily: tokens.font.mono,
+            fontSize: tokens.font.sizeCaption,
+            color: "text.secondary",
+          }}
+        >
           {data.fanti && `[繁体]: ${data.fanti}  `}
           {data.yiti && `[异体]: ${data.yiti}`}
         </Typography>
@@ -113,14 +148,23 @@ export default function Zdic({ text }) {
                 {res.audioUrl && <AudioBtn src={res.audioUrl} />}
               </Stack>
               {/* 字义解释列表 */}
-              <Box component="ol" sx={{ pl: 3, m: 0, mt: 0.5 }}>
+              <Box
+                component="ol"
+                sx={{
+                  pl: `${tokens.spacing.lg}px`,
+                  m: 0,
+                  mt: `${tokens.spacing.xs}px`,
+                }}
+              >
                 {res.definitions &&
                   res.definitions.map((def, i) => (
                     <Typography
                       component="li"
                       key={i}
-                      variant="body2"
-                      sx={{ mb: 0.5 }}
+                      sx={{
+                        mb: `${tokens.spacing.xs}px`,
+                        fontSize: tokens.font.sizeMd,
+                      }}
                     >
                       {def}
                     </Typography>
@@ -135,17 +179,35 @@ export default function Zdic({ text }) {
       {(data.en || data.de || data.fr) && (
         <Stack spacing={0.5} mt={1}>
           {data.en && (
-            <Typography variant="body2" sx={{ wordBreak: "break-word" }}>
+            <Typography
+              sx={{
+                fontSize: tokens.font.sizeCaption,
+                color: "text.secondary",
+                wordBreak: "break-word",
+              }}
+            >
               [英]: {data.en}
             </Typography>
           )}
           {data.de && (
-            <Typography variant="body2" sx={{ wordBreak: "break-word" }}>
+            <Typography
+              sx={{
+                fontSize: tokens.font.sizeCaption,
+                color: "text.secondary",
+                wordBreak: "break-word",
+              }}
+            >
               [德]: {data.de}
             </Typography>
           )}
           {data.fr && (
-            <Typography variant="body2" sx={{ wordBreak: "break-word" }}>
+            <Typography
+              sx={{
+                fontSize: tokens.font.sizeCaption,
+                color: "text.secondary",
+                wordBreak: "break-word",
+              }}
+            >
               [法]: {data.fr}
             </Typography>
           )}

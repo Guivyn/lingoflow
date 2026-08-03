@@ -2,6 +2,7 @@ import { APP_NAME } from "../config";
 import DomManager from "../libs/domManager.js";
 import { createLogoSVG } from "../libs/svg.js";
 import { Menus } from "./Menus.js";
+import { tokens } from "../ui/theme/tokens";
 
 /**
  * YouTube 播放器 UI 层。
@@ -186,7 +187,8 @@ export class YouTubePlayerUi {
       top: "16px",
       left: "50%",
       transform: "translateX(-50%)",
-      background: "rgba(0, 0, 0, 0.5)",
+      background: "rgba(27, 25, 21, 0.78)",
+      border: `1px solid ${tokens.subtitle.panelBorder}`,
       color: "#fff",
       padding: "8px 12px",
       borderRadius: "8px",
@@ -200,7 +202,9 @@ export class YouTubePlayerUi {
       maxWidth: "min(360px, calc(100% - 32px))",
       textAlign: "left",
       boxSizing: "border-box",
-      boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+      boxShadow: tokens.subtitle.shadow,
+      fontFamily: tokens.font.family,
+      backdropFilter: "blur(10px)",
     });
 
     const videoEl = this.#getVideoEl();

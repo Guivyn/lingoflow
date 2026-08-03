@@ -1,5 +1,10 @@
 import ShadowDomManager from "./shadowDomManager";
-import { APP_CONSTS, EVENT_LINGOFLOW_INNER, MSG_POPUP_TOGGLE } from "../config";
+import {
+  APP_CONSTS,
+  EVENT_LINGOFLOW_INNER,
+  getInternalEventSession,
+  MSG_POPUP_TOGGLE,
+} from "../config";
 import Action from "../views/Action";
 
 /**
@@ -31,7 +36,7 @@ export class PopupManager extends ShadowDomManager {
     if (this.isVisible) {
       document.dispatchEvent(
         new CustomEvent(EVENT_LINGOFLOW_INNER, {
-          detail: { action: MSG_POPUP_TOGGLE },
+          detail: { action: MSG_POPUP_TOGGLE, token: getInternalEventSession() },
         })
       );
     } else {

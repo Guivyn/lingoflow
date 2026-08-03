@@ -1,4 +1,8 @@
-import { css, keyframes } from "@emotion/css";
+/**
+ * @file style.js
+ * @description 译文展示样式生成模块。内置样式颜色统一取自设计令牌，并通过 CSS 变量支持明暗模式。
+ */
+
 import {
   OPT_STYLE_NONE,
   OPT_STYLE_LINE,
@@ -6,210 +10,238 @@ import {
   OPT_STYLE_DASHLINE,
   OPT_STYLE_WAVYLINE,
   OPT_STYLE_DASHBOX,
-  OPT_STYLE_FUZZY,
+  OPT_STYLE_PAPER,
   OPT_STYLE_HIGHLIGHT,
   OPT_STYLE_BLOCKQUOTE,
+  OPT_STYLE_SIDE_RAIL,
   OPT_STYLE_GRADIENT,
-  OPT_STYLE_BLINK,
-  OPT_STYLE_GLOW,
   OPT_STYLE_COLORFUL,
-  DEFAULT_COLOR,
-  OPT_STYLE_MARKER,
-  OPT_STYLE_GRADIENT_MARKER,
+  OPT_STYLE_BOLD,
   OPT_STYLE_DASHBOX_BOLD,
   OPT_STYLE_DASHLINE_BOLD,
   OPT_STYLE_WAVYLINE_BOLD,
 } from "../config";
+import { tokens } from "../ui/theme/tokens";
 
-const gradientFlow = keyframes`
-  to {
-    background-position: 200% center;
+const ACCENT = tokens.translation.accent;
+const QUOTE_BG = tokens.translation.quoteBg;
+const HIGHLIGHT_TEXT = tokens.translation.highlightText;
+const PAPER_BG = tokens.translation.accentSoft;
+
+// 译文 wrapper 的基础排版规则：保持内联、保留译文换行、长词安全断行、双向文字隔离。
+const translationBaseStyles = `
+  .lingoflow-wrapper {
+    display: inline;
+    unicode-bidi: isolate;
+    align-self: flex-start;
+    justify-self: start;
+  }
+  .lingoflow-inner {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    unicode-bidi: isolate;
+  }
+  .lingoflow-wrapper.lingoflow-long {
+    display: block;
+    text-align: start;
+  }
+  .lingoflow-wrapper.lingoflow-long > .lingoflow-inner {
+    display: block;
+  }
+  .lingoflow-wrapper.lingoflow-long > .lingoflow-tr-paper {
+    border-radius: 0.3em;
+    padding: 0.28em 0.4em;
+  }
+  .lingoflow-space {
+    margin-inline-end: 0.22em;
   }
 `;
 
-const blink = keyframes`
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
-`;
-
-const glow = keyframes`
-  from {
-    text-shadow: 0 0 10px #fff, 
-    0 0 20px #fff, 
-    0 0 30px #0073e6, 
-    0 0 40px #0073e6;
-  }
-  to {
-    text-shadow: 0 0 20px #fff, 
-    0 0 30px #ff4da6, 
-    0 0 40px #ff4da6, 
-    0 0 50px #ff4da6;
+const reducedMotion = `
+  @media (prefers-reduced-motion: reduce) {
+    .lingoflow-tr-gradient,
+    .lingoflow-tr-colorful {
+      animation: none !important;
+    }
   }
 `;
 
-const genLineStyle = (style, color, thickness = 1) => `
+const gradientFlow = `
+  @keyframes lf-gradient-flow {
+    to {
+      background-position: 200% center;
+    }
+  }
+`;
+
+const genLineStyle = (style, thickness = 1) => `
   text-decoration-line: underline;
   text-decoration-style: ${style};
-  text-decoration-color: ${color};
+  text-decoration-color: var(--lf-tr-color, ${ACCENT});
   text-decoration-thickness: ${thickness}px;
   text-underline-offset: 0.3em;
   -webkit-text-decoration-line: underline;
   -webkit-text-decoration-style: ${style};
-  -webkit-text-decoration-color: ${color};
-  -webkit-text-decoration-thickness: 1px;
+  -webkit-text-decoration-color: var(--lf-tr-color, ${ACCENT});
+  -webkit-text-decoration-thickness: ${thickness}px;
   -webkit-text-underline-offset: 0.3em;
 
-  opacity: 0.8;
-  -webkit-opacity: 0.8;
-  &:hover {
-    opacity: 1;
-    -webkit-opacity: 1;
-  }
+  opacity: 0.82;
+  transition: opacity ${tokens.motion.fast}ms ${tokens.motion.easing};
 `;
 
-const genBuiltinStyles = (color = DEFAULT_COLOR) => ({
+const genBuiltinStyles = () => ({
   // 无样式
   [OPT_STYLE_NONE]: ``,
   // 下划线
-  [OPT_STYLE_LINE]: genLineStyle("solid", color),
+  [OPT_STYLE_LINE]: genLineStyle("solid"),
   // 点状线
-  [OPT_STYLE_DOTLINE]: genLineStyle("dotted", color),
+  [OPT_STYLE_DOTLINE]: genLineStyle("dotted"),
   // 虚线
-  [OPT_STYLE_DASHLINE]: genLineStyle("dashed", color),
+  [OPT_STYLE_DASHLINE]: genLineStyle("dashed"),
   // 虚线加粗
-  [OPT_STYLE_DASHLINE_BOLD]: genLineStyle("dashed", color, 2),
+  [OPT_STYLE_DASHLINE_BOLD]: genLineStyle("dashed", 2),
   // 波浪线
-  [OPT_STYLE_WAVYLINE]: genLineStyle("wavy", color),
+  [OPT_STYLE_WAVYLINE]: genLineStyle("wavy"),
   // 波浪线加粗
-  [OPT_STYLE_WAVYLINE_BOLD]: genLineStyle("wavy", color, 2),
+  [OPT_STYLE_WAVYLINE_BOLD]: genLineStyle("wavy", 2),
   // 虚线框
   [OPT_STYLE_DASHBOX]: `
-    border: 1px dashed ${color};
+    border: 1px dashed var(--lf-tr-color, ${ACCENT});
     display: block;
-    padding: 0.2em 0.3em;
+    padding: 0.15em 0.25em;
     box-sizing: border-box;
   `,
   // 虚线框加粗
   [OPT_STYLE_DASHBOX_BOLD]: `
-    border: 2px dashed ${color};
+    border: 2px dashed var(--lf-tr-color, ${ACCENT});
     display: block;
-    padding: 0.2em 0.3em;
+    padding: 0.15em 0.25em;
     box-sizing: border-box;
   `,
-  // 马克笔
-  [OPT_STYLE_MARKER]: `
-    background: linear-gradient(to top, ${color} 50%, transparent 50%);
-  `,
-  // 渐变马克笔
-  [OPT_STYLE_GRADIENT_MARKER]: `
-    background: linear-gradient(to top, transparent, ${color} 20%, transparent 60%);
-  `,
-  // 模糊
-  [OPT_STYLE_FUZZY]: `
-    filter: blur(0.2em);
-    -webkit-filter: blur(0.2em);
-    &:hover {
-      filter: none;
-      -webkit-filter: none;
-    }
+  // 纸感高亮
+  [OPT_STYLE_PAPER]: `
+    background: var(--lf-tr-soft, ${PAPER_BG});
+    border-radius: 0.22em;
+    box-shadow: 0 1px 0 rgba(42, 39, 35, 0.06),
+      0 3px 10px rgba(42, 39, 35, 0.07);
+    padding: 0.04em 0.12em;
   `,
   // 高亮
   [OPT_STYLE_HIGHLIGHT]: `
-    color: #fff;
-    background-color: ${color};
+    color: var(--lf-tr-highlight-text, ${HIGHLIGHT_TEXT});
+    background-color: var(--lf-tr-color, ${ACCENT});
   `,
   // 引用
   [OPT_STYLE_BLOCKQUOTE]: `
-    opacity: 0.8;
-    -webkit-opacity: 0.8;
+    opacity: 0.82;
     display: block;
-    padding: 0.25em 0.5em;
-    border-left: 0.25em solid ${color};
-    background: rgb(32, 156, 238, 0.2);
-    &:hover {
-      opacity: 1;
-      -webkit-opacity: 1;
-    }
+    padding: 0.2em 0.4em;
+    border-left: 0.25em solid var(--lf-tr-color, ${ACCENT});
+    background: var(--lf-tr-quote-bg, ${QUOTE_BG});
+    transition: opacity ${tokens.motion.fast}ms ${tokens.motion.easing};
+  `,
+  // 侧栏
+  [OPT_STYLE_SIDE_RAIL]: `
+    display: block;
+    border-inline-start: 0.18em solid var(--lf-tr-color, ${ACCENT});
+    padding-inline-start: 0.35em;
   `,
   // 渐变
   [OPT_STYLE_GRADIENT]: `
     background-image: linear-gradient(
       90deg,
-      #3b82f6,
-      #9333ea,
-      #ec4899,
-      #3b82f6
+      #c96a4a,
+      #d9a05b,
+      #b4586b,
+      #c96a4a
     );
     background-size: 200% auto;
     color: transparent;
     -webkit-background-clip: text;
     background-clip: text;
-    animation: ${gradientFlow} 4s linear infinite;
-    & * {
-      background-color: transparent !important;
-    }
-  `,
-  // 闪现
-  [OPT_STYLE_BLINK]: `
-    animation: ${blink} 1s infinite;
-  `,
-  // 发光
-  [OPT_STYLE_GLOW]: `
-    animation: ${glow} 2s ease-in-out infinite alternate;
+    animation: lf-gradient-flow 4s linear infinite;
   `,
   // 多彩
   [OPT_STYLE_COLORFUL]: `
-    color: #333;
-    background: linear-gradient(
-      45deg,
-      LightGreen 20%,
-      LightPink 20% 40%,
-      LightSalmon 40% 60%,
-      LightSeaGreen 60% 80%,
-      LightSkyBlue 80%
+    background-image: linear-gradient(
+      100deg,
+      #e05252 0%,
+      #f0a03d 18%,
+      #d9b83c 36%,
+      #4f9d69 54%,
+      #4d8fcc 72%,
+      #9a6fd0 90%,
+      #e05252 100%
     );
-    &:hover {
-      color: #111;
-    };
+    background-size: 200% auto;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: lf-gradient-flow 6s linear infinite;
+  `,
+  // 加粗
+  [OPT_STYLE_BOLD]: `
+    font-weight: 700;
   `,
 });
 
+// 各样式在 hover 时的增强规则，避免在样式字符串里散写嵌套选择器。
+const HOVER_RULES = {
+  [OPT_STYLE_LINE]: "opacity: 1;",
+  [OPT_STYLE_DOTLINE]: "opacity: 1;",
+  [OPT_STYLE_DASHLINE]: "opacity: 1;",
+  [OPT_STYLE_DASHLINE_BOLD]: "opacity: 1;",
+  [OPT_STYLE_WAVYLINE]: "opacity: 1;",
+  [OPT_STYLE_WAVYLINE_BOLD]: "opacity: 1;",
+  [OPT_STYLE_BLOCKQUOTE]: "opacity: 1;",
+  [OPT_STYLE_COLORFUL]: "filter: saturate(1.2) brightness(1.05);",
+};
+
+const DESCENDANT_RULES = {
+  [OPT_STYLE_GRADIENT]: "background-color: transparent !important;",
+};
+
 /**
- * 根据内置样式和用户自定义样式，生成唯一的 CSS Class 类名映射与全局样式表字符串
- * // REVIEW: 样式生成冗余与潜在冲突风险。
- * // 在 `genTextClass` 中，直接调用了 `@emotion/css` 的 `css` 方法。
- * // 这一步会将生成的样式规则自动同步插入到当前宿主文档的全局 `<style>` 标签中。
- * // 随后，代码又遍历了一遍样式拼装为 `textStyles` 字符串，并在 `translator.js` 中放入 `adoptedStyleSheets` 中挂载。
- * // 这样会在同一页面产生双重样式渲染（一次在顶层文档，一次在 Shadow DOM 内部），产生了内存和渲染性能冗余，
- * // 且如果 `@emotion/css` 被运行在限制了 CSP 或者隔离的 Shadow 环境下，可能会由于无法直接操作全局 document 的头部导致运行期报错。
+ * 根据内置样式和用户自定义样式，生成确定性的 Class 映射与单份样式表字符串。
+ *
+ * 旧的实现会先调用 @emotion/css 把样式注入全局 document，再生成一份文本交给
+ * Shadow DOM 的 adoptedStyleSheets，导致同一页面存在两份样式。现在改为确定性类名，
+ * 只产出文本样式表，由 Renderer 统一注入 Shadow DOM。
+ *
  * @param {Array} customStyles - 用户自定义样式表
  * @returns {Array} [textClass, textStyles] 返回 Class 映射字典及完整样式表字符串
  */
 export const genTextClass = (customStyles = []) => {
   const styles = genBuiltinStyles();
   customStyles.forEach((style) => {
-    styles[style.styleSlug] = style.styleCode;
+    if (style?.styleSlug && typeof style.styleCode === "string") {
+      styles[style.styleSlug] = style.styleCode;
+    }
   });
 
   const textClass = {};
-  let textStyles = "";
+  let textStyles = `${translationBaseStyles}${reducedMotion}${gradientFlow}`;
   Object.entries(styles).forEach(([k, v]) => {
-    textClass[k] = css`
-      ${v}
-    `;
-  });
-  Object.entries(styles).forEach(([k, v]) => {
-    textStyles += `
-      .${textClass[k]} {
-        ${v}
-      }
-    `;
+    const cls = `lingoflow-tr-${String(k).replace(/_/g, "-")}`;
+    textClass[k] = cls;
+    const cssText = String(v || "").trim();
+    if (cssText) {
+      textStyles += `\n.${cls} { ${cssText} }`;
+    }
+    const hover = HOVER_RULES[k];
+    if (hover) {
+      textStyles += `\n.${cls}:hover { ${hover} }`;
+    }
+    const descendant = DESCENDANT_RULES[k];
+    if (descendant) {
+      textStyles += `\n.${cls} * { ${descendant} }`;
+    }
   });
   return [textClass, textStyles];
 };
+
+export const translationKeyframes = `${reducedMotion}${gradientFlow}`;
 
 export const builtinStylesMap = genBuiltinStyles();

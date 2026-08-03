@@ -30,6 +30,7 @@ import {
   PORT_STREAM_FETCH,
   MSG_UPDATE_ICON,
   MSG_SHA256,
+  MSG_RELOAD_SETTING,
 } from "./config";
 import {
   getSettingWithDefault,
@@ -40,9 +41,18 @@ import { fetchHandle, fetchStreamNative } from "./libs/fetch";
 import { tryClearCaches, getHttpCache, putHttpCache } from "./libs/cache";
 import { sendTabMsg, getCurTabId, getCurTab } from "./libs/msg";
 import { saveRule, matchRule } from "./libs/rules";
-import { injectInlineJsBg, injectInternalCss } from "./libs/injector";
+import { injectInlineJs, injectInternalCss } from "./libs/injector";
 import { appLog, logger } from "./libs/log";
 import { sha256 } from "./libs/utils";
+import {
+  isTrustedExtensionSender,
+  isExtensionPageSender,
+  normalizeInjectText,
+  normalizeProxyFetchArgs,
+  normalizeProxyStreamArgs,
+  sanitizeDnrList,
+  validateHashInput,
+} from "./libs/requestGuard";
 
 globalThis.__LINGOFLOW_CONTEXT__ = "background";
 
@@ -338,13 +348,7 @@ async function updateCspRules({ csplist, orilist }) {
 
     // 2. 构造并处理 CSP 移除过滤规则
     if (csplist !== undefined) {
-      let processedCspList = csplist;
-      if (typeof processedCspList === "string") {
-        processedCspList = processedCspList
-          .split(/\n|,/)
-          .map((url) => url.trim())
-          .filter(Boolean);
-      }
+      const processedCspList = sanitizeDnrList(csplist);
 
       // 获取所有属于 CSP 段的旧规则 ID，准备予以清理
       const oldCspRuleIds = oldRules
@@ -374,13 +378,7 @@ async function updateCspRules({ csplist, orilist }) {
 
     // 3. 构造并处理 Origin 请求头重写伪装规则
     if (orilist !== undefined) {
-      let processedOriList = orilist;
-      if (typeof processedOriList === "string") {
-        processedOriList = processedOriList
-          .split(/\n|,/)
-          .map((url) => url.trim())
-          .filter(Boolean);
-      }
+      const processedOriList = sanitizeDnrList(orilist);
 
       // 获取所有属于 Origin 修改段的旧规则 ID，准备清理
       const oldOriRuleIds = oldRules
@@ -507,7 +505,7 @@ const injectToCurrentTab = async (func, args) => {
 
 // 后台消息指令与对应处理器映射表
 const messageHandlers = {
-  [MSG_FETCH]: (args) => fetchHandle(args), // 跨域请求代理
+  [MSG_FETCH]: (args) => fetchHandle(normalizeProxyFetchArgs(args)), // 跨域请求代理
   [MSG_GET_HTTPCACHE]: (args) => getHttpCache(args), // 读取翻译 HTTP 缓存
   [MSG_PUT_HTTPCACHE]: (args) => putHttpCache(args), // 存入翻译 HTTP 缓存
   [MSG_TRANS_GETRULE]: async () => {
@@ -524,27 +522,86 @@ const messageHandlers = {
       return { error: `get rule failed: ${err?.message || err}` };
     }
   },
-  [MSG_SHA256]: ({ text = "", salt = "" } = {}) => sha256(text, salt), // 代算缓存签名
+  [MSG_SHA256]: ({ text = "", salt = "" } = {}) => {
+    validateHashInput(text, salt); // 代算缓存签名
+    return sha256(text, salt);
+  },
   [MSG_OPEN_OPTIONS]: () => browser.runtime.openOptionsPage(), // 打开设置选项页
   [MSG_SAVE_RULE]: (args) => saveRule(args), // 写入/保存规则
-  [MSG_INJECT_JS]: (args) => injectToCurrentTab(injectInlineJsBg, args), // 注入 JS 代码到前台
-  [MSG_INJECT_CSS]: (args) => injectToCurrentTab(injectInternalCss, args), // 注入 CSS 样式到前台
+  [MSG_INJECT_JS]: (args) =>
+    injectToCurrentTab(
+      injectInlineJs,
+      normalizeInjectText(args, "MSG_INJECT_JS")
+    ), // 注入 JS 代码到前台（受控输入）
+  [MSG_INJECT_CSS]: (args) =>
+    injectToCurrentTab(
+      injectInternalCss,
+      normalizeInjectText(args, "MSG_INJECT_CSS")
+    ), // 注入 CSS 样式到前台（受控输入）
   [MSG_UPDATE_CSP]: (args) => updateCspRules(args), // 触发 CSP 重写规则变更
   [MSG_CONTEXT_MENUS]: (args) => addContextMenus(args), // 切换右键菜单样式
   [MSG_COMMAND_SHORTCUTS]: () => browser.commands.getAll(), // 获取 manifest 注册的所有快捷键
   [MSG_SET_LOGLEVEL]: (args) => logger.setLevel(args), // 修改运行时的日志记录等级
   [MSG_CLEAR_CACHES]: () => tryClearCaches(), // 清空翻译缓存
   [MSG_OPEN_SEPARATE_WINDOW]: () => openSeparateWindowWithSavedBounds(), // 打开独立翻译小窗口
+  [MSG_RELOAD_SETTING]: () => broadcastReloadSetting(), // 通知前台内容脚本重读配置
   [MSG_UPDATE_ICON]: (args, sender) => updateIcon(args, sender?.tab?.id), // 变更页面的插件高亮图标
 };
+
+// 只允许扩展自身页面（Options/Popup）触发的特权动作，内容脚本无法使用。
+const PAGE_ONLY_ACTIONS = new Set([
+  MSG_SAVE_RULE,
+  MSG_INJECT_JS,
+  MSG_UPDATE_CSP,
+  MSG_CONTEXT_MENUS,
+  MSG_COMMAND_SHORTCUTS,
+  MSG_SET_LOGLEVEL,
+  MSG_CLEAR_CACHES,
+  MSG_RELOAD_SETTING,
+]);
+
+const getExtensionOrigin = () => {
+  try {
+    return browser.runtime.getURL("");
+  } catch (err) {
+    return "";
+  }
+};
+
+/**
+ * 向所有已注入内容脚本的标签页广播“重读设置”指令。
+ */
+async function broadcastReloadSetting() {
+  try {
+    const tabs = await browser.tabs.query({});
+    await Promise.allSettled(
+      tabs.map((tab) =>
+        browser.tabs
+          .sendMessage(tab.id, { action: MSG_RELOAD_SETTING, args: {} })
+          .catch(() => {})
+      )
+    );
+  } catch (err) {
+    appLog("broadcast reload setting", err);
+  }
+}
 
 /**
  * 注册全局统一的 runtime.onMessage 消息通道监听器。
  */
 browser.runtime.onMessage.addListener(async ({ action, args }, sender) => {
+  if (!isTrustedExtensionSender(sender, browser?.runtime?.id)) {
+    throw new Error("Untrusted message sender");
+  }
   const handler = messageHandlers[action];
   if (!handler) {
     throw new Error(`Message action is unavailable: ${action}`);
+  }
+  if (
+    PAGE_ONLY_ACTIONS.has(action) &&
+    !isExtensionPageSender(sender, browser?.runtime?.id, getExtensionOrigin())
+  ) {
+    throw new Error(`Action ${action} is only allowed from extension pages`);
   }
 
   // 执行对应的处理器并回传结果给发送方 (Content Script / Popup)
@@ -621,7 +678,7 @@ browser?.contextMenus?.onClicked?.addListener?.(
  * @param {Object} args 流式请求参数 (包含接口 input, fetch 配置 init 等)
  */
 async function handleStreamFetch(port, args) {
-  const { input, init, opts } = args;
+  const { input, init, opts } = normalizeProxyStreamArgs(args);
   const controller = new AbortController();
   let disconnected = false;
   const handleDisconnect = () => {
@@ -661,7 +718,10 @@ async function handleStreamFetch(port, args) {
  * 筛选流式专属端口名 PORT_STREAM_FETCH，监听 start 开始指令并启动 handleStreamFetch 异步流处理程序。
  */
 browser.runtime.onConnect.addListener((port) => {
-  if (port.name === PORT_STREAM_FETCH) {
+  if (
+    port.name === PORT_STREAM_FETCH &&
+    isTrustedExtensionSender(port.sender, browser?.runtime?.id)
+  ) {
     port.onMessage.addListener((message) => {
       if (message.action === "start") {
         handleStreamFetch(port, message.args);

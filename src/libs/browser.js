@@ -25,30 +25,28 @@ export const browser = _browser();
  * 获取当前脚本在浏览器扩展中的具体执行环境上下文
  * @returns {string} 返回 "background" | "content" | "options" | "popup" | "undefined"
  *
- * REVIEW:
- * 在此处的 `getContext` 中，目前完全依赖 `globalThis.__LINGOFLOW_CONTEXT__` 全局变量来进行判断。
- * 如果该变量在某些入口点 (如 Options, Popup React 根节点) 忘记预先挂载，则默认会返回 "undefined"，
- * 导致 isOptions() 或 isBg() 的行为产生非预期判定。
- * 建议保留以前被注释掉的 fallback 判定逻辑（例如校验 window.location 协议及 path ），以提升容错率。
  */
 export const getContext = () => {
   const context = globalThis.__LINGOFLOW_CONTEXT__;
   if (context) return context;
 
-  // if (typeof window === "undefined" || typeof document === "undefined") {
-  //   return "background";
-  // }
-
-  // const extensionOrigin = browser.runtime.getURL("");
-  // if (!window.location.href.startsWith(extensionOrigin)) {
-  //   return "content";
-  // }
-
-  // const pathname = window.location.pathname;
-  // if (pathname.includes("popup")) return "popup";
-  // if (pathname.includes("options")) return "options";
-  // if (pathname.includes("sidepanel")) return "sidepanel";
-  // if (pathname.includes("background")) return "background";
+  try {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return "background";
+    }
+    const href = window.location.href || "";
+    if (href.includes("/popup.html")) return "popup";
+    if (href.includes("/options.html")) return "options";
+    const extensionOrigin = browser?.runtime?.getURL
+      ? browser.runtime.getURL("")
+      : "";
+    if (extensionOrigin && !href.startsWith(extensionOrigin)) {
+      return "content";
+    }
+    if (href.includes("/background")) return "background";
+  } catch (err) {
+    // 解析失败时保留 undefined，由调用方兜底。
+  }
 
   return "undefined";
 };

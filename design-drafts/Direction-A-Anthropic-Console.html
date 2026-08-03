@@ -1,0 +1,1166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>方向 A · Anthropic 式编辑台 | LingoFlow</title>
+  <!--
+    假设 / Assumptions
+    1. 方向 A 的第二次迭代：暖骨白底、衬线字标、陶土色强调，整体克制安静。
+    2. Logo 去掉黑色连接线，只保留蓝/红两个圆角色块。
+    3. 文案仍为占位示例；「明暗切换」可交互，「恢复默认 / 复制设置」仅示意。
+  -->
+  <script>
+    if (location.search.indexOf("dark") > -1) {
+      document.documentElement.classList.add("dark");
+    }
+  </script>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --surface: #fbfaf6;
+      --surface-2: #f0ede5;
+      --field-bg: #ffffff;
+      --ink: #1c1917;
+      --ink-2: #57534e;
+      --ink-3: #8d877c;
+      --line: #e3ded4;
+      --line-strong: #cfc8ba;
+      --accent: #c85b3f;
+      --accent-strong: #a8482f;
+      --accent-soft: #f7e9e2;
+      --blue: #2f5bd9;
+      --blue-soft: #edf0fa;
+      --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.05);
+      --shadow-md: 0 14px 34px rgba(28, 25, 23, 0.09);
+      --font: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI",
+        "Microsoft YaHei", sans-serif;
+      --serif: Georgia, "Times New Roman", "SimSun", serif;
+      --mono: "Cascadia Mono", Consolas, "Microsoft YaHei UI", monospace;
+    }
+
+    html.dark {
+      --bg: #171512;
+      --surface: #201d18;
+      --surface-2: #26231e;
+      --field-bg: #242019;
+      --ink: #ede8df;
+      --ink-2: #a8a296;
+      --ink-3: #6e685d;
+      --line: #332f28;
+      --line-strong: #4a443a;
+      --accent: #d97757;
+      --accent-strong: #e08a6c;
+      --accent-soft: #3a2921;
+      --blue: #6f8fe6;
+      --blue-soft: #212b45;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+      --shadow-md: 0 16px 38px rgba(0, 0, 0, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---------- Motion (quiet) ---------- */
+    @keyframes settle {
+      from {
+        opacity: 0;
+        transform: translateY(7px);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .page-head,
+    .shortcuts,
+    .section,
+    .preview-rail .frame {
+      animation: settle 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    }
+
+    .shortcuts {
+      animation-delay: 0.04s;
+    }
+
+    .section:nth-of-type(1) {
+      animation-delay: 0.08s;
+    }
+
+    .section:nth-of-type(2) {
+      animation-delay: 0.12s;
+    }
+
+    .section:nth-of-type(3) {
+      animation-delay: 0.16s;
+    }
+
+    .preview-rail .frame:nth-of-type(1) {
+      animation-delay: 0.12s;
+    }
+
+    .preview-rail .frame:nth-of-type(2) {
+      animation-delay: 0.18s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.001s !important;
+        animation-delay: 0s !important;
+      }
+    }
+
+    /* ---------- Top bar ---------- */
+    .topbar {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand .mark {
+      width: 22px;
+      height: 22px;
+    }
+
+    .brand-name {
+      font-family: var(--serif);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .brand-sub {
+      color: var(--ink-3);
+      font-size: 12px;
+      padding-left: 12px;
+      border-left: 1px solid var(--line);
+      letter-spacing: 0.05em;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--ink-2);
+      font-size: 12.5px;
+    }
+
+    .status .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .mode-switch {
+      display: inline-flex;
+      gap: 2px;
+    }
+
+    .mode-switch button {
+      border: 0;
+      background: transparent;
+      padding: 5px 9px 4px;
+      color: var(--ink-3);
+      font-size: 12.5px;
+      border-bottom: 1.5px solid transparent;
+    }
+
+    .mode-switch button.active {
+      color: var(--ink);
+      font-weight: 600;
+      border-bottom-color: var(--accent);
+    }
+
+    /* ---------- Shell ---------- */
+    .shell {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .sidebar {
+      width: 232px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--line);
+      padding: 20px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .nav-group-label {
+      padding: 6px 10px 8px;
+      color: var(--ink-3);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      font-family: var(--mono);
+    }
+
+    .nav-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 5px;
+      color: var(--ink-2);
+      font-size: 13px;
+      transition: background 0.16s ease, color 0.16s ease;
+    }
+
+    .nav-item:hover {
+      background: var(--surface-2);
+      color: var(--ink);
+    }
+
+    .nav-item.active {
+      background: var(--surface-2);
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .nav-item.active::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      border-radius: 1px;
+      background: var(--accent);
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 14px 10px 4px;
+      border-top: 1px solid var(--line);
+      color: var(--ink-3);
+      font-size: 11.5px;
+      line-height: 2;
+    }
+
+    .sidebar-footer kbd {
+      color: var(--ink-2);
+    }
+
+    /* ---------- Content ---------- */
+    .content {
+      flex: 1;
+      min-width: 0;
+      padding: 30px 34px 48px;
+    }
+
+    .page-head {
+      margin-bottom: 20px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .page-kicker {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--ink-3);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+    }
+
+    .lang-pair {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .lang-pair .swatch {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+    }
+
+    .lang-pair .swatch.blue {
+      background: var(--blue);
+    }
+
+    .lang-pair .swatch.red {
+      background: var(--accent);
+    }
+
+    .page-head h1 {
+      margin: 0 0 5px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .page-head p {
+      margin: 0;
+      color: var(--ink-2);
+      font-size: 13px;
+    }
+
+    .page-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .text-btn {
+      height: 32px;
+      padding: 0 13px;
+      border: 1px solid var(--line-strong);
+      border-radius: 5px;
+      background: transparent;
+      color: var(--ink-2);
+      font-size: 12.5px;
+      font-weight: 550;
+      transition: border-color 0.16s ease, color 0.16s ease,
+        background 0.16s ease;
+    }
+
+    .text-btn:hover {
+      border-color: var(--ink-2);
+      color: var(--ink);
+      background: var(--surface-2);
+    }
+
+    .text-btn.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .text-btn.primary:hover {
+      background: var(--accent-strong);
+      border-color: var(--accent-strong);
+    }
+
+    .shortcuts {
+      display: flex;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+
+    .shortcut {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 16px 4px 0;
+      margin-right: 16px;
+      color: var(--ink-2);
+      font-size: 12px;
+      border-right: 1px solid var(--line);
+    }
+
+    .shortcut:last-child {
+      border-right: 0;
+      margin-right: 0;
+    }
+
+    kbd {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      padding: 0 6px;
+      border: 1px solid var(--line-strong);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--ink-2);
+      font-family: var(--mono);
+      font-size: 10.5px;
+      white-space: nowrap;
+    }
+
+    .shortcut kbd {
+      color: var(--ink);
+    }
+
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 20px 24px 22px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .section:hover {
+      border-color: var(--line-strong);
+      box-shadow: var(--shadow-md);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 2px;
+    }
+
+    .section-head::before {
+      content: "";
+      width: 22px;
+      height: 2px;
+      background: var(--accent);
+      align-self: center;
+      flex-shrink: 0;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+    }
+
+    .section-extra {
+      margin-left: auto;
+      color: var(--ink-3);
+      font-size: 12px;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 26px;
+      padding: 15px 2px;
+      border-bottom: 1px solid var(--line);
+      transition: background 0.16s ease;
+    }
+
+    .setting-row:hover {
+      background: var(--surface-2);
+      border-radius: 5px;
+      padding-left: 8px;
+      padding-right: 8px;
+      margin: 0 -6px;
+    }
+
+    .setting-row:last-child {
+      border-bottom: 0;
+    }
+
+    .setting-label .title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .setting-label .desc {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--ink-2);
+    }
+
+    .setting-control {
+      flex: 0 0 auto;
+      width: 320px;
+      max-width: 50%;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 15px;
+      margin-top: 18px;
+    }
+
+    .field {
+      min-width: 0;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 550;
+    }
+
+    .input,
+    .select {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--line-strong);
+      border-radius: 5px;
+      background: var(--field-bg);
+      color: var(--ink);
+      padding: 0 10px;
+      font: inherit;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .input:focus,
+    .select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(200, 91, 63, 0.16);
+    }
+
+    .textarea {
+      min-height: 108px;
+      resize: vertical;
+      padding: 9px 10px;
+      line-height: 1.6;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .select {
+      appearance: none;
+      background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+        linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+      background-position: calc(100% - 15px) 15px, calc(100% - 10px) 15px;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+      padding-right: 28px;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-wrap .unit {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--ink-3);
+      font-size: 11px;
+      font-family: var(--mono);
+      pointer-events: none;
+    }
+
+    .input-wrap .input {
+      padding-right: 52px;
+    }
+
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      border-radius: 999px;
+      background: var(--line-strong);
+      flex-shrink: 0;
+      transition: background 0.16s ease;
+    }
+
+    .switch.on {
+      background: var(--accent);
+    }
+
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      transition: left 0.16s ease;
+      box-shadow: 0 1px 2px rgba(28, 25, 23, 0.2);
+    }
+
+    .switch.on::after {
+      left: 19px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      height: 32px;
+      padding: 0 14px;
+      border-radius: 5px;
+      border: 1px solid var(--line-strong);
+      background: transparent;
+      color: var(--ink);
+      font-size: 12.5px;
+      font-weight: 550;
+      transition: border-color 0.16s ease, background 0.16s ease;
+    }
+
+    .btn:hover {
+      background: var(--surface-2);
+      border-color: var(--ink-2);
+    }
+
+    .btn.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn.primary:hover {
+      background: var(--accent-strong);
+    }
+
+    /* ---------- Preview rail ---------- */
+    .preview-rail {
+      width: 316px;
+      flex-shrink: 0;
+      border-left: 1px solid var(--line);
+      padding: 24px 18px 28px;
+      overflow: hidden;
+    }
+
+    .rail-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--ink-3);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      font-family: var(--mono);
+      margin-bottom: 14px;
+    }
+
+    .rail-label::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+
+    .frame {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
+
+    .popup-frame {
+      width: 280px;
+      margin: 0 auto 18px;
+    }
+
+    .popup-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 10px 8px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .popup-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--serif);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .popup-brand .mark {
+      width: 16px;
+      height: 16px;
+    }
+
+    .popup-icons {
+      display: flex;
+      gap: 2px;
+    }
+
+    .popup-icons span {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      color: var(--ink-2);
+      font-size: 13px;
+      transition: background 0.16s ease;
+    }
+
+    .popup-icons span:hover {
+      background: var(--surface-2);
+    }
+
+    .popup-body {
+      padding: 12px 12px 12px;
+    }
+
+    .popup-switches {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+    }
+
+    .popup-switch-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 11.5px;
+      color: var(--ink-2);
+    }
+
+    .popup-switch-item .switch {
+      width: 30px;
+      height: 18px;
+      transform: scale(0.82);
+      transform-origin: right center;
+    }
+
+    .popup-switch-item .switch::after {
+      width: 12px;
+      height: 12px;
+      top: 3px;
+    }
+
+    .popup-switch-item .switch.on::after {
+      left: 15px;
+    }
+
+    .popup-selects {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .popup-selects .select {
+      height: 32px;
+      font-size: 12px;
+    }
+
+    .popup-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+
+    .popup-actions button {
+      border: 0;
+      background: transparent;
+      color: var(--accent-strong);
+      font-size: 11.5px;
+      font-weight: 550;
+      padding: 0;
+    }
+
+    .bubble-frame {
+      width: 280px;
+      margin: 0 auto;
+      border-radius: 6px;
+    }
+
+    .bubble-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 14px 0;
+      color: var(--ink-3);
+      font-size: 10.5px;
+      letter-spacing: 0.1em;
+      font-family: var(--mono);
+    }
+
+    .bubble-text {
+      padding: 8px 14px 12px;
+    }
+
+    .bubble-text .src {
+      color: var(--ink-2);
+      font-family: var(--serif);
+      font-size: 13.5px;
+    }
+
+    .bubble-text .tgt {
+      margin-top: 7px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 600;
+      padding: 9px 11px;
+      border-left: 2px solid var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .bubble-foot {
+      display: flex;
+      gap: 12px;
+      padding: 9px 14px 11px;
+      border-top: 1px solid var(--line);
+      color: var(--ink-3);
+      font-size: 11px;
+    }
+
+    @media (max-width: 1180px) {
+      .preview-rail {
+        display: none;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 48 48" aria-hidden="true">
+          <rect x="6" y="10" width="15" height="26" rx="7.5" fill="#2f5bd9"/>
+          <rect x="25" y="16" width="15" height="16" rx="7.5" fill="#d9482c"/>
+        </svg>
+        <span class="brand-name">LingoFlow</span>
+        <span class="brand-sub">灵语 · 双语对照</span>
+      </div>
+      <div class="top-actions">
+        <span class="status"><span class="dot"></span>8 引擎在线 · 流式可用</span>
+        <span class="mode-switch" id="modeSwitch" title="切换明暗">
+          <button type="button" data-mode="light" class="active">浅色</button>
+          <button type="button" data-mode="dark">深色</button>
+        </span>
+      </div>
+    </header>
+
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="nav-group-label">设置</div>
+        <a class="nav-item" href="#">引擎服务</a>
+        <a class="nav-item active" href="#">基础设置</a>
+        <a class="nav-item" href="#">翻译规则</a>
+        <a class="nav-item" href="#">接口配置</a>
+        <a class="nav-item" href="#">译文样式</a>
+        <a class="nav-item" href="#">划词翻译</a>
+        <a class="nav-item" href="#">悬停翻译</a>
+        <a class="nav-item" href="#">字幕翻译</a>
+        <div class="sidebar-footer">
+          <kbd>Alt + K</kbd> 设置<br>
+          <kbd>Alt + Q</kbd> 整页翻译<br>
+          <kbd>Alt + S</kbd> 划词面板
+        </div>
+      </aside>
+
+      <main class="content">
+        <div class="page-head">
+          <div>
+            <div class="page-kicker">
+              <span class="lang-pair"><span class="swatch blue"></span>EN</span>
+              <span>⇄</span>
+              <span class="lang-pair"><span class="swatch red"></span>中</span>
+              <span>· OPTIONS</span>
+            </div>
+            <h1>基础设置</h1>
+            <p>语言、扫描参数与站点级偏好，改动即时保存到本地。</p>
+          </div>
+          <div class="page-actions">
+            <button class="text-btn">复制设置</button>
+            <button class="text-btn primary">恢复默认</button>
+          </div>
+        </div>
+
+        <div class="shortcuts">
+          <span class="shortcut"><kbd>Alt + Q</kbd>整页翻译</span>
+          <span class="shortcut"><kbd>Alt + S</kbd>划词面板</span>
+          <span class="shortcut"><kbd>Alt + K</kbd>设置中心</span>
+          <span class="shortcut"><kbd>Alt + C</kbd>切换译文样式</span>
+        </div>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>语言</h2>
+            <span class="section-extra">界面语言与整页翻译跳过语言</span>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">
+              <div class="title">界面语言</div>
+              <div class="desc">设置中心与弹窗使用的显示语言</div>
+            </div>
+            <div class="setting-control">
+              <select class="select">
+                <option>中文（简体）</option>
+                <option>English</option>
+                <option>日本語</option>
+              </select>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">
+              <div class="title">跳过语言</div>
+              <div class="desc">检测到这些语言的页面不执行整页翻译</div>
+            </div>
+            <div class="setting-control">
+              <select class="select"><option>中文</option><option>日本語</option></select>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>基础参数</h2>
+            <span class="section-extra">扫描、缓存与触发方式</span>
+          </div>
+          <div class="grid">
+            <div class="field">
+              <label>页面预初始化</label>
+              <select class="select"><option>启用</option><option>停用</option></select>
+            </div>
+            <div class="field">
+              <label>悬浮球点击行为</label>
+              <select class="select"><option>显示菜单</option><option>立即翻译</option></select>
+            </div>
+            <div class="field">
+              <label>最短翻译长度</label>
+              <div class="input-wrap">
+                <input class="input" value="1" inputmode="numeric">
+                <span class="unit">字符</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>最长翻译长度</label>
+              <div class="input-wrap">
+                <input class="input" value="100000" inputmode="numeric">
+                <span class="unit">字符</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>换行符数量</label>
+              <div class="input-wrap">
+                <input class="input" value="10" inputmode="numeric">
+                <span class="unit">分句</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>扫描轮询间隔</label>
+              <div class="input-wrap">
+                <input class="input" value="100" inputmode="numeric">
+                <span class="unit">毫秒</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>请求超时</label>
+              <div class="input-wrap">
+                <input class="input" value="30" inputmode="numeric">
+                <span class="unit">秒</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>触屏手势</label>
+              <select class="select"><option>点按</option><option>长按</option><option>滑动</option></select>
+            </div>
+            <div class="field">
+              <label>右键菜单</label>
+              <select class="select"><option>简洁菜单</option><option>二级菜单</option><option>隐藏</option></select>
+            </div>
+            <div class="field">
+              <label>语言检测</label>
+              <select class="select"><option>Chrome 内置</option><option>FastText</option><option>停用</option></select>
+            </div>
+            <div class="field">
+              <label>日志级别</label>
+              <select class="select"><option>错误</option><option>信息</option><option>调试</option></select>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>网站与缓存</h2>
+            <span class="section-extra">黑名单、例外与缓存策略</span>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">
+              <div class="title">全局隐藏悬浮球</div>
+              <div class="desc">在所有页面隐藏右侧的查词悬浮球</div>
+            </div>
+            <div class="setting-control">
+              <div class="switch-row">
+                <span class="unit">显示</span>
+                <span class="switch"></span>
+              </div>
+            </div>
+          </div>
+          <div class="setting-row" style="align-items: flex-start;">
+            <div class="setting-label">
+              <div class="title">悬浮球例外列表</div>
+              <div class="desc">正则表达式，每行一条</div>
+            </div>
+            <div class="setting-control">
+              <textarea class="input textarea" placeholder="https://example.com/.*"></textarea>
+            </div>
+          </div>
+          <div class="setting-row" style="align-items: flex-start;">
+            <div class="setting-label">
+              <div class="title">翻译黑名单</div>
+              <div class="desc">匹配的页面不执行整页翻译</div>
+            </div>
+            <div class="setting-control">
+              <textarea class="input textarea" placeholder="^(about|chrome|edge):"></textarea>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="preview-rail">
+        <div class="rail-label">系统表面预览</div>
+
+        <div class="frame popup-frame">
+          <div class="popup-top">
+            <span class="popup-brand">
+              <svg class="mark" viewBox="0 0 48 48" aria-hidden="true">
+                <rect x="6" y="10" width="15" height="26" rx="7.5" fill="#2f5bd9"/>
+                <rect x="25" y="16" width="15" height="16" rx="7.5" fill="#d9482c"/>
+              </svg>
+              LingoFlow v0.1.0
+            </span>
+            <span class="popup-icons"><span>⇄</span><span>⤢</span></span>
+          </div>
+          <div class="popup-body">
+            <div class="popup-switches">
+              <div class="popup-switch-item"><span>网页翻译</span><span class="switch on"></span></div>
+              <div class="popup-switch-item"><span>自动扫描</span><span class="switch on"></span></div>
+              <div class="popup-switch-item"><span>全部节点</span><span class="switch"></span></div>
+              <div class="popup-switch-item"><span>保留排版</span><span class="switch on"></span></div>
+              <div class="popup-switch-item"><span>仅译文</span><span class="switch"></span></div>
+              <div class="popup-switch-item"><span>划词翻译</span><span class="switch on"></span></div>
+              <div class="popup-switch-item"><span>悬停翻译</span><span class="switch"></span></div>
+              <div class="popup-switch-item"><span>纯文本</span><span class="switch"></span></div>
+            </div>
+            <div class="popup-selects">
+              <select class="select"><option>源语言 · 自动</option></select>
+              <select class="select"><option>目标语言 · 中文</option></select>
+              <select class="select"><option>引擎 · 智能路由</option></select>
+            </div>
+            <div class="popup-actions">
+              <button>保存规则</button>
+              <button>添加黑名单</button>
+              <button>清理缓存</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="frame bubble-frame">
+          <div class="bubble-head">划词气泡 · 双语对照</div>
+          <div class="bubble-text">
+            <div class="src">Hello, world!</div>
+            <div class="tgt">你好，世界！</div>
+          </div>
+          <div class="bubble-foot">
+            <span>复制</span>
+            <span>发音</span>
+            <span>词典</span>
+            <span>更多</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var modeSwitch = document.getElementById("modeSwitch");
+      var buttons = modeSwitch ? modeSwitch.querySelectorAll("button") : [];
+
+      function setMode(mode) {
+        root.classList.toggle("dark", mode === "dark");
+        buttons.forEach(function (btn) {
+          btn.classList.toggle("active", btn.dataset.mode === mode);
+        });
+      }
+
+      buttons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          setMode(btn.dataset.mode);
+        });
+      });
+
+      var summary = {
+        overflow: document.documentElement.scrollWidth <= window.innerWidth,
+        title: document.title,
+        main: !!document.querySelector(".content .page-head h1"),
+        popup: !!document.querySelector(".popup-frame"),
+        bubble: !!document.querySelector(".bubble-frame"),
+        navCount: document.querySelectorAll(".nav-item").length,
+        darkToggle: !!modeSwitch,
+      };
+      var el = document.createElement("div");
+      el.id = "__check";
+      el.style.display = "none";
+      el.textContent = JSON.stringify(summary);
+      document.body.appendChild(el);
+    })();
+  </script>
+</body>
+</html>

@@ -8,7 +8,6 @@ const LINGOFLOW_CLASS = {
   space: `${APP_LCNAME}-space`,
   retry: `${APP_LCNAME}-retry`,
   backup: `${APP_LCNAME}-backup`,
-  hoverBubble: `${APP_LCNAME}-hover-bubble`,
 };
 
 export const DomKit = {
@@ -138,6 +137,7 @@ export const DomKit = {
     /^(?:[a-zA-Z]:\\|\/|\\)(?:[\w\-. ]+\/|[\w\-. ]+\\)*[\w\-. ]*\.?[\w\-. ]*$/,
     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
     /^[$\u00A2-\u00A5\u20A0-\u20CF]?\s?-?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?\s?(?:px|%|em|rem|pt|vw|vh|deg|s|ms)?$/,
+    /^[$\u00A2-\u00A5\u20A0-\u20CF]?\s?-?\d+(?:[.,]\d+)?\s?[kKmMgGtT](?:\+)?$/,
     /^v?\d+(\.\d+){1,3}$/,
     /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/,
     /^({{[^}]+}}|\${[^}]+}|__\w+__|%\w+)$/,
@@ -147,9 +147,14 @@ export const DomKit = {
     /^\[\d+\]$/,
     /^\d{1,2}:\d{2}(:\d{2})?$/,
     /^[^\s\\/:]+?\.[a-zA-Z0-9]{2,5}$/,
+    /^[a-zA-Z0-9][\w.-]*\/[\w.-]+$/,
+    /^[a-zA-Z][\w .-]*\s\d+(?:[.,]\d+)?\s?[kKmMgGtT]?$/,
+    /^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)+$/,
+    /^[a-zA-Z][a-zA-Z0-9]*\+{1,2}$/,
+    /^[a-zA-Z][a-zA-Z0-9]*#$/,
   ],
 
-  LINGOFLOW_IGNORE_SELECTOR: `.${LINGOFLOW_CLASS.warpper}, .${LINGOFLOW_CLASS.hoverBubble}, .lingoflow-caption-container, .lingoflow-subtitle-controls, #lingoflow-youtube-subtitle-list-container,
+  LINGOFLOW_IGNORE_SELECTOR: `.${LINGOFLOW_CLASS.warpper}, .lingoflow-layout-host, .lingoflow-caption-container, .lingoflow-subtitle-controls, #lingoflow-youtube-subtitle-list-container,
   #${APP_CONSTS.fabID}, .${APP_CONSTS.fabID}_warpper,
   #${APP_CONSTS.boxID}, .${APP_CONSTS.boxID}_warpper,
   #${APP_CONSTS.popupID}, .${APP_CONSTS.popupID}_warpper`,
@@ -158,7 +163,12 @@ export const DomKit = {
   data, datalist, embed, head, iframe, input, noscript, map,
   object, option, param, picture, progress,
   select, script, style, svg, track, textarea, template,
-  video, wbr, .notranslate, [contenteditable='true'], [translate='no']`,
+  video, wbr, .notranslate, [contenteditable='true'], [translate='no'],
+  .tag, .tags, .post-tag, .s-tag, .badge, .badges, .chip, .chips,
+  [class*="badge"], [class*="chip"],
+  .breadcrumb, .breadcrumbs, [class*="breadcrumb"],
+  [role="tab"], [role="button"], .tabs, [class*="tabs"],
+  a[href*="/tags/"], a[href*="tagged"]`,
 
   isElement(el) {
     return el instanceof Element;

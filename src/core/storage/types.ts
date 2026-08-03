@@ -38,8 +38,8 @@ export type Setting = {
   shortcuts?: Record<string, unknown>;
   tranboxSetting?: Record<string, unknown>;
   subtitleSetting?: Record<string, unknown>;
-  mouseHoverSetting?: Record<string, unknown>;
   customStyles?: unknown[];
+  autoTransEnglish?: boolean;
   skipLangs?: string[];
   blacklist?: string;
   csplist?: string;

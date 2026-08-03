@@ -3,8 +3,9 @@ import { escapeHTML } from "../../libs/html";
 import { trustedTypesHelper } from "../../libs/trustedTypes";
 import { appLog } from "../../libs/log";
 import { genTextClass } from "../../libs/style";
-import { createLoadingSVG, createRetrySVG } from "../../libs/svg";
+import { createRetrySVG } from "../../libs/svg";
 import { DomKit } from "../dom/DomKit";
+import { tokens } from "../../ui/theme/tokens";
 
 export class TranslationRenderer {
   #rule;
@@ -56,8 +57,7 @@ export class TranslationRenderer {
     let wrapCounter = 0;
     const placeholderMap = new Map();
     const { startDelimiter, endDelimiter } = this.#getPlaceholderConfig();
-    const { values: termValues, regex: combinedTermsRegex } =
-      this.#getTerms();
+    const { values: termValues, regex: combinedTermsRegex } = this.#getTerms();
 
     const pushReplace = (html) => {
       replaceCounter++;
@@ -247,31 +247,51 @@ export class TranslationRenderer {
     textExtStyle,
     transOrder = "original-first",
     hideOrigin = false,
-    newlineLength = 80,
+    newlineLength = 20,
+    forceNewLine = false,
   }) {
     const wrapper = document.createElement(this.#translationTagName);
     wrapper.className = `${DomKit.LINGOFLOW_CLASS.warpper} notranslate`;
+    const isDark = this.#isDarkMode();
+    wrapper.style.setProperty(
+      "--lf-tr-color",
+      isDark ? tokens.translation.darkAccent : tokens.translation.accent
+    );
+    wrapper.style.setProperty(
+      "--lf-tr-soft",
+      isDark ? tokens.translation.darkAccentSoft : tokens.translation.accentSoft
+    );
+    wrapper.style.setProperty(
+      "--lf-tr-quote-bg",
+      isDark ? tokens.translation.darkQuoteBg : tokens.translation.quoteBg
+    );
+    wrapper.style.setProperty(
+      "--lf-tr-highlight-text",
+      isDark
+        ? tokens.translation.darkHighlightText
+        : tokens.translation.highlightText
+    );
+    wrapper.style.setProperty(
+      "--lf-tr-weak-text",
+      isDark ? tokens.translation.darkWeakText : tokens.translation.weakText
+    );
 
     const inner = document.createElement(transTag);
     inner.lang = toLang;
+    inner.dir = "auto";
     inner.className = `${DomKit.LINGOFLOW_CLASS.inner} ${
       this.#textClass[textStyle] || ""
     }`;
     if (textExtStyle?.trim()) {
       inner.style.cssText = textExtStyle;
     }
-    inner.appendChild(createLoadingSVG());
+    // 译文容器先透明占位，拿到译文后再淡入，避免加载图标造成的闪烁。
+    inner.style.opacity = "0";
+    inner.style.transition = `opacity ${tokens.motion.fast}ms ${tokens.motion.easing}`;
 
-    if (processedString.length > newlineLength) {
-      const br = document.createElement("br");
-      br.hidden = hideOrigin;
-      if (transOrder === "translation-first") {
-        wrapper.appendChild(inner);
-        wrapper.appendChild(br);
-      } else {
-        wrapper.appendChild(br);
-        wrapper.appendChild(inner);
-      }
+    if (forceNewLine || processedString.length > newlineLength) {
+      wrapper.classList.add("lingoflow-long");
+      wrapper.appendChild(inner);
     } else {
       const space = document.createElement("span");
       space.textContent = " ";
@@ -286,7 +306,33 @@ export class TranslationRenderer {
       }
     }
 
+    const layoutContext = this.#resolveLayoutContext(nodes);
     this.#withViewportAnchor(() => {
+      if (layoutContext?.wrap) {
+        const host = document.createElement("span");
+        host.className = "lingoflow-layout-host";
+        host.style.display = "inline-block";
+        layoutContext.parent.insertBefore(host, nodes[0]);
+        const fragment = document.createDocumentFragment();
+        nodes.forEach((node) => fragment.appendChild(node));
+        host.appendChild(fragment);
+        if (transOrder === "translation-first") {
+          host.prepend(wrapper);
+        } else {
+          host.appendChild(wrapper);
+        }
+        return;
+      }
+
+      if (layoutContext?.host) {
+        if (transOrder === "translation-first") {
+          layoutContext.host.prepend(wrapper);
+        } else {
+          layoutContext.host.appendChild(wrapper);
+        }
+        return;
+      }
+
       if (transOrder === "translation-first") {
         nodes[0].before(wrapper);
       } else {
@@ -303,7 +349,10 @@ export class TranslationRenderer {
       const inner = wrapper.querySelector(
         `:scope > .${DomKit.LINGOFLOW_CLASS.inner}`
       );
-      if (inner) inner.innerHTML = trustedHTML;
+      if (inner) {
+        inner.innerHTML = trustedHTML;
+        inner.style.opacity = "1";
+      }
     });
   }
 
@@ -395,6 +444,7 @@ export class TranslationRenderer {
       this.#translationNodes.delete(wrapper);
       wrapper.remove();
       this.#removeBrTags(parent);
+      this.#unwrapLayoutHost(parent);
     });
     return parent;
   }
@@ -478,9 +528,7 @@ export class TranslationRenderer {
     this.#transOnlyRevertEnabled = true;
 
     this.#boundTransOnlyMouseOver = (e) => {
-      const wrapper = e.target.closest?.(
-        `.${DomKit.LINGOFLOW_CLASS.warpper}`
-      );
+      const wrapper = e.target.closest?.(`.${DomKit.LINGOFLOW_CLASS.warpper}`);
       if (wrapper) {
         const data = this.#translationNodes.get(wrapper);
         if (!data || !data.isHide) return;
@@ -662,10 +710,7 @@ export class TranslationRenderer {
     const firstNodeParent = firstNode?.parentElement;
     const lastNodeParent = lastNode?.parentElement;
 
-    if (
-      wrapperParent !== firstNodeParent ||
-      wrapperParent !== lastNodeParent
-    ) {
+    if (wrapperParent !== firstNodeParent || wrapperParent !== lastNodeParent) {
       return;
     }
 
@@ -697,6 +742,49 @@ export class TranslationRenderer {
     }
   }
 
+  #resolveLayoutContext(nodes) {
+    if (!nodes?.length) return null;
+
+    const parents = new Set();
+    nodes.forEach((node) => parents.add(node.parentElement));
+    if (parents.size !== 1) return null;
+
+    const parent = nodes[0].parentElement;
+    if (!parent) return null;
+
+    const display = window.getComputedStyle?.(parent).display || "";
+    if (!/^(?:inline-)?(?:flex|grid)$/.test(display.trim())) return null;
+
+    const significantNodes = nodes.filter(
+      (node) =>
+        node.nodeType !== Node.TEXT_NODE || /\S/.test(node.textContent || "")
+    );
+    if (!significantNodes.length) return null;
+
+    const elementNodes = significantNodes.filter(
+      (node) => node.nodeType === Node.ELEMENT_NODE
+    );
+    if (
+      elementNodes.length === significantNodes.length &&
+      elementNodes.length === 1
+    ) {
+      return { parent, host: elementNodes[0], wrap: false };
+    }
+
+    return { parent, host: null, wrap: true };
+  }
+
+  #unwrapLayoutHost(parent) {
+    if (!parent?.classList?.contains("lingoflow-layout-host")) return;
+
+    const grandParent = parent.parentElement;
+    if (!grandParent) return;
+
+    const fragment = document.createDocumentFragment();
+    Array.from(parent.childNodes).forEach((node) => fragment.appendChild(node));
+    parent.replaceWith(fragment);
+  }
+
   #captureViewportAnchor() {
     if (!document.elementFromPoint || !window.scrollBy) return null;
 
@@ -723,9 +811,7 @@ export class TranslationRenderer {
   #normalizeViewportAnchor(element) {
     if (!element) return null;
 
-    const wrapper = element.closest?.(
-      `.${DomKit.LINGOFLOW_CLASS.warpper}`
-    );
+    const wrapper = element.closest?.(`.${DomKit.LINGOFLOW_CLASS.warpper}`);
     if (!wrapper) return element;
 
     const { nodes } = this.#translationNodes.get(wrapper) || {};
@@ -789,6 +875,29 @@ export class TranslationRenderer {
       appLog("createTextStyles: CSSStyleSheet not available", err);
       this.#useSheetFallback = true;
     }
+
+    this.#injectGlobalStyle();
+  }
+
+  #injectGlobalStyle() {
+    if (typeof document === "undefined" || !document.head) return;
+
+    const styleId = `${APP_LCNAME}-translation-styles`;
+    let style = document.getElementById(styleId);
+    if (!style) {
+      style = document.createElement("style");
+      style.id = styleId;
+      document.head.appendChild(style);
+    }
+    style.textContent += `\n${this.#textStylesRaw || ""}`;
+  }
+
+  #isDarkMode() {
+    return (
+      this.#setting.darkMode === "dark" ||
+      (this.#setting.darkMode === "auto" &&
+        window.matchMedia?.("(prefers-color-scheme: dark)")?.matches)
+    );
   }
 
   #injectSheetFallback(shadowRoot) {
@@ -804,27 +913,23 @@ export class TranslationRenderer {
   #createRetryErrorNode(errorText, onRetry) {
     const i18n = newI18n(this.#setting.uiLang || "zh");
     const copyText = i18n("copy") || "Copy";
-    const isDarkMode =
-      this.#setting.darkMode === "dark" ||
-      (this.#setting.darkMode === "auto" &&
-        window.matchMedia?.("(prefers-color-scheme: dark)")?.matches);
-    const panelBg = isDarkMode ? "#1f1f23" : "#ffffff";
-    const panelText = isDarkMode
-      ? "rgba(255, 255, 255, 0.82)"
-      : "rgba(0, 0, 0, 0.78)";
+    const isDarkMode = this.#isDarkMode();
+    const accent = isDarkMode ? tokens.dark.blue : tokens.color.blue;
+    const panelBg = isDarkMode ? tokens.dark.surface : tokens.color.surface;
+    const panelText = isDarkMode ? tokens.dark.text : tokens.color.text;
     const panelBorder = isDarkMode
-      ? "rgba(32, 156, 238, 0.45)"
-      : "rgba(32, 156, 238, 0.28)";
+      ? tokens.dark.borderStrong
+      : tokens.color.borderStrong;
     const panelShadow = isDarkMode
       ? "0 8px 24px rgba(0, 0, 0, 0.42)"
-      : "0 8px 24px rgba(0, 0, 0, 0.16)";
-    const errorColor = isDarkMode ? "#ff8a80" : "#d32f2f";
+      : tokens.shadow.md;
+    const errorColor = isDarkMode ? "#f2b8b0" : tokens.color.danger;
     const buttonBg = isDarkMode
-      ? "rgba(32, 156, 238, 0.14)"
-      : "rgba(32, 156, 238, 0.08)";
+      ? "rgba(124, 150, 232, 0.16)"
+      : tokens.color.blueSoft;
     const buttonHoverBg = isDarkMode
-      ? "rgba(32, 156, 238, 0.24)"
-      : "rgba(32, 156, 238, 0.16)";
+      ? "rgba(124, 150, 232, 0.28)"
+      : "rgba(47, 91, 217, 0.16)";
 
     const container = document.createElement("span");
     container.style.cssText =
@@ -851,7 +956,7 @@ export class TranslationRenderer {
       "overflow: auto",
       "padding: 10px 10px 8px 12px",
       `border: 1px solid ${panelBorder}`,
-      "border-left: 3px solid #209CEE",
+      `border-left: 3px solid ${accent}`,
       "border-radius: 6px",
       `background: ${panelBg}`,
       `color: ${panelText}`,
@@ -879,10 +984,10 @@ export class TranslationRenderer {
       "width: fit-content",
       "margin-top: 8px",
       "padding: 3px 8px",
-      "border: 1px solid rgba(32, 156, 238, 0.35)",
+      `border: 1px solid ${accent}`,
       "border-radius: 4px",
       `background: ${buttonBg}`,
-      "color: #209CEE",
+      `color: ${accent}`,
       "font-size: 12px",
       "line-height: 1.4",
       "font-weight: 500",
@@ -891,11 +996,11 @@ export class TranslationRenderer {
     ].join("; ");
     copyButton.addEventListener("mouseenter", () => {
       copyButton.style.background = buttonHoverBg;
-      copyButton.style.borderColor = "rgba(32, 156, 238, 0.55)";
+      copyButton.style.borderColor = accent;
     });
     copyButton.addEventListener("mouseleave", () => {
       copyButton.style.background = buttonBg;
-      copyButton.style.borderColor = "rgba(32, 156, 238, 0.35)";
+      copyButton.style.borderColor = accent;
     });
     copyButton.addEventListener("click", async (e) => {
       e.stopPropagation();

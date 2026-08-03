@@ -126,7 +126,11 @@ export default function AiDictCont({
   }, [text, fromLang, toLang, apiSettingKey, context]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) {
-    return <Alert severity="error">{error}</Alert>;
+    return (
+      <Alert severity="error">
+        {`${i18n("dictionary_failed")}: ${error}`}
+      </Alert>
+    );
   }
 
   if (loading && !markdown) {

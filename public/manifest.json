@@ -40,6 +40,14 @@
       "matches": [
         "<all_urls>"
       ]
+    },
+    {
+      "resources": [
+        "fonts/NotoSerifSC-subset.woff2"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "commands": {

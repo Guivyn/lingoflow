@@ -16,6 +16,7 @@ jest.mock("../libs/log", () => ({
 jest.mock("../config", () => ({
   EVENT_LINGOFLOW_INNER: "lingoflow-inner",
   MSG_OPEN_TRANBOX: "open-tranbox",
+  getInternalEventSession: () => "test-session-token",
 }));
 
 jest.mock("./I18n", () => ({
@@ -59,7 +60,11 @@ function dispatchOpenTranbox(args) {
   act(() => {
     document.dispatchEvent(
       new CustomEvent(EVENT_LINGOFLOW_INNER, {
-        detail: { action: MSG_OPEN_TRANBOX, args },
+        detail: {
+          action: MSG_OPEN_TRANBOX,
+          args,
+          token: "test-session-token",
+        },
       })
     );
   });
@@ -117,6 +122,30 @@ describe("useTranboxShortcuts", () => {
     dispatchOpenTranbox();
 
     expect(setShowBox).toHaveBeenCalledWith(false);
+    view.unmount();
+  });
+
+  test("ignores events forged by the webpage without the session token", () => {
+    const handleOpenTranbox = jest.fn();
+    const handleToggleTranbox = jest.fn();
+    const setShowBox = jest.fn();
+    const view = renderShortcuts({
+      showBox: false,
+      setShowBox,
+      handleOpenTranbox,
+      handleToggleTranbox,
+    });
+
+    act(() => {
+      document.dispatchEvent(
+        new CustomEvent(EVENT_LINGOFLOW_INNER, {
+          detail: { action: MSG_OPEN_TRANBOX, args: { text: "forged" } },
+        })
+      );
+    });
+
+    expect(handleOpenTranbox).not.toHaveBeenCalled();
+    expect(handleToggleTranbox).not.toHaveBeenCalled();
     view.unmount();
   });
 });

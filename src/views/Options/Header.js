@@ -3,30 +3,36 @@ import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
 import Toolbar from "@mui/material/Toolbar";
 import Box from "@mui/material/Box";
-import Link from "@mui/material/Link";
-import { useI18n } from "../../hooks/I18n";
 import DarkModeButton from "./DarkModeButton";
 import Typography from "@mui/material/Typography";
+import { useTheme } from "@mui/material/styles";
+import ProductSignature from "../../components/ProductSignature";
+import { tokens } from "../../ui";
 
 /**
- * 设置页面的导航头部组件 (AppBar)
+ * 设置页面的导航头部组件：字标 + 版本 + 明暗切换。
  *
  * @param {Object} props
  * @param {Function} props.onDrawerToggle - 点击菜单按钮切换侧边栏展开/收起的回调函数 (移动端临时抽屉)
  */
 function Header(props) {
-  const i18n = useI18n();
   const { onDrawerToggle } = props;
+  const theme = useTheme();
 
   return (
     <AppBar
-      color="primary"
       position="sticky"
       sx={{
         zIndex: 1300, // 确保 Header 在侧边栏和抽屉之上的层级
+        bgcolor: theme.palette.background.default,
+        color: theme.palette.text.primary,
+        boxShadow: "none",
       }}
     >
-      <Toolbar variant="dense">
+      <Toolbar
+        variant="dense"
+        sx={{ minHeight: tokens.layout.headerHeight }}
+      >
         {/* 仅在 sm 分批以下 (xs 移动端) 显示菜单图标按钮以展开临时 Navigator */}
         <Box sx={{ display: { sm: "none", xs: "block" } }}>
           <IconButton
@@ -38,16 +44,20 @@ function Header(props) {
             <MenuIcon />
           </IconButton>
         </Box>
-        {/* 设置页左侧标题：点击可跳转回项目主页 */}
-        <Typography component="div" sx={{ flexGrow: 1, fontWeight: "bold" }}>
-          <Link
-            underline="none"
-            color="inherit"
-            href={process.env.REACT_APP_HOMEPAGE}
-            target="_blank"
-          >{`${i18n("app_name")} v${process.env.REACT_APP_VERSION}`}</Link>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexGrow: 1 }}>
+          <ProductSignature />
+        </Box>
+        <Typography
+          component="div"
+          sx={{
+            mr: 1,
+            fontFamily: tokens.font.mono,
+            fontSize: tokens.font.sizeCaption,
+            color: theme.palette.text.disabled,
+          }}
+        >
+          v{process.env.REACT_APP_VERSION}
         </Typography>
-        {/* 深色模式/浅色模式切换按钮 */}
         <DarkModeButton />
       </Toolbar>
     </AppBar>

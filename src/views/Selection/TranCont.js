@@ -2,7 +2,6 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useEffect, useMemo, useState } from "react";
 import { apiTranslate } from "../../apis";
@@ -14,6 +13,7 @@ import {
 import { useI18n } from "../../hooks/I18n";
 import { decodeHTMLEntities } from "../../libs/html";
 import CopyBtn from "./CopyBtn";
+import { tokens } from "../../ui/theme/tokens";
 
 /**
  * 判断划词翻译结果是否允许进行可见的流式渲染。
@@ -200,7 +200,9 @@ export default function TranCont({
     return (
       <Box>
         {error ? (
-          <Alert severity="error">{error}</Alert>
+          <Alert severity="error">
+            {`${i18n("translation_failed")}: ${error}`}
+          </Alert>
         ) : trText ? (
           <Stack direction="row" spacing={1} alignItems="flex-start">
             {loading && (
@@ -220,36 +222,68 @@ export default function TranCont({
 
   return (
     <Box>
-      <TextField
-        size="small"
-        label={`${i18n("translated_text")} - ${apiSetting.apiName}`}
-        fullWidth
-        multiline
-        maxRows={10}
+      <Typography
+        component="div"
         sx={{
-          "& textarea": {
-            resize: "vertical",
-          },
+          mb: `${tokens.spacing.xs}px`,
+          fontFamily: tokens.font.mono,
+          fontSize: tokens.font.sizeCaption,
+          letterSpacing: tokens.font.trackingCaption,
+          color: "text.secondary",
         }}
-        value={trText}
-        helperText={error}
-        InputProps={{
-          startAdornment: loading ? <CircularProgress size={16} /> : null,
-          endAdornment: (
-            <Stack
-              direction="row"
-              sx={{
-                position: "absolute",
-                right: 0,
-                top: 0,
-              }}
-            >
-              {/* 复制当前译文；流式渲染期间复制到的是已经到达的部分文本。 */}
-              <CopyBtn text={trText} title={i18n("copy")} />
-            </Stack>
-          ),
+      >
+        {`${i18n("translated_text")} - ${apiSetting.apiName}`}
+      </Typography>
+      <Box
+        sx={{
+          position: "relative",
+          pr: `${tokens.spacing.xxl}px`,
+          color: "text.primary",
+          fontSize: tokens.font.sizeMd,
+          lineHeight: 1.6,
+          minHeight: loading ? "1.5em" : "auto",
         }}
-      />
+      >
+        <Box
+          component="span"
+          data-testid="tran-cont-output"
+          sx={{
+            whiteSpace: "pre-line",
+            wordBreak: "break-word",
+          }}
+        >
+          {trText}
+        </Box>
+        {loading && (
+          <CircularProgress
+            size={14}
+            sx={{ position: "absolute", left: 0, top: 0 }}
+          />
+        )}
+        <Stack
+          direction="row"
+          sx={{
+            position: "absolute",
+            right: 0,
+            top: 0,
+          }}
+        >
+          {/* 复制当前译文；流式渲染期间复制到的是已经到达的部分文本。 */}
+          <CopyBtn text={trText} title={i18n("copy")} />
+        </Stack>
+      </Box>
+      {error ? (
+        <Typography
+          component="div"
+          sx={{
+            mt: `${tokens.spacing.xs}px`,
+            fontSize: tokens.font.sizeSm,
+            color: "error.main",
+          }}
+        >
+          {`${i18n("translation_failed")}: ${error}`}
+        </Typography>
+      ) : null}
     </Box>
   );
 }

@@ -11,6 +11,7 @@ import {
   getMaxTranBoxY,
   getTranBoxOuterHeight,
 } from "../../libs/tranboxPosition";
+import { tokens } from "../../ui/theme/tokens";
 
 /**
  * 拖拽/拉伸触发点（控制八个方向拉伸和顶部拖拽移动）
@@ -241,13 +242,10 @@ export default function DraggableResizable({
   // 深色模式下，为悬浮翻译小窗口提供精美的外发光日食效果阴影
   const glowShadow = isDark
     ? `
-        0 0 0 1px rgba(255,255,255,0.18),
-        0 0 10px 2px rgba(255,255,255,0.18),
-        0 8px 32px rgba(0,0,0,0.35)
+        0 0 0 1px rgba(255,255,255,0.14),
+        0 8px 32px rgba(0,0,0,0.45)
       `
-    : ` 
-        0 4px 18px rgba(0, 0, 0, 0.15)
-      `;
+    : `${tokens.shadow.md}, 0 0 0 1px ${theme.palette.divider}`;
 
   const opts = {
     size,
@@ -273,7 +271,7 @@ export default function DraggableResizable({
         gridTemplateColumns: `${lineWidth * 2}px ${size.w}px ${lineWidth * 2}px`,
         gridTemplateRows: `${lineWidth * 2}px auto ${lineWidth * 2}px`,
         zIndex: 2147483647,
-        borderRadius: "12px",
+        borderRadius: tokens.radius.md,
         overflow: "hidden",
       }}
       {...props}
@@ -322,7 +320,7 @@ export default function DraggableResizable({
           width: size.w,
           maxWidth: size.w,
           minWidth: 0,
-          borderRadius: 4,
+          borderRadius: `${tokens.radius.md}px`,
           overflow: "hidden",
           backgroundColor: theme.palette.background.paper,
           boxShadow: glowShadow,
@@ -359,7 +357,7 @@ export default function DraggableResizable({
             // 自定义滚动条风格
             const scrollbarTrackColor =
               theme.palette.mode === "dark"
-                ? "#1f1f23"
+                ? theme.palette.surfaceRaised
                 : theme.palette.background.paper;
             const scrollbarThumbColor =
               theme.palette.mode === "dark"
@@ -378,7 +376,7 @@ export default function DraggableResizable({
               },
               "&::-webkit-scrollbar-thumb": {
                 backgroundColor: scrollbarThumbColor,
-                borderRadius: 8,
+                borderRadius: "8px",
                 border: `2px solid ${theme.palette.background.paper}`,
               },
               "&::-webkit-scrollbar-thumb:hover": {

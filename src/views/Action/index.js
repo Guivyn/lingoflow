@@ -8,6 +8,7 @@ import Divider from "@mui/material/Divider";
 import useWindowSize from "../../hooks/WindowSize";
 import {
   EVENT_LINGOFLOW_INNER,
+  getInternalEventSession,
   MSG_OPEN_OPTIONS,
   MSG_POPUP_TOGGLE,
 } from "../../config";
@@ -48,7 +49,10 @@ export default function Action({ translator, processActions }) {
   // 订阅扩展的自定义内部广播消息，用以接收点击悬浮球等动作触发的展开/收起面板信号
   useEffect(() => {
     const handleStatusUpdate = (event) => {
-      if (event.detail?.action === MSG_POPUP_TOGGLE) {
+      if (
+        event.detail?.token === getInternalEventSession() &&
+        event.detail?.action === MSG_POPUP_TOGGLE
+      ) {
         setShowPopup((pre) => !pre);
       }
     };

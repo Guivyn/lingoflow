@@ -109,6 +109,8 @@ describe("YouTubeCaptionProvider manual translation", () => {
 
     window.dispatchEvent(
       new MessageEvent("message", {
+        origin: "https://www.youtube.com",
+        source: window,
         data: {
           type: "xhr-youtube",
           url: "https://www.youtube.com/api/timedtext?v=video-1&lang=en",

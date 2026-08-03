@@ -6,11 +6,14 @@ import { shortcutRegister } from "./shortcut";
 import { sendIframeMsg } from "./iframe";
 import { sendBgMsg } from "./msg";
 import { isExt } from "./client";
+import { getSettingWithDefault, getFabWithDefault } from "./storage";
+import { matchRule } from "./rules";
 import {
   EVENT_LINGOFLOW_INNER,
   EVENT_LINGOFLOW,
-  MSG_HOVERNODE_TOGGLE,
+  getInternalEventSession,
   MSG_OPEN_OPTIONS,
+  MSG_RELOAD_SETTING,
 } from "../config";
 import { touchTapListener } from "./touch";
 import { PopupManager } from "./popupManager";
@@ -26,12 +29,24 @@ import {
   MSG_TRANS_TOGGLE_STYLE,
   MSG_TRANS_GETRULE,
   MSG_TRANS_PUTRULE,
+  MSG_TRANS_PUTSETTING,
   MSG_OPEN_TRANBOX,
   MSG_TRANSBOX_TOGGLE,
   MSG_POPUP_TOGGLE,
-  MSG_MOUSEHOVER_TOGGLE,
 } from "../config";
 import { logger } from "./log";
+
+// 网页可以通过 DOM CustomEvent 触发的公开动作；只保留无敏感副作用的子集。
+const PAGE_TRIGGERED_ACTIONS = new Set([MSG_OPEN_TRANBOX]);
+// 顶层页面广播给 iframe 内容脚本的动作白名单。
+const IFRAME_TRIGGERED_ACTIONS = new Set([
+  MSG_TRANS_TOGGLE,
+  MSG_TRANS_TOGGLE_ONLY,
+  MSG_TRANS_TOGGLE_STYLE,
+  MSG_OPEN_TRANBOX,
+  MSG_TRANSBOX_TOGGLE,
+]);
+const MAX_PUBLIC_TRANBOX_TEXT = 50000;
 
 /**
  * 前台翻译业务的总生命周期管理器。
@@ -420,21 +435,83 @@ export default class TranslatorManager {
    * 处理同窗口 CustomEvent 通信。
    */
   #handleWindowMessage(event) {
-    logger.debug("handle window message:", event);
-    this.#processActions(event.detail);
+    const detail = event?.detail;
+    if (
+      !detail ||
+      !PAGE_TRIGGERED_ACTIONS.has(detail.action) ||
+      !this.#isSafePagePayload(detail)
+    ) {
+      return;
+    }
+    logger.debug("handle window message:", detail);
+    this.#processActions(detail);
   }
 
   /**
    * 处理 iframe 或页面内 postMessage 通信。
    */
   #handleInnerMessage(event) {
-    this.#processActions(event.data);
+    if (!event || event.source !== window.parent) {
+      return;
+    }
+    const data = event.data;
+    if (
+      !data ||
+      !IFRAME_TRIGGERED_ACTIONS.has(data.action) ||
+      !this.#isSafePagePayload(data)
+    ) {
+      return;
+    }
+    this.#processActions(data);
+  }
+
+  /**
+   * 网页可控动作的参数形状校验，防止非法负载进入内部处理链。
+   */
+  #isSafePagePayload({ action, args } = {}) {
+    if (action === MSG_OPEN_TRANBOX) {
+      if (args == null) return true;
+      if (typeof args !== "object" || Array.isArray(args)) return false;
+      if (args.text != null && typeof args.text !== "string") return false;
+      return (args.text?.length || 0) <= MAX_PUBLIC_TRANBOX_TEXT;
+    }
+    return true;
+  }
+
+  /**
+   * 从本地存储重读设置与规则，并重建运行期模块。
+   * Options 页保存设置后通过 MSG_RELOAD_SETTING 触发，避免旧配置残留在页面中。
+   */
+  async reloadFromStorage() {
+    if (!this.#isActive) return;
+    try {
+      const [setting, rule, fabConfig] = await Promise.all([
+        getSettingWithDefault(),
+        matchRule(window.location.href),
+        getFabWithDefault(),
+      ]);
+      this.#setting = this.#cloneConfig(setting);
+      this.#rule = this.#cloneConfig(rule);
+      this.#fabConfig = this.#cloneConfig(fabConfig);
+      this.#destroyRuntimeModules();
+      this.#createRuntimeModules();
+      this.#refreshDocumentElementObserver();
+      logger.info("TranslatorManager reloaded settings from storage.");
+    } catch (err) {
+      logger.error("reload settings failed", err);
+    }
   }
 
   /**
    * 处理扩展 background 发送的 runtime 消息。
    */
   #handleBrowserMessage(message, sender, sendResponse) {
+    const runtimeId = browser?.runtime?.id;
+    if (!runtimeId || sender?.id !== runtimeId) {
+      logger.warn("Ignore runtime message from untrusted sender", sender?.id);
+      sendResponse({ error: "untrusted sender" });
+      return false;
+    }
     const result = this.#processActions(message, true);
     const response = result || {
       rule: this._translator?.rule || this.#rule,
@@ -504,10 +581,21 @@ export default class TranslatorManager {
       case MSG_TRANS_PUTRULE:
         this._translator?.updateRule(args);
         break;
+      case MSG_TRANS_PUTSETTING:
+        this._translator?.applySetting(args);
+        Object.assign(this.#setting, args);
+        if (args?.tranboxSetting && this._transboxManager) {
+          this._transboxManager.update({ tranboxSetting: args.tranboxSetting });
+        }
+        break;
       case MSG_OPEN_TRANBOX:
         document.dispatchEvent(
           new CustomEvent(EVENT_LINGOFLOW_INNER, {
-            detail: { action: MSG_OPEN_TRANBOX, args },
+            detail: {
+              action: MSG_OPEN_TRANBOX,
+              args,
+              token: getInternalEventSession(),
+            },
           })
         );
         break;
@@ -518,11 +606,8 @@ export default class TranslatorManager {
         this._transboxManager?.toggle();
         this._translator?.toggleTransbox();
         break;
-      case MSG_MOUSEHOVER_TOGGLE:
-        this._translator?.toggleMouseHover();
-        break;
-      case MSG_HOVERNODE_TOGGLE:
-        this._translator?.toggleHoverNode();
+      case MSG_RELOAD_SETTING:
+        this.reloadFromStorage();
         break;
       default:
         logger.info(`Message action is unavailable: ${action}`);

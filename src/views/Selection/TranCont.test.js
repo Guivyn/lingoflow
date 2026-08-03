@@ -120,6 +120,9 @@ function renderTranCont(props = {}) {
   return { container, root };
 }
 
+const outputText = (container) =>
+  container.querySelector('[data-testid="tran-cont-output"]').textContent;
+
 describe("TranCont", () => {
   beforeEach(() => {
     apiTranslate.mockReset();
@@ -133,8 +136,7 @@ describe("TranCont", () => {
     const { container, root } = renderTranCont();
     await flushEffects();
 
-    const textarea = container.querySelector("textarea");
-    expect(textarea.value).toBe("");
+    expect(outputText(container)).toBe("");
 
     await act(async () => {
       // 模拟底层 SSE 增量返回，输出框应立即展示已经到达的部分译文。
@@ -143,13 +145,13 @@ describe("TranCont", () => {
         isComplete: false,
       });
     });
-    expect(textarea.value).toBe("阶段译文");
+    expect(outputText(container)).toBe("阶段译文");
 
     await act(async () => {
       deferred.resolve({ trText: "最终译文" });
       await deferred.promise;
     });
-    expect(textarea.value).toBe("最终译文");
+    expect(outputText(container)).toBe("最终译文");
 
     act(() => {
       root.unmount();
@@ -174,7 +176,7 @@ describe("TranCont", () => {
     );
     const expectedText =
       'First isn\'t "plain" & simple\n\nSecond\nThird\nFourth';
-    expect(container.querySelector("textarea").value).toBe(expectedText);
+    expect(outputText(container)).toBe(expectedText);
     expect(container.querySelector("[data-copy-text]").dataset.copyText).toBe(
       expectedText
     );
@@ -199,7 +201,7 @@ describe("TranCont", () => {
     expect(apiTranslate.mock.calls[0][0].text).toBe(
       "第一句。\n\n你呢？\n她呢？"
     );
-    expect(container.querySelector("textarea").value).toBe(
+    expect(outputText(container)).toBe(
       "First sentence.\n\nAnd you?\nWhat about her?"
     );
 
@@ -215,7 +217,7 @@ describe("TranCont", () => {
     await flushEffects();
 
     expect(apiTranslate.mock.calls[0][0].text).toBe("A\nB");
-    expect(container.querySelector("textarea").value).toBe("A&amp;B<br>C");
+    expect(outputText(container)).toBe("A&amp;B<br>C");
 
     act(() => {
       root.unmount();
@@ -232,9 +234,7 @@ describe("TranCont", () => {
     });
     await flushEffects();
 
-    expect(container.querySelector("textarea").value).toBe(
-      "First\n\nSecond\nThird"
-    );
+    expect(outputText(container)).toBe("First\n\nSecond\nThird");
 
     act(() => {
       root.unmount();
@@ -246,9 +246,7 @@ describe("TranCont", () => {
 
     const first = renderTranCont({ text: "First\n\nSecond" });
     await flushEffects();
-    expect(first.container.querySelector("textarea").value).toBe(
-      "First\n\nSecond"
-    );
+    expect(outputText(first.container)).toBe("First\n\nSecond");
     act(() => {
       first.root.unmount();
     });
@@ -256,9 +254,7 @@ describe("TranCont", () => {
     apiTranslate.mockResolvedValueOnce({ trText: "Use \\n in code" });
     const second = renderTranCont({ text: "Use a newline escape in code" });
     await flushEffects();
-    expect(second.container.querySelector("textarea").value).toBe(
-      "Use \\n in code"
-    );
+    expect(outputText(second.container)).toBe("Use \\n in code");
     act(() => {
       second.root.unmount();
     });
@@ -274,7 +270,7 @@ describe("TranCont", () => {
     });
     await flushEffects();
 
-    expect(container.querySelector("textarea").value).toBe("First\\nSecond");
+    expect(outputText(container)).toBe("First\\nSecond");
 
     act(() => {
       root.unmount();
@@ -364,7 +360,7 @@ describe("TranCont", () => {
       await second.promise;
     });
 
-    expect(container.querySelector("textarea").value).toBe("新译文");
+    expect(outputText(container)).toBe("新译文");
 
     act(() => {
       root.unmount();

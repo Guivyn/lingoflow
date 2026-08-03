@@ -5,6 +5,8 @@ import { useAllTextStyles, useStyleList } from "../../hooks/CustomStyles";
 import { css } from "@emotion/css";
 import { getRandomQuote } from "../../config/quotes";
 import { useSetting } from "../../hooks/Setting";
+import { translationKeyframes } from "../../libs/style";
+import { useTheme } from "@mui/material/styles";
 import {
   Accordion,
   AccordionDetails,
@@ -15,9 +17,102 @@ import {
   CodeField,
   ExpandMoreIcon,
   Input,
+  PageHeading,
+  SettingSection,
   Stack,
   Typography,
+  tokens,
 } from "../../ui";
+
+/**
+ * 单个内置译文样式的双语预览卡片。
+ */
+function StylePreviewCard({ style }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const previewClass = useMemo(
+    () => css`
+      ${translationKeyframes}
+      ${style.styleCode}
+    `,
+    [style.styleCode]
+  );
+
+  return (
+    <Box
+      sx={{
+        p: `${tokens.spacing.lg}px`,
+        border: 1,
+        borderColor: "divider",
+        borderRadius: `${tokens.radius.md}px`,
+        bgcolor: "background.paper",
+        "--lf-tr-color": isDark
+          ? tokens.translation.darkAccent
+          : tokens.translation.accent,
+        "--lf-tr-soft": isDark
+          ? tokens.translation.darkAccentSoft
+          : tokens.translation.accentSoft,
+        "--lf-tr-quote-bg": isDark
+          ? tokens.translation.darkQuoteBg
+          : tokens.translation.quoteBg,
+        "--lf-tr-highlight-text": isDark
+          ? tokens.translation.darkHighlightText
+          : tokens.translation.highlightText,
+        "--lf-tr-weak-text": isDark
+          ? tokens.translation.darkWeakText
+          : tokens.translation.weakText,
+      }}
+    >
+      <Typography
+        component="div"
+        sx={{
+          mb: `${tokens.spacing.sm}px`,
+          fontFamily: tokens.font.mono,
+          fontSize: tokens.font.sizeCaption,
+          letterSpacing: tokens.font.trackingCaption,
+          color: "text.secondary",
+        }}
+      >
+        {style.styleName}
+      </Typography>
+      <Box
+        sx={{
+          fontSize: tokens.font.sizeMd,
+          lineHeight: 1.7,
+          color: "text.primary",
+        }}
+      >
+        Reading across languages should feel as quiet as turning a page.
+        <br />
+        <span className={previewClass}>语言之间的阅读，应该像翻书一样安静。</span>
+      </Box>
+    </Box>
+  );
+}
+
+/**
+ * 内置译文样式画廊：每种样式用双语段落实时预览。
+ */
+function BuiltinStyleGallery({ styles }) {
+  return (
+    <Box>
+      <Box
+        sx={{
+          display: "grid",
+          gap: `${tokens.spacing.md}px`,
+          gridTemplateColumns: {
+            xs: "1fr",
+            md: "repeat(2, minmax(0, 1fr))",
+          },
+        }}
+      >
+        {styles.map((style) => (
+          <StylePreviewCard key={style.styleSlug} style={style} />
+        ))}
+      </Box>
+    </Box>
+  );
+}
 
 /**
  * 单个自定义 CSS 样式编辑表单区域
@@ -214,42 +309,46 @@ export default function StylesSetting() {
   return (
     <Box>
       <Stack spacing={3}>
-        {/* 新增样式按钮 */}
-        <Box>
-          <Button
-            size="small"
-            id="add-style-button"
-            variant="contained"
-            onClick={handleClick}
-            startIcon={<AddIcon />}
-          >
-            {i18n("add")}
-          </Button>
-        </Box>
+        <PageHeading
+          title={i18n("styles_setting")}
+          description={i18n(
+            "styles_setting_helper",
+            "自定义译文外观，内置样式可随时参考"
+          )}
+          actions={
+            <Button
+              size="small"
+              id="add-style-button"
+              variant="contained"
+              onClick={handleClick}
+              startIcon={<AddIcon />}
+            >
+              {i18n("add")}
+            </Button>
+          }
+        />
+
+        {/* 内置样式画廊 */}
+        <SettingSection title={i18n("builtin_style_gallery")}>
+          <BuiltinStyleGallery styles={builtinStyles} />
+        </SettingSection>
 
         {/* 用户自定义的可修改样式列表 */}
-        <Box>
-          {customStyles.map((customStyle) => (
-            <StyleAccordion
-              key={customStyle.styleSlug}
-              customStyle={customStyle}
-              deleteStyle={deleteStyle}
-              updateStyle={updateStyle}
-            />
-          ))}
-        </Box>
-        {/* 插件内置的只读系统样式列表 */}
-        <Box>
-          {builtinStyles.map((customStyle) => (
-            <StyleAccordion
-              key={customStyle.styleSlug}
-              customStyle={customStyle}
-              deleteStyle={deleteStyle}
-              updateStyle={updateStyle}
-              isBuiltin={true}
-            />
-          ))}
-        </Box>
+        <SettingSection
+          title={i18n("custom_styles", "我的样式")}
+          extra={i18n("custom_styles_helper", "可编辑、删除或复制")}
+        >
+          <Box>
+            {customStyles.map((customStyle) => (
+              <StyleAccordion
+                key={customStyle.styleSlug}
+                customStyle={customStyle}
+                deleteStyle={deleteStyle}
+                updateStyle={updateStyle}
+              />
+            ))}
+          </Box>
+        </SettingSection>
       </Stack>
     </Box>
   );

@@ -147,11 +147,21 @@ export class YouTubeCaptionProvider {
    */
   initialize() {
     window.addEventListener("message", (event) => {
-      if (event.data?.type === MSG_XHR_DATA_YOUTUBE) {
+      if (
+        event.origin !== "https://www.youtube.com" ||
+        event.source !== window ||
+        event.data?.type !== MSG_XHR_DATA_YOUTUBE
+      ) {
+        return;
+      }
+      if (
+        typeof event.data?.url === "string" &&
+        event.data.url.startsWith("https://www.youtube.com") &&
+        typeof event.data?.response === "string" &&
+        event.data.response.length <= 8 * 1024 * 1024
+      ) {
         const { url, response } = event.data;
-        if (url && response) {
-          this.#handleInterceptedRequest(url, response);
-        }
+        this.#handleInterceptedRequest(url, response);
       }
     });
 

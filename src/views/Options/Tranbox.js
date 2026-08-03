@@ -24,11 +24,12 @@ import { useApiList } from "../../hooks/Api";
 import { usePromptList } from "../../hooks/Prompt";
 import {
   Box,
-  FormControlLabel,
-  Grid,
   Input,
   MenuItem,
+  PageHeading,
   Select,
+  SettingRow,
+  SettingSection,
   ShortcutInput,
   Stack,
   Switch,
@@ -110,9 +111,16 @@ export default function Tranbox() {
   return (
     <Box>
       <Stack spacing={3}>
-        {/* 开关：是否启用划词翻译触发小按钮与悬浮翻译框 */}
-        <FormControlLabel
-          control={
+        <PageHeading
+          title={i18n("selection_translate")}
+          description={i18n("toggle_selection_translate")}
+        />
+
+        <SettingSection
+          title={i18n("basic_setting", "基础设置")}
+          extra={i18n("basic_params_helper", "触发方式、交互与外观")}
+        >
+          <SettingRow title={i18n("toggle_selection_translate")}>
             <Switch
               size="small"
               name="transOpen"
@@ -121,22 +129,21 @@ export default function Tranbox() {
                 updateTranbox({ transOpen: !transOpen });
               }}
             />
-          }
-          label={i18n("toggle_selection_translate")}
-          sx={{ width: "fit-content" }}
-        />
+          </SettingRow>
 
-        {/* 各项具体参数网格配置区 */}
-        <Box>
-          <Grid container spacing={2} columns={12}>
-            {/* 划词翻译框中支持多选并存展示的并行翻译服务 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              columnGap: "6px",
+            }}
+          >
+            <SettingRow title={i18n("translate_service_multiple")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
                 name="apiSlugs"
                 value={apiSlugs}
-                label={i18n("translate_service_multiple")}
                 onChange={handleChange}
                 multiple
               >
@@ -146,29 +153,154 @@ export default function Tranbox() {
                   </MenuItem>
                 ))}
               </Select>
-            </Grid>
-            {/* 对单个英文单词是否跳过完整的大模型/机翻 (直接使用词典)，以此提高查词效率与节省 token 额度 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("single_word_no_trans")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
                 name="singleWordNoTrans"
                 value={singleWordNoTrans}
-                label={i18n("single_word_no_trans")}
                 onChange={handleChange}
               >
                 <MenuItem value={false}>{i18n("disable")}</MenuItem>
                 <MenuItem value={true}>{i18n("enable")}</MenuItem>
               </Select>
-            </Grid>
-            {/* 默认源语言 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("trigger_mode")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
+                name="triggerMode"
+                value={triggerMode}
+                onChange={handleChange}
+              >
+                {OPT_TRANBOX_TRIGGER_ALL.map((item) => (
+                  <MenuItem key={item} value={item}>
+                    {i18n(`trigger_${item}`)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </SettingRow>
+            <SettingRow title={i18n("tranbtn_position_mode")}>
+              <Select
+                fullWidth
+                variant="standard"
+                name="btnPositionMode"
+                value={btnPositionMode}
+                onChange={handleChange}
+              >
+                {OPT_TRANBOX_BTN_POSITION_ALL.map((item) => (
+                  <MenuItem key={item} value={item}>
+                    {i18n(`tranbtn_position_${item}`)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </SettingRow>
+            <SettingRow title={i18n("hide_tran_button")}>
+              <Select
+                fullWidth
+                variant="standard"
+                name="hideTranBtn"
+                value={hideTranBtn}
+                onChange={handleChange}
+              >
+                <MenuItem value={false}>{i18n("show")}</MenuItem>
+                <MenuItem value={true}>{i18n("hide")}</MenuItem>
+              </Select>
+            </SettingRow>
+            <SettingRow title={i18n("hide_click_away")}>
+              <Select
+                fullWidth
+                variant="standard"
+                name="hideClickAway"
+                value={hideClickAway}
+                onChange={handleChange}
+              >
+                <MenuItem value={false}>{i18n("disable")}</MenuItem>
+                <MenuItem value={true}>{i18n("enable")}</MenuItem>
+              </Select>
+            </SettingRow>
+            <SettingRow title={i18n("use_simple_style")}>
+              <Select
+                fullWidth
+                variant="standard"
+                name="simpleStyle"
+                value={simpleStyle}
+                onChange={handleChange}
+              >
+                <MenuItem value={false}>{i18n("disable")}</MenuItem>
+                <MenuItem value={true}>{i18n("enable")}</MenuItem>
+              </Select>
+            </SettingRow>
+            <SettingRow title={i18n("follow_selection")}>
+              <Select
+                fullWidth
+                variant="standard"
+                name="followSelection"
+                value={followSelection}
+                onChange={handleChange}
+              >
+                <MenuItem value={false}>{i18n("disable")}</MenuItem>
+                <MenuItem value={true}>{i18n("enable")}</MenuItem>
+              </Select>
+            </SettingRow>
+            <SettingRow title={i18n("tranbox_auto_height")}>
+              <Select
+                fullWidth
+                variant="standard"
+                name="autoHeight"
+                value={autoHeight}
+                onChange={handleChange}
+              >
+                <MenuItem value={false}>{i18n("disable")}</MenuItem>
+                <MenuItem value={true}>{i18n("enable")}</MenuItem>
+              </Select>
+            </SettingRow>
+            <SettingRow title={i18n("tranbox_interact_mode")}>
+              <Select
+                fullWidth
+                variant="standard"
+                name="tranboxInteractMode"
+                value={tranboxInteractMode}
+                onChange={handleChange}
+              >
+                <MenuItem value="-">{i18n("disable")}</MenuItem>
+                <MenuItem value={OPT_TRANBOX_INTERACT_CLICK}>
+                  {i18n("tranbox_interact_click")}
+                </MenuItem>
+                <MenuItem value={OPT_TRANBOX_INTERACT_DBLCLICK}>
+                  {i18n("tranbox_interact_dblclick")}
+                </MenuItem>
+              </Select>
+            </SettingRow>
+            {!isExt && (
+              <SettingRow title={i18n("trigger_tranbox_shortcut")}>
+                <ShortcutInput
+                  value={tranboxShortcut}
+                  onChange={handleShortcutInput}
+                />
+              </SettingRow>
+            )}
+          </Box>
+        </SettingSection>
+
+        <SettingSection
+          title={i18n("lang_dict", "语言与词典")}
+          extra={i18n("lang_dict_helper", "目标语言、本地词典与 AI 词典")}
+        >
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              columnGap: "6px",
+            }}
+          >
+            <SettingRow title={i18n("from_lang")}>
+              <Select
+                fullWidth
+                variant="standard"
                 name="fromLang"
                 value={fromLang}
-                label={i18n("from_lang")}
                 onChange={handleChange}
               >
                 {OPT_LANGS_FROM.map(([lang, name]) => (
@@ -177,15 +309,13 @@ export default function Tranbox() {
                   </MenuItem>
                 ))}
               </Select>
-            </Grid>
-            {/* 首选翻译出的目标语言 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("to_lang")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
                 name="toLang"
                 value={toLang}
-                label={i18n("to_lang")}
                 onChange={handleChange}
               >
                 {OPT_LANGS_TO.map(([lang, name]) => (
@@ -194,16 +324,16 @@ export default function Tranbox() {
                   </MenuItem>
                 ))}
               </Select>
-            </Grid>
-            {/* 次选目标语言 (例如：如果划词内容本身就是首选语言，则翻译为次选语言) */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow
+              title={i18n("to_lang2")}
+              description={i18n("to_lang2_helper")}
+            >
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
                 name="toLang2"
                 value={toLang2}
-                label={i18n("to_lang2")}
-                helperText={i18n("to_lang2_helper")}
                 onChange={handleChange}
               >
                 <MenuItem value={"-"}>{i18n("disable")}</MenuItem>
@@ -213,16 +343,13 @@ export default function Tranbox() {
                   </MenuItem>
                 ))}
               </Select>
-            </Grid>
-
-            {/* 本地查词词典选择 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("english_dict")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
                 name="enDict"
                 value={enDict}
-                label={i18n("english_dict")}
                 onChange={handleChange}
               >
                 <MenuItem value={"-"}>{i18n("disable")}</MenuItem>
@@ -232,15 +359,29 @@ export default function Tranbox() {
                   </MenuItem>
                 ))}
               </Select>
-            </Grid>
-            {/* AI 词典所使用的大模型接口；关闭时仅保留默认本地/在线词典。 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("english_suggest")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
+                name="enSug"
+                value={enSug}
+                onChange={handleChange}
+              >
+                <MenuItem value={"-"}>{i18n("disable")}</MenuItem>
+                {OPT_SUG_ALL.map((item) => (
+                  <MenuItem value={item} key={item}>
+                    {item}
+                  </MenuItem>
+                ))}
+              </Select>
+            </SettingRow>
+            <SettingRow title={i18n("ai_dict_api", "AI词典接口")}>
+              <Select
+                fullWidth
+                variant="standard"
                 name="aiDictApiSlug"
                 value={aiDictApiSlug}
-                label={i18n("ai_dict_api", "AI词典接口")}
                 onChange={handleChange}
               >
                 <MenuItem value={"-"}>{i18n("disable")}</MenuItem>
@@ -250,15 +391,13 @@ export default function Tranbox() {
                   </MenuItem>
                 ))}
               </Select>
-            </Grid>
-            {/* AI 词典提示词来源：跟随接口默认配置，或指定全局词典提示词。 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("ai_dict_prompt", "AI词典提示词")}>
               <Select
                 fullWidth
-                size="small"
+                variant="standard"
                 name="aiDictPromptSlug"
                 value={aiDictPromptSlug}
-                label={i18n("ai_dict_prompt", "AI词典提示词")}
                 onChange={handleChange}
               >
                 <MenuItem value={PROMPT_MODE_FOLLOW_API}>
@@ -270,121 +409,25 @@ export default function Tranbox() {
                   </MenuItem>
                 ))}
               </Select>
-            </Grid>
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="enSug"
-                value={enSug}
-                label={i18n("english_suggest")}
-                onChange={handleChange}
-              >
-                <MenuItem value={"-"}>{i18n("disable")}</MenuItem>
-                {OPT_SUG_ALL.map((item) => (
-                  <MenuItem value={item} key={item}>
-                    {item}
-                  </MenuItem>
-                ))}
-              </Select>
-            </Grid>
-            {/* 划词翻译框的触发模式 (点击小球触发、选中直接触发、或者带辅助按键) */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="triggerMode"
-                value={triggerMode}
-                label={i18n("trigger_mode")}
-                onChange={handleChange}
-              >
-                {OPT_TRANBOX_TRIGGER_ALL.map((item) => (
-                  <MenuItem key={item} value={item}>
-                    {i18n(`trigger_${item}`)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </Grid>
-            {/* 划词后弹出按钮的定位模式：沿用选区右下角，或跟随鼠标/触摸结束位置 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="btnPositionMode"
-                value={btnPositionMode}
-                label={i18n("tranbtn_position_mode")}
-                onChange={handleChange}
-              >
-                {OPT_TRANBOX_BTN_POSITION_ALL.map((item) => (
-                  <MenuItem key={item} value={item}>
-                    {i18n(`tranbtn_position_${item}`)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </Grid>
-            {/* 是否隐藏触发划词翻译的浮动 FAB 小按钮 (隐藏后通常只能通过快捷键调起翻译框) */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="hideTranBtn"
-                value={hideTranBtn}
-                label={i18n("hide_tran_button")}
-                onChange={handleChange}
-              >
-                <MenuItem value={false}>{i18n("show")}</MenuItem>
-                <MenuItem value={true}>{i18n("hide")}</MenuItem>
-              </Select>
-            </Grid>
-            {/* 点击翻译框外任意处时，是否关闭并自动销毁翻译框 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="hideClickAway"
-                value={hideClickAway}
-                label={i18n("hide_click_away")}
-                onChange={handleChange}
-              >
-                <MenuItem value={false}>{i18n("disable")}</MenuItem>
-                <MenuItem value={true}>{i18n("enable")}</MenuItem>
-              </Select>
-            </Grid>
-            {/* 是否开启轻量极简无背景毛玻璃外观样式 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="simpleStyle"
-                value={simpleStyle}
-                label={i18n("use_simple_style")}
-                onChange={handleChange}
-              >
-                <MenuItem value={false}>{i18n("disable")}</MenuItem>
-                <MenuItem value={true}>{i18n("enable")}</MenuItem>
-              </Select>
-            </Grid>
-            {/* 翻译弹框的定位是否紧随选定文字的最下方, 否则固定在相对小图标的偏移位置 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="followSelection"
-                value={followSelection}
-                label={i18n("follow_selection")}
-                onChange={handleChange}
-              >
-                <MenuItem value={false}>{i18n("disable")}</MenuItem>
-                <MenuItem value={true}>{i18n("enable")}</MenuItem>
-              </Select>
-            </Grid>
+            </SettingRow>
+          </Box>
+        </SettingSection>
 
-            {/* 浮动 FAB 触发按钮相对于光标的物理水平偏移量 (X 轴像素) */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+        <SettingSection
+          title={i18n("position_advanced", "位置与高级")}
+          extra={i18n("position_advanced_helper", "偏移量、快捷键与黑名单")}
+        >
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              columnGap: "6px",
+            }}
+          >
+            <SettingRow title={i18n("tranbtn_offset_x")}>
               <ValidationInput
                 fullWidth
-                size="small"
-                label={i18n("tranbtn_offset_x")}
+                variant="standard"
                 type="number"
                 name="btnOffsetX"
                 value={btnOffsetX}
@@ -392,13 +435,11 @@ export default function Tranbox() {
                 min={-200}
                 max={200}
               />
-            </Grid>
-            {/* 浮动 FAB 触发按钮相对于光标的物理垂直偏移量 (Y 轴像素) */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("tranbtn_offset_y")}>
               <ValidationInput
                 fullWidth
-                size="small"
-                label={i18n("tranbtn_offset_y")}
+                variant="standard"
                 type="number"
                 name="btnOffsetY"
                 value={btnOffsetY}
@@ -406,13 +447,11 @@ export default function Tranbox() {
                 min={-200}
                 max={200}
               />
-            </Grid>
-            {/* 悬浮翻译框相对于光标/按钮的物理水平偏移量 (X 轴像素) */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("tranbox_offset_x")}>
               <ValidationInput
                 fullWidth
-                size="small"
-                label={i18n("tranbox_offset_x")}
+                variant="standard"
                 type="number"
                 name="boxOffsetX"
                 value={boxOffsetX}
@@ -420,13 +459,11 @@ export default function Tranbox() {
                 min={-200}
                 max={200}
               />
-            </Grid>
-            {/* 悬浮翻译框相对于光标/按钮的物理垂直偏移量 (Y 轴像素) */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
+            </SettingRow>
+            <SettingRow title={i18n("tranbox_offset_y")}>
               <ValidationInput
                 fullWidth
-                size="small"
-                label={i18n("tranbox_offset_y")}
+                variant="standard"
                 type="number"
                 name="boxOffsetY"
                 value={boxOffsetY}
@@ -434,65 +471,27 @@ export default function Tranbox() {
                 min={-200}
                 max={200}
               />
-            </Grid>
-            {/* 翻译文本较多时，翻译框高度是否随着文字自动拉伸，否则启用内部局部纵向滚动条 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="autoHeight"
-                value={autoHeight}
-                label={i18n("tranbox_auto_height")}
-                onChange={handleChange}
-              >
-                <MenuItem value={false}>{i18n("disable")}</MenuItem>
-                <MenuItem value={true}>{i18n("enable")}</MenuItem>
-              </Select>
-            </Grid>
+            </SettingRow>
+          </Box>
 
-            {/* 翻译框内部交互：单击或双击选中文本触发新翻译 */}
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="tranboxInteractMode"
-                value={tranboxInteractMode}
-                label={i18n("tranbox_interact_mode")}
-                onChange={handleChange}
-              >
-                <MenuItem value="-">{i18n("disable")}</MenuItem>
-                <MenuItem value={OPT_TRANBOX_INTERACT_CLICK}>
-                  {i18n("tranbox_interact_click")}
-                </MenuItem>
-                <MenuItem value={OPT_TRANBOX_INTERACT_DBLCLICK}>
-                  {i18n("tranbox_interact_dblclick")}
-                </MenuItem>
-              </Select>
-            </Grid>
-            {/* 油猴脚本下触发调出主动查词输入框的热键录入 */}
-            {!isExt && (
-              <Grid item xs={12} sm={12} md={6} lg={3}>
-                <ShortcutInput
-                  value={tranboxShortcut}
-                  onChange={handleShortcutInput}
-                  label={i18n("trigger_tranbox_shortcut")}
-                />
-              </Grid>
-            )}
-          </Grid>
-        </Box>
-
-        {/* 划词翻译不生效的黑名单域名及正则规则列表 */}
-        <Input
-          size="small"
-          label={i18n("blacklist")}
-          helperText={i18n("pattern_helper")}
-          name="blacklist"
-          value={blacklist}
-          onChange={handleChange}
-          maxRows={10}
-          multiline
-        />
+          <SettingRow
+            title={i18n("blacklist")}
+            description={i18n("pattern_helper")}
+            align="start"
+            controlMinWidth={420}
+            controlMaxWidth="100%"
+          >
+            <Input
+              fullWidth
+              variant="standard"
+              name="blacklist"
+              value={blacklist}
+              onChange={handleChange}
+              maxRows={10}
+              multiline
+            />
+          </SettingRow>
+        </SettingSection>
       </Stack>
     </Box>
   );

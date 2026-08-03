@@ -13,7 +13,7 @@ const getI18n = (uiLang, key, defaultText = "") => {
 };
 
 // 预柯里化语言参数，返回一个只需传入 key 的获取翻译函数
-export const useLangMap = (uiLang) => {
+const useLangMap = (uiLang) => {
   return (key, defaultText = "") => getI18n(uiLang, key, defaultText);
 };
 

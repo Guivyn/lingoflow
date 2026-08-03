@@ -44,7 +44,8 @@ export const DEFAULT_DICTIONARY_PROMPT_SLUG = PROMPT_SLUG_DICTIONARY_EN_ZH;
 // 配置数据结构的版本号（用于检测并执行数据迁移升级逻辑）
 const SETTINGS_VERSION_V1 = 1;
 export const SETTINGS_VERSION_V2 = 2;
-export const CURRENT_SETTINGS_VERSION = SETTINGS_VERSION_V2;
+export const SETTINGS_VERSION_V3 = 3;
+export const CURRENT_SETTINGS_VERSION = SETTINGS_VERSION_V3;
 
 /**
  * 预设的提示词列表。包含了系统出厂自带的各种场景提示词模板。

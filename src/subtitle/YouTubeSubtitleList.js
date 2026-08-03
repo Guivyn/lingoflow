@@ -8,6 +8,7 @@ import {
   WordTooltipController,
   wrapWordsWithSpans,
 } from "./wordHover.js";
+import { tokens } from "../ui/theme/tokens";
 
 /**
  * YouTube 字幕列表管理器
@@ -720,14 +721,14 @@ export class YouTubeSubtitleList {
             "--kt-border": "1px solid rgba(0, 0, 0, 0.1)",
             "--kt-text": "#333",
             "--kt-subtext": "#666",
-            "--kt-primary": "#1e88e5",
-            "--kt-time-bg": "rgba(30, 136, 229, 0.1)",
+            "--kt-primary": tokens.color.primary,
+            "--kt-time-bg": "rgba(201, 106, 74, 0.12)",
             "--kt-divider": "rgba(240,240,240,0.6)",
-            "--kt-active-bg": "rgba(30, 136, 229, 0.1)",
+            "--kt-active-bg": "rgba(201, 106, 74, 0.12)",
             "--kt-btn-bg": "var(--kt-primary)",
             "--kt-btn-color": "white",
             "--kt-btn-border": "none",
-            "--kt-btn-hover-bg": "rgba(30,136,229,0.85)",
+            "--kt-btn-hover-bg": tokens.color.primaryHover,
           };
 
           const darkVars = {
@@ -735,14 +736,14 @@ export class YouTubeSubtitleList {
             "--kt-border": "1px solid rgba(255, 255, 255, 0.06)",
             "--kt-text": "#e6e6e6",
             "--kt-subtext": "#bdbdbd",
-            "--kt-primary": "#90caf9",
-            "--kt-time-bg": "rgba(144,202,249,0.08)",
+            "--kt-primary": tokens.dark.primary,
+            "--kt-time-bg": "rgba(208, 130, 99, 0.12)",
             "--kt-divider": "rgba(255,255,255,0.06)",
-            "--kt-active-bg": "rgba(144,202,249,0.12)",
+            "--kt-active-bg": "rgba(208, 130, 99, 0.16)",
             "--kt-btn-bg": "linear-gradient(180deg,#0f0f0f,#1b1b1b)",
             "--kt-btn-color": "#e6e6e6",
             "--kt-btn-border": "1px solid rgba(255,255,255,0.04)",
-            "--kt-btn-hover-bg": "linear-gradient(180deg,#141414,#262626)",
+            "--kt-btn-hover-bg": tokens.dark.primaryHover,
           };
 
           const vars = isDark ? darkVars : lightVars;

@@ -6,24 +6,16 @@ jest.mock("./msg", () => ({
   sendBgMsg: jest.fn(),
 }));
 
+jest.mock("./detect", () => ({
+  tryDetectLang: jest.fn(),
+}));
+
 const { apiTranslate } = require("../apis");
 const { Translator } = require("./translator");
+const { tryDetectLang } = require("./detect");
 
 const flushAsync = async () => {
   jest.runOnlyPendingTimers();
-  await Promise.resolve();
-  await Promise.resolve();
-};
-
-const hoverNode = async (node, x = 20, y = 20) => {
-  node.dispatchEvent(
-    new MouseEvent("mousemove", {
-      bubbles: true,
-      clientX: x,
-      clientY: y,
-    })
-  );
-  jest.advanceTimersByTime(100);
   await Promise.resolve();
   await Promise.resolve();
 };
@@ -44,7 +36,6 @@ function createTranslator(rule = {}, setting = {}) {
     setting: {
       transInterval: 0,
       rootMargin: 0,
-      mouseHoverSetting: {},
       customStyles: [],
       transApis: [],
       ...setting,
@@ -69,6 +60,24 @@ function createPlainTextTranslator(rule = {}, setting = {}) {
 
   return translator;
 }
+
+test("skips compact counts like 30k from translation", () => {
+  const skipRegex = new RegExp(
+    Translator.BUILTIN_SKIP_PATTERNS.map((r) => `(${r.source})`).join("|")
+  );
+
+  expect(skipRegex.test("30k")).toBe(true);
+  expect(skipRegex.test("1.5M")).toBe(true);
+  expect(skipRegex.test("100K+")).toBe(true);
+  expect(skipRegex.test("30k users")).toBe(false);
+  expect(skipRegex.test("bashalarmistalt/decimen-optical-transfer")).toBe(true);
+  expect(skipRegex.test("TypeScript 3.4k")).toBe(true);
+  expect(skipRegex.test("boost-process")).toBe(true);
+  expect(skipRegex.test("python-3.x")).toBe(true);
+  expect(skipRegex.test("c++")).toBe(true);
+  expect(skipRegex.test("c#")).toBe(true);
+  expect(Translator.BUILTIN_IGNORE_SELECTOR).toContain(".post-tag");
+});
 
 describe("Translator rule styles", () => {
   let originalIntersectionObserver;
@@ -226,6 +235,110 @@ describe("Translator rule styles", () => {
     expect(combinedRequestedText).toContain("tail");
     expect(wrapper).not.toBeNull();
     expect(wrapper.textContent).toBe("Translated mixed inline content");
+  });
+
+  test("skips translating github-style repo paths", async () => {
+    document.body.innerHTML =
+      '<main id="root"><p id="target">bashalarmistalt/decimen-optical-transfer</p></main>';
+
+    createTranslator(
+      {
+        autoScan: "false",
+        selector: "#target",
+      },
+      { minLength: 0 }
+    );
+    await flushAsync();
+
+    expect(apiTranslate).not.toHaveBeenCalled();
+    expect(
+      document.querySelector(`.${Translator.LINGOFLOW_CLASS.warpper}`)
+    ).toBeNull();
+  });
+
+  test("skips inserting translation when result matches the original", async () => {
+    apiTranslate.mockResolvedValue({
+      trText: "Helloworld",
+      isSame: false,
+    });
+    document.body.innerHTML =
+      '<main id="root"><p id="target">Hello world</p></main>';
+
+    createTranslator(
+      {
+        autoScan: "false",
+        selector: "#target",
+      },
+      { minLength: 0 }
+    );
+    await flushAsync();
+
+    expect(apiTranslate).toHaveBeenCalled();
+    expect(
+      document.querySelector(`.${Translator.LINGOFLOW_CLASS.warpper}`)
+    ).toBeNull();
+  });
+
+  test("auto-translates English pages when enabled", async () => {
+    tryDetectLang.mockResolvedValue("en");
+    document.body.innerHTML =
+      '<main id="root"><p id="target">Hello world</p></main>';
+
+    const translator = createTranslator(
+      {
+        autoScan: "false",
+        selector: "#target",
+        transOpen: "false",
+      },
+      {
+        preInit: true,
+        autoTransEnglish: true,
+        minLength: 0,
+      }
+    );
+    await flushAsync();
+
+    expect(tryDetectLang).toHaveBeenCalled();
+    expect(translator.rule.transOpen).toBe("true");
+  });
+
+  test("does not auto-translate English pages when disabled", async () => {
+    tryDetectLang.mockResolvedValue("en");
+    document.body.innerHTML =
+      '<main id="root"><p id="target">Hello world</p></main>';
+
+    const translator = createTranslator(
+      {
+        autoScan: "false",
+        selector: "#target",
+        transOpen: "false",
+      },
+      {
+        preInit: true,
+        autoTransEnglish: false,
+        minLength: 0,
+      }
+    );
+    await flushAsync();
+
+    expect(tryDetectLang).not.toHaveBeenCalled();
+    expect(translator.rule.transOpen).toBe("false");
+  });
+
+  test("skips universal tag-like elements during auto scan", async () => {
+    document.body.innerHTML =
+      '<main id="root"><p id="target" class="tag">python</p></main>';
+
+    createTranslator(
+      {
+        autoScan: "true",
+        selector: "#root",
+      },
+      { minLength: 0 }
+    );
+    await flushAsync();
+
+    expect(apiTranslate).not.toHaveBeenCalled();
   });
 
   test("continues scanning block children after processing mixed parent nodes", async () => {
@@ -632,267 +745,6 @@ describe("Translator rule styles", () => {
     expect(apiTranslate.mock.calls[0][0].text).toContain("First visible chunk");
   });
 
-  test("keeps default mouse hover mode as inline bilingual translation", async () => {
-    document.body.innerHTML =
-      '<main id="root"><p id="target">Hello hover</p></main>';
-    const target = document.getElementById("target");
-
-    createTranslator(
-      {
-        transOpen: "false",
-      },
-      {
-        preInit: true,
-        mouseHoverSetting: {
-          useMouseHover: true,
-          mouseHoverKey: [],
-          mouseHoverKey2: [],
-        },
-      }
-    );
-    await hoverNode(target);
-    await flushAsync();
-
-    const wrapper = document.querySelector(
-      `.${Translator.LINGOFLOW_CLASS.warpper}`
-    );
-    expect(wrapper).not.toBeNull();
-    const inner = wrapper.querySelector(`.${Translator.LINGOFLOW_CLASS.inner}`);
-    expect(inner.textContent).toBe("Translated");
-    expect(
-      document.querySelector(`.${Translator.LINGOFLOW_CLASS.hoverBubble}`)
-    ).toBeNull();
-  });
-
-  test("keeps a pending translation-only hover request visible when retriggered", async () => {
-    let resolveTranslation;
-    apiTranslate.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveTranslation = resolve;
-        })
-    );
-    document.body.innerHTML =
-      '<main id="root"><p id="target">Hello hover</p></main>';
-    const target = document.getElementById("target");
-
-    createTranslator(
-      {
-        transOpen: "false",
-        transOnly: "true",
-      },
-      {
-        preInit: true,
-        mouseHoverSetting: {
-          useMouseHover: true,
-          mouseHoverKey: [],
-          mouseHoverKey2: [],
-        },
-      }
-    );
-
-    await hoverNode(target);
-    await hoverNode(target);
-    resolveTranslation({ trText: "Delayed translation", isSame: false });
-    await Promise.resolve();
-    await Promise.resolve();
-
-    const wrapper = document.querySelector(
-      `.${Translator.LINGOFLOW_CLASS.warpper}`
-    );
-    expect(wrapper).not.toBeNull();
-    expect(wrapper.isConnected).toBe(true);
-    expect(
-      wrapper.querySelector(`.${Translator.LINGOFLOW_CLASS.inner}`).textContent
-    ).toBe("Delayed translation");
-    expect(target.contains(wrapper)).toBe(true);
-  });
-
-  test("shows mouse hover bubble without inserting translation wrappers", async () => {
-    document.body.innerHTML =
-      '<main id="root"><p id="target">Hello hover</p></main>';
-    const target = document.getElementById("target");
-
-    createTranslator(
-      {
-        transOpen: "false",
-      },
-      {
-        preInit: true,
-        mouseHoverSetting: {
-          useMouseHover: true,
-          mouseHoverKey: [],
-          mouseHoverKey2: [],
-          displayMode: "bubble",
-          bubbleStyle: "background: rgb(1, 2, 3); font-size: 18px;",
-        },
-      }
-    );
-    await hoverNode(target, 30, 40);
-    await flushAsync();
-
-    const bubble = document.querySelector(
-      `.${Translator.LINGOFLOW_CLASS.hoverBubble}`
-    );
-    expect(apiTranslate).toHaveBeenCalledWith(
-      expect.objectContaining({ text: "Hello hover" })
-    );
-    expect(
-      document.querySelector(`.${Translator.LINGOFLOW_CLASS.warpper}`)
-    ).toBeNull();
-    expect(bubble).not.toBeNull();
-    expect(bubble.textContent).toBe("Translated");
-    expect(bubble.getAttribute("style")).toContain("font-size: 18px");
-    expect(bubble.style.position).toBe("fixed");
-    expect(bubble.style.zIndex).toBe("2147483647");
-  });
-
-  test("keeps forced bubble positioning when custom CSS misses trailing semicolon", async () => {
-    document.body.innerHTML =
-      '<main id="root"><p id="target">Hello hover</p></main>';
-
-    createTranslator(
-      {
-        transOpen: "false",
-      },
-      {
-        preInit: true,
-        mouseHoverSetting: {
-          useMouseHover: true,
-          mouseHoverKey: [],
-          mouseHoverKey2: [],
-          displayMode: "bubble",
-          bubbleStyle: "background: red",
-        },
-      }
-    );
-    await hoverNode(document.getElementById("target"));
-    await flushAsync();
-
-    const bubble = document.querySelector(
-      `.${Translator.LINGOFLOW_CLASS.hoverBubble}`
-    );
-    expect(bubble.style.background).toBe("red");
-    expect(bubble.style.position).toBe("fixed");
-    expect(bubble.style.zIndex).toBe("2147483647");
-  });
-
-  test("repositions an existing mouse hover bubble on raw mousemove", async () => {
-    document.body.innerHTML =
-      '<main id="root"><p id="target">Hello hover</p></main>';
-    const target = document.getElementById("target");
-
-    createTranslator(
-      {
-        transOpen: "false",
-      },
-      {
-        preInit: true,
-        mouseHoverSetting: {
-          useMouseHover: true,
-          mouseHoverKey: [],
-          mouseHoverKey2: [],
-          displayMode: "bubble",
-        },
-      }
-    );
-    await hoverNode(target, 10, 20);
-    await flushAsync();
-
-    const bubble = document.querySelector(
-      `.${Translator.LINGOFLOW_CLASS.hoverBubble}`
-    );
-    const initialLeft = bubble.style.left;
-    const initialTop = bubble.style.top;
-
-    target.dispatchEvent(
-      new MouseEvent("mousemove", {
-        bubbles: true,
-        clientX: 80,
-        clientY: 90,
-      })
-    );
-
-    expect(bubble.style.left).not.toBe(initialLeft);
-    expect(bubble.style.top).not.toBe(initialTop);
-  });
-
-  test("uses the shared loading icon and default blue style for mouse hover bubble", async () => {
-    apiTranslate.mockImplementationOnce(() => new Promise(() => {}));
-    document.body.innerHTML =
-      '<main id="root"><p id="target">Hello hover</p></main>';
-
-    createTranslator(
-      {
-        transOpen: "false",
-      },
-      {
-        preInit: true,
-        mouseHoverSetting: {
-          useMouseHover: true,
-          mouseHoverKey: [],
-          mouseHoverKey2: [],
-          displayMode: "bubble",
-        },
-      }
-    );
-    await hoverNode(document.getElementById("target"));
-
-    const bubble = document.querySelector(
-      `.${Translator.LINGOFLOW_CLASS.hoverBubble}`
-    );
-    expect(bubble.dataset.state).toBe("loading");
-    expect(bubble.querySelector("svg")).not.toBeNull();
-    expect(bubble.getAttribute("style")).toContain(
-      "background: rgb(25, 118, 210)"
-    );
-  });
-
-  test("ignores stale mouse hover bubble translation results", async () => {
-    let resolveFirst;
-    apiTranslate
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveFirst = resolve;
-          })
-      )
-      .mockResolvedValueOnce({ trText: "Second translation", isSame: false });
-    document.body.innerHTML = `
-      <main id="root">
-        <p id="first">First hover</p>
-        <p id="second">Second hover</p>
-      </main>
-    `;
-
-    createTranslator(
-      {
-        transOpen: "false",
-      },
-      {
-        preInit: true,
-        mouseHoverSetting: {
-          useMouseHover: true,
-          mouseHoverKey: [],
-          mouseHoverKey2: [],
-          displayMode: "bubble",
-        },
-      }
-    );
-
-    await hoverNode(document.getElementById("first"));
-    await hoverNode(document.getElementById("second"));
-    await flushAsync();
-    resolveFirst({ trText: "First translation", isSame: false });
-    await Promise.resolve();
-    await Promise.resolve();
-
-    const bubble = document.querySelector(
-      `.${Translator.LINGOFLOW_CLASS.hoverBubble}`
-    );
-    expect(bubble.textContent).toBe("Second translation");
-  });
-
   test("injects inline <style> when CSSStyleSheet constructor is unavailable", async () => {
     global.CSSStyleSheet = class {
       constructor() {
@@ -945,35 +797,4 @@ describe("Translator rule styles", () => {
     expect(shadowRoot.querySelectorAll("style")).toHaveLength(1);
   });
 
-  test("removes mouse hover bubble when mouse hover is disabled", async () => {
-    document.body.innerHTML =
-      '<main id="root"><p id="target">Hello hover</p></main>';
-    const target = document.getElementById("target");
-    const translator = createTranslator(
-      {
-        transOpen: "false",
-      },
-      {
-        preInit: true,
-        mouseHoverSetting: {
-          useMouseHover: true,
-          mouseHoverKey: [],
-          mouseHoverKey2: [],
-          displayMode: "bubble",
-        },
-      }
-    );
-
-    await hoverNode(target);
-    await flushAsync();
-    expect(
-      document.querySelector(`.${Translator.LINGOFLOW_CLASS.hoverBubble}`)
-    ).not.toBeNull();
-
-    translator.toggleMouseHover();
-
-    expect(
-      document.querySelector(`.${Translator.LINGOFLOW_CLASS.hoverBubble}`)
-    ).toBeNull();
-  });
 });

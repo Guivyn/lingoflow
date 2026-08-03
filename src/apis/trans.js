@@ -21,7 +21,7 @@ import {
   parseSTRes,
 } from "../providers/shared";
 import { msAuth } from "../libs/auth";
-import { interpreter } from "../libs/interpreter";
+import { createInterpreter } from "../libs/interpreter";
 import {
   parseJsonObj,
   extractJson,
@@ -44,6 +44,12 @@ export { buildSubtitleSystemPrompt };
 
 const keyMap = new Map();
 const urlMap = new Map();
+
+const normalizeApiKey = (value = "") =>
+  String(value)
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .replace(/^["']|["']$/g, "");
 
 // 轮询key/url
 // 轮询 Key / URL 负载均衡。
@@ -185,8 +191,9 @@ const genTransReq = async ({ reqHook, ...args }) => {
     docInfo: externalDocInfo,
   } = args;
 
+  args.key = normalizeApiKey(key);
   if (getProviderCapability(apiType, "mulkeys")) {
-    args.key = keyPick(apiSlug, key, keyMap);
+    args.key = keyPick(apiSlug, args.key, keyMap);
   }
 
   if (getProviderCapability(apiType, "multipleUrls")) {
@@ -272,8 +279,9 @@ const genTransReq = async ({ reqHook, ...args }) => {
         userMsg,
         method,
       };
-      interpreter.run(`exports.reqHook = ${reqHook}`);
-      const hookResult = await interpreter.exports.reqHook(
+      const hookSandbox = createInterpreter();
+      hookSandbox.run(`exports.reqHook = ${reqHook}`);
+      const hookResult = await hookSandbox.exports.reqHook(
         {
           ...args,
           defaultSystemPrompt,
@@ -323,8 +331,9 @@ const parseTransRes = async (
   // 执行 response hook
   if (resHook?.trim()) {
     try {
-      interpreter.run(`exports.resHook = ${resHook}`);
-      const hookResult = await interpreter.exports.resHook({
+      const hookSandbox = createInterpreter();
+      hookSandbox.run(`exports.resHook = ${resHook}`);
+      const hookResult = await hookSandbox.exports.resHook({
         apiType,
         userMsg,
         res,

@@ -10,11 +10,10 @@ export const shadowRootInjector = () => {
       // 执行原生的 attachShadow 逻辑
       const root = orig.apply(this, args);
 
-      // REVIEW: 消息监听滥用与安全风险。
-      // 此处使用 `window.postMessage` 进行跨域或跨环境通知，并且将 `targetOrigin` 设置为了通配符 `*`。
-      // 这意味着当前窗口内的任何第三方脚本都可以监听并捕获到该事件。
-      // 虽然该通知负载没有包含敏感数据，但使用通配符并不符合安全防御性编程的最佳实践，推荐在已知当前域时使用 `window.location.origin` 进行限制。
-      window.postMessage({ type: "LINGOFLOW_SHADOW_ROOT_CREATED" }, "*");
+      window.postMessage(
+        { type: "LINGOFLOW_SHADOW_ROOT_CREATED" },
+        window.location.origin
+      );
       return root;
     };
   } catch (err) {

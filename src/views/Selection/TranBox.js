@@ -15,7 +15,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import BrightnessAutoIcon from "@mui/icons-material/BrightnessAuto";
-import Typography from "@mui/material/Typography";
 import { useI18n } from "../../hooks/I18n";
 import { useCallback, useState } from "react";
 import TranForm from "./TranForm.js";
@@ -23,9 +22,10 @@ import { MSG_OPEN_SEPARATE_WINDOW } from "../../config/msg.js";
 import { sendBgMsg } from "../../libs/msg.js";
 import { isExt } from "../../libs/client.js";
 import { useTheme, alpha } from "@mui/material/styles";
-import Logo from "../../components/Logo";
+import ProductSignature from "../../components/ProductSignature";
 import { isValidWord } from "../../libs/utils";
 import { useDarkMode } from "../../hooks/ColorMode";
+import { tokens } from "../../ui/theme/tokens";
 
 /**
  * 划词翻译框的顶部导航栏组件
@@ -65,14 +65,25 @@ function TranBoxHeader({
 
   // 顶部操作图标按钮的基础通用样式配置
   const baseBtnStyle = {
-    borderRadius: "6px",
+    borderRadius: `${tokens.radius.sm}px`,
     padding: "5px",
     minWidth: "30px",
     minHeight: "30px",
-    transition: "all 0.2s ease",
+    transition: `background-color ${tokens.motion.fast}ms ${tokens.motion.easing}, box-shadow ${tokens.motion.fast}ms ${tokens.motion.easing}, transform ${tokens.motion.fast}ms ${tokens.motion.easing}`,
     backgroundColor: "transparent",
     "& svg": {
       color: iconColor,
+    },
+    "&:hover": {
+      backgroundColor: theme.palette.surfaceMuted,
+      transform: "scale(1.04)",
+      "& svg": {
+        color: theme.palette.text.primary,
+      },
+    },
+    "&:active": {
+      transform: "scale(0.96)",
+      backgroundColor: theme.palette.primary.light + "40",
     },
   };
 
@@ -82,8 +93,8 @@ function TranBoxHeader({
       onTouchEnd={(e) => e.stopPropagation()}
       sx={{
         backgroundColor: theme.palette.background.default,
-        padding: "4px 8px 4px 12px",
-        height: "36px",
+        padding: "6px 10px 6px 14px",
+        height: "40px",
         display: "flex",
         alignItems: "center",
         minHeight: "auto",
@@ -107,42 +118,10 @@ function TranBoxHeader({
           spacing={1}
           sx={{ minWidth: 0, flex: "1 1 auto", overflow: "hidden" }}
         >
-          <Box
-            sx={{
-              width: 18,
-              height: 18,
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "4px",
-              backgroundColor: theme.palette.background.paper,
-              border: `1px solid ${theme.palette.divider}`,
-              transition: "all 0.2s ease",
-              "&:hover": {
-                boxShadow: theme.shadows[2],
-                transform: "translateY(-1px)",
-                backgroundColor: theme.palette.action.hover,
-              },
-            }}
-          >
-            <Logo size={16} />
-          </Box>
-
-          <Typography
-            variant="caption"
-            sx={{
-              minWidth: 0,
-              fontWeight: 500,
-              fontSize: "12px",
-              color: theme.palette.text.secondary,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {`${process.env.REACT_APP_NAME} v${process.env.REACT_APP_VERSION}`}
-          </Typography>
+          <ProductSignature
+            variant="tranbox"
+            sx={{ flex: "1 1 auto", overflow: "hidden" }}
+          />
         </Stack>
 
         {/* 右侧：功能控制按钮组 */}
@@ -161,16 +140,6 @@ function TranBoxHeader({
               onMouseLeave={blurOnLeave}
               sx={{
                 ...baseBtnStyle,
-                "&:hover": {
-                  backgroundColor: theme.palette.primary.light + "20",
-                  transform: "scale(1.05)",
-                  boxShadow: theme.shadows[2],
-                  "& svg": { color: theme.palette.primary.main },
-                },
-                "&:active": {
-                  transform: "scale(0.95)",
-                  backgroundColor: theme.palette.primary.light + "40",
-                },
               }}
             >
               <OpenInNewIcon sx={{ width: 16, height: 16 }} />
@@ -185,16 +154,6 @@ function TranBoxHeader({
             onClick={() => setHideClickAway((pre) => !pre)}
             sx={{
               ...baseBtnStyle,
-              "&:hover": {
-                backgroundColor: theme.palette.success.light + "20",
-                transform: "scale(1.05)",
-                boxShadow: theme.shadows[2],
-                "& svg": { color: theme.palette.success.main },
-              },
-              "&:active": {
-                transform: "scale(0.95)",
-                backgroundColor: theme.palette.success.light + "40",
-              },
             }}
           >
             {hideClickAway ? (
@@ -218,16 +177,6 @@ function TranBoxHeader({
             onClick={() => setFollowSelection((pre) => !pre)}
             sx={{
               ...baseBtnStyle,
-              "&:hover": {
-                backgroundColor: theme.palette.warning.light + "20",
-                transform: "scale(1.05)",
-                boxShadow: theme.shadows[2],
-                "& svg": { color: theme.palette.warning.main },
-              },
-              "&:active": {
-                transform: "scale(0.95)",
-                backgroundColor: theme.palette.warning.light + "40",
-              },
             }}
           >
             {followSelection ? (
@@ -251,16 +200,6 @@ function TranBoxHeader({
             onClick={() => setSimpleStyle((pre) => !pre)}
             sx={{
               ...baseBtnStyle,
-              "&:hover": {
-                backgroundColor: theme.palette.info.light + "20",
-                transform: "scale(1.05)",
-                boxShadow: theme.shadows[2],
-                "& svg": { color: theme.palette.info.main },
-              },
-              "&:active": {
-                transform: "scale(0.95)",
-                backgroundColor: theme.palette.info.light + "40",
-              },
             }}
           >
             {simpleStyle ? (
@@ -280,16 +219,6 @@ function TranBoxHeader({
             onClick={toggleDarkMode}
             sx={{
               ...baseBtnStyle,
-              "&:hover": {
-                backgroundColor: theme.palette.warning.light + "20",
-                transform: "scale(1.05)",
-                boxShadow: theme.shadows[2],
-                "& svg": { color: theme.palette.warning.main },
-              },
-              "&:active": {
-                transform: "scale(0.95)",
-                backgroundColor: theme.palette.warning.light + "40",
-              },
             }}
           >
             {darkMode === "dark" ? (
@@ -321,16 +250,6 @@ function TranBoxHeader({
             onClick={() => setShowBox(false)}
             sx={{
               ...baseBtnStyle,
-              "&:hover": {
-                backgroundColor: theme.palette.error.light + "20",
-                transform: "scale(1.05)",
-                boxShadow: theme.shadows[2],
-                "& svg": { color: theme.palette.error.main },
-              },
-              "&:active": {
-                transform: "scale(0.95)",
-                backgroundColor: theme.palette.error.light + "40",
-              },
             }}
           >
             <CloseIcon sx={{ width: 16, height: 16 }} />
@@ -362,9 +281,10 @@ function TranBoxContent({
   selectionContext,
 }) {
   const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
   const scrollbarTrackColor =
-    theme.palette.mode === "dark" ? "#1f1f23" : theme.palette.background.paper;
+    theme.palette.mode === "dark"
+      ? theme.palette.surfaceRaised
+      : theme.palette.background.paper;
   const scrollbarThumbColor =
     theme.palette.mode === "dark"
       ? alpha(theme.palette.text.primary, 0.28)
@@ -383,10 +303,10 @@ function TranBoxContent({
         "&::-webkit-scrollbar-track": {
           background: scrollbarTrackColor,
         },
-        "&::-webkit-scrollbar-thumb": {
-          backgroundColor: scrollbarThumbColor,
-          borderRadius: 8,
-          border: `2px solid ${theme.palette.background.paper}`,
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: scrollbarThumbColor,
+                borderRadius: "8px",
+                border: `2px solid ${theme.palette.background.paper}`,
         },
         "&::-webkit-scrollbar-thumb:hover": {
           backgroundColor: alpha(theme.palette.text.primary, 0.36),
@@ -395,9 +315,7 @@ function TranBoxContent({
         scrollbarWidth: "thin",
         scrollbarColor: `${scrollbarThumbColor} ${scrollbarTrackColor}`,
 
-        color: isDark
-          ? "rgba(255,255,255,0.82)" // 柔白字体, 避免极暗背景下过于刺眼
-          : theme.palette.text.primary,
+        color: theme.palette.text.primary,
 
         lineHeight: 1.55,
       }}

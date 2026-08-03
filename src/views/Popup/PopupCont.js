@@ -1,33 +1,54 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Stack from "@mui/material/Stack";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 import MenuItem from "@mui/material/MenuItem";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Switch from "@mui/material/Switch";
 import Button from "@mui/material/Button";
 import Grid from "@mui/material/Grid";
-import Snackbar from "@mui/material/Snackbar";
-import MuiAlert from "@mui/material/Alert";
-import { sendBgMsg, sendTabMsg, getCurTab } from "../../libs/msg";
+import Menu from "@mui/material/Menu";
+import IconButton from "@mui/material/IconButton";
+import SettingsIcon from "@mui/icons-material/Settings";
+import { sendBgMsg, sendTabMsg } from "../../libs/msg";
 import { isExt } from "../../libs/client";
 import { useI18n } from "../../hooks/I18n";
 import TextField from "@mui/material/TextField";
 import {
   MSG_TRANS_TOGGLE,
   MSG_TRANS_PUTRULE,
-  MSG_SAVE_RULE,
+  MSG_TRANS_PUTSETTING,
   MSG_COMMAND_SHORTCUTS,
-  MSG_TRANSBOX_TOGGLE,
-  MSG_MOUSEHOVER_TOGGLE,
   OPT_LANGS_FROM_REVERSED as OPT_LANGS_FROM,
   OPT_LANGS_TO_REVERSED as OPT_LANGS_TO,
 } from "../../config";
-import { saveRule } from "../../libs/rules";
-import { tryClearCaches } from "../../libs/cache";
 import { appLog } from "../../libs/log";
-import { getDomainOptions, truncateMiddle } from "../../libs/url";
+import { setSetting as persistSetting } from "../../libs/storage";
+import { persistRule } from "../../libs/rules";
 import { useAllTextStyles } from "../../hooks/CustomStyles";
-import { isInBlacklist } from "../../libs/blacklist";
-import { useSetting } from "../../hooks/Setting";
+import { tokens } from "../../ui/theme/tokens";
+
+// 弹窗语言菜单只保留常见语言；当前站点若使用其他语言，会临时追加保留。
+const POPUP_COMMON_LANGS = new Set([
+  "auto",
+  "en",
+  "zh-CN",
+  "zh-TW",
+  "ja",
+  "ko",
+  "fr",
+  "de",
+  "es",
+  "pt",
+  "ru",
+  "it",
+  "vi",
+  "th",
+  "id",
+  "ar",
+]);
+
+const langShortName = (name) => String(name).split(" - ")[0];
 
 /**
  * Popup 弹窗内容主组件
@@ -39,7 +60,6 @@ import { useSetting } from "../../hooks/Setting";
  * @param {Function} props.setSetting - 更新全局设置状态的 React setter
  * @param {Function} props.handleOpenSetting - 打开配置中心页面的回调函数
  * @param {Function} [props.processActions] - 自定义动作处理器（若在非标准扩展环境，如 Shadow DOM 内部运行）
- * @param {boolean} [props.isContent=false] - 标识是否直接运行在页面 Content Script 上（如油猴脚本环境）
  */
 export default function PopupCont({
   rule,
@@ -48,66 +68,32 @@ export default function PopupCont({
   setSetting,
   handleOpenSetting,
   processActions,
-  isContent = false,
 }) {
   const i18n = useI18n();
-  // 使用全局 Context 中的 Settings
-  const { setting: contextSetting, updateSetting } = useSetting();
   // 注册的快捷键指令映射表
   const [commands, setCommands] = useState({});
-  // 当前网址提取出来的多级域名候选项（例如 ["google.com", "mail.google.com"]）
-  const [domainOptions, setDomainOptions] = useState([]);
-  // 当前选中的目标域名规则应用范围
-  const [selectedDomain, setSelectedDomain] = useState("");
-  // 全局轻量提示条提示状态
-  const [snackbar, setSnackbar] = useState({ open: false, message: "" });
+  // 语言胶囊下拉菜单锚点与当前编辑的语言方向
+  const [langAnchor, setLangAnchor] = useState(null);
+  const [langMenuFor, setLangMenuFor] = useState("from");
   // 可用的译文显示样式列表
   const { allTextStyles } = useAllTextStyles();
 
-  // 当前网页的完整 URL 地址
-  const [currentHref, setCurrentHref] = useState("");
+  const openLangMenu = (which) => (event) => {
+    setLangMenuFor(which);
+    setLangAnchor(event.currentTarget);
+  };
 
-  // 从全局配置中读取黑名单字符串数据（多域名用换行或逗号分隔）
-  const blacklistValue = contextSetting?.blacklist || "";
-
-  // 计算当前域名是否已经在黑名单中
-  const isInCurrentBlacklist = useMemo(() => {
-    if (!selectedDomain || !blacklistValue) return false;
-    return isInBlacklist(currentHref, blacklistValue);
-  }, [selectedDomain, blacklistValue, currentHref]);
-
-  // 将当前选中域名加入黑名单的逻辑
-  const handleAddToBlacklist = useCallback(() => {
-    if (!selectedDomain) return;
-    const newBlacklist = blacklistValue
-      ? `${blacklistValue}\n${selectedDomain}`
-      : selectedDomain;
-    updateSetting((pre) => ({ ...pre, blacklist: newBlacklist }));
-    setSnackbar({
-      open: true,
-      message: `${i18n("add_to_blacklist")}: ${selectedDomain}`,
-    });
-  }, [selectedDomain, blacklistValue, updateSetting, i18n]);
-
-  // 将当前选中域名从黑名单中移除的逻辑
-  const handleRemoveFromBlacklist = useCallback(() => {
-    if (!selectedDomain) return;
-    const newList = blacklistValue
-      .split(/\n|,/)
-      .map((url) => url.trim())
-      .filter((url) => url !== selectedDomain)
-      .join("\n");
-    updateSetting((pre) => ({ ...pre, blacklist: newList }));
-    setSnackbar({
-      open: true,
-      message: `${i18n("remove_from_blacklist")}: ${selectedDomain}`,
-    });
-  }, [selectedDomain, blacklistValue, updateSetting, i18n]);
+  const closeLangMenu = () => setLangAnchor(null);
 
   // 切换“网页双语翻译”开启/关闭状态
   const handleTransToggle = async (e) => {
     try {
-      setRule({ ...rule, transOpen: e.target.checked ? "true" : "false" });
+      const nextRule = {
+        ...rule,
+        transOpen: e.target.checked ? "true" : "false",
+      };
+      setRule(nextRule);
+      await persistRule(nextRule);
 
       if (!processActions) {
         await sendTabMsg(MSG_TRANS_TOGGLE);
@@ -122,53 +108,72 @@ export default function PopupCont({
   // 切换“划词翻译框”的开启/关闭状态
   const handleTransboxToggle = async (e) => {
     try {
-      // REVIEW: 如果 setting 未加载完毕而为 null（虽有外层拦截，但由于 React 渲染时序仍有可能），pre.tranboxSetting 会抛出 TypeError。建议此处及后续 Toggle 添加安全校验保护，如 pre?.tranboxSetting
+      const checked = e.target.checked;
       setSetting((pre) => ({
-        ...pre,
-        tranboxSetting: { ...pre.tranboxSetting, transOpen: e.target.checked },
+        ...(pre || {}),
+        tranboxSetting: {
+          ...(pre?.tranboxSetting || {}),
+          transOpen: checked,
+        },
       }));
 
+      const nextSetting = {
+        ...(setting || {}),
+        tranboxSetting: {
+          ...(setting?.tranboxSetting || {}),
+          transOpen: checked,
+        },
+      };
+      try {
+        await persistSetting(nextSetting);
+      } catch (err) {
+        appLog("persist tranbox toggle", err);
+      }
+
+      const payload = { tranboxSetting: nextSetting.tranboxSetting };
       if (!processActions) {
-        await sendTabMsg(MSG_TRANSBOX_TOGGLE);
+        await sendTabMsg(MSG_TRANS_PUTSETTING, payload);
       } else {
-        processActions({ action: MSG_TRANSBOX_TOGGLE });
+        processActions({ action: MSG_TRANS_PUTSETTING, args: payload });
       }
     } catch (err) {
       appLog("toggle transbox", err);
     }
   };
 
-  // 切换“鼠标悬停翻译”的开启/关闭状态
-  const handleMousehoverToggle = async (e) => {
-    try {
-      setSetting((pre) => ({
-        ...pre,
-        mouseHoverSetting: {
-          ...pre.mouseHoverSetting,
-          useMouseHover: e.target.checked,
-        },
-      }));
+  // 切换“英文自动翻译”：持久保存并让当前页面立即按新开关生效
+  const handleAutoTransEnglishToggle = async (e) => {
+    const autoTransEnglish = e.target.checked;
+    const nextSetting = { ...(setting || {}), autoTransEnglish };
+    setSetting(nextSetting);
 
+    try {
+      await persistSetting(nextSetting);
+    } catch (err) {
+      appLog("persist autoTransEnglish", err);
+    }
+
+    try {
       if (!processActions) {
-        await sendTabMsg(MSG_MOUSEHOVER_TOGGLE);
+        await sendTabMsg(MSG_TRANS_PUTSETTING, { autoTransEnglish });
       } else {
-        processActions({ action: MSG_MOUSEHOVER_TOGGLE });
+        processActions({
+          action: MSG_TRANS_PUTSETTING,
+          args: { autoTransEnglish },
+        });
       }
     } catch (err) {
-      appLog("toggle mousehover", err);
+      appLog("apply autoTransEnglish", err);
     }
   };
 
   // 统一处理翻译规则通用设置项的更新（如自动扫描、扫描全部节点、保留排版、仅显示译文等）
   const handleChange = async (e) => {
     try {
-      let { name, value, checked } = e.target;
-      // 针对 isPlainText 开关，以布尔值 checked 作为其配置值
-      if (name === "isPlainText") {
-        value = checked;
-      }
-      // REVIEW: 项目中对于布尔开关的处理不统一。autoScan、scanAll、hasRichText、transOnly 在 Switch 中传递的是字符串 "true" / "false"（直接修改为 value = checked ? "true" : "false" 会更为干净），而 isPlainText 传递的是原生的布尔值 checked，这在后端规则合并与序列化时易产生数据类型不匹配的问题。
-      setRule((pre) => ({ ...pre, [name]: value }));
+      let { name, value } = e.target;
+      const nextRule = { ...rule, [name]: value };
+      setRule(nextRule);
+      await persistRule(nextRule);
 
       if (!processActions) {
         await sendTabMsg(MSG_TRANS_PUTRULE, { [name]: value });
@@ -179,64 +184,6 @@ export default function PopupCont({
       appLog("update rule", err);
     }
   };
-
-  // 手动清除本地的网页翻译缓存数据
-  const handleClearCache = () => {
-    tryClearCaches();
-  };
-
-  // 保存当前网页的域名翻译规则到配置存储中
-  const handleSaveRule = async () => {
-    try {
-      if (!selectedDomain) {
-        return;
-      }
-
-      const curRule = { ...rule, pattern: selectedDomain };
-      if (isExt && isContent) {
-        // 如果是扩展内容脚本，需要向 Background 消息管道请求保存规则
-        sendBgMsg(MSG_SAVE_RULE, curRule);
-      } else {
-        // 否则直接本地调用同步方法保存
-        saveRule(curRule);
-      }
-      setSnackbar({
-        open: true,
-        message: `${i18n("save_rule")}: ${selectedDomain}`,
-      });
-    } catch (err) {
-      appLog("save rule", err);
-    }
-  };
-
-  // 挂载/初始化：根据当前页面环境获取完整的 URL 链接，并生成域名选择项
-  useEffect(() => {
-    (async () => {
-      try {
-        let href = "";
-        if (!isContent) {
-          // 运行在扩展的 Popup 浮窗环境，需要异步获取当前激活 Tab 的 URL
-          // REVIEW: 针对空白标签页、浏览器内置页面（如 chrome://）或权限受限页面，getCurTab() 返回的 tab 可能为 undefined 或 tab.url 不存在，虽然外层有 try-catch 保护，但建议添加安全性拦截保障稳定性。
-          const tab = await getCurTab();
-          href = tab?.url || "";
-        } else {
-          // 运行在主页面 Content Script（油猴脚本）环境，直接读取 window.location.href
-          href = window.location?.href;
-        }
-
-        if (href && typeof href === "string") {
-          setCurrentHref(href);
-          const options = getDomainOptions(href);
-          setDomainOptions(options);
-          if (options.length > 0) {
-            setSelectedDomain(options[0]);
-          }
-        }
-      } catch (err) {
-        appLog("get domain options", err);
-      }
-    })();
-  }, [isContent]);
 
   // 监听全局快捷键配置变更，将其转为前端显示的文本字符串形式（如 "Alt+T"）
   useEffect(() => {
@@ -280,7 +227,6 @@ export default function PopupCont({
 
   // 快捷提取各种交互开关的当前启用状态
   const tranboxEnabled = setting?.tranboxSetting?.transOpen;
-  const mouseHoverEnabled = setting?.mouseHoverSetting?.useMouseHover;
 
   const {
     transOpen,
@@ -290,33 +236,119 @@ export default function PopupCont({
     textStyle,
     autoScan,
     transOnly,
-    hasRichText,
     scanAll,
-    isPlainText: isPlainTextValue = false,
   } = rule || {};
-  const isPlainText = isPlainTextValue === true || isPlainTextValue === "true";
+
+  const fromLangLabel =
+    OPT_LANGS_FROM.find(([value]) => value === fromLang)?.[1] || fromLang;
+  const toLangLabel =
+    OPT_LANGS_TO.find(([value]) => value === toLang)?.[1] || toLang;
+  const sourceOptions = OPT_LANGS_FROM.filter(
+    ([value]) => POPUP_COMMON_LANGS.has(value) || value === fromLang
+  );
+  const targetOptions = OPT_LANGS_TO.filter(
+    ([value]) => POPUP_COMMON_LANGS.has(value) || value === toLang
+  );
+  const compactLabelSx = {
+    "& .MuiFormControlLabel-label": {
+      fontSize: tokens.font.sizeData,
+    },
+  };
+  const langCapsuleBaseSx = {
+    cursor: "pointer",
+    border: "none",
+    borderRadius: tokens.radius.full,
+    px: `${tokens.spacing.xl}px`,
+    py: `${tokens.spacing.sm}px`,
+    fontFamily: tokens.font.mono,
+    fontSize: tokens.font.sizeLg,
+    fontWeight: tokens.font.weightSemibold,
+    lineHeight: 1.2,
+  };
 
   return (
-    <Stack sx={{ p: 2 }} spacing={2}>
-      {/* 翻译功能及高级开关的网格布局布局 */}
-      <Grid container columns={12} spacing={1}>
-        {/* 开关：双语网页翻译 (支持快捷键提示) */}
-        <Grid item xs={12}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={transOpen === "true"}
-                onChange={handleTransToggle}
-              />
-            }
-            label={
-              commands["toggleTranslate"]
-                ? `${i18n("translate_alt")}(${commands["toggleTranslate"]})`
-                : i18n("translate_alt")
-            }
-          />
-        </Grid>
-        {/* 开关：网页加载后自动扫描翻译 */}
+    <Stack sx={{ p: 1.5 }} spacing={1.5}>
+      {/* 双语状态条：源语蓝 / 译语陶土，点击换语言 */}
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="center"
+        spacing={1.5}
+        sx={{ width: "100%" }}
+      >
+        <Box
+          component="button"
+          type="button"
+          onClick={openLangMenu("from")}
+          aria-haspopup="listbox"
+          aria-expanded={langMenuFor === "from" && Boolean(langAnchor)}
+          sx={{
+            ...langCapsuleBaseSx,
+            bgcolor: "info.light",
+            color: "info.main",
+          }}
+        >
+          {fromLang === "auto" ? "Auto" : langShortName(fromLangLabel)}
+        </Box>
+        <Typography
+          component="span"
+          sx={{
+            fontFamily: tokens.font.mono,
+            fontSize: tokens.font.sizeSm,
+            color: "text.disabled",
+          }}
+        >
+          ⇄
+        </Typography>
+        <Box
+          component="button"
+          type="button"
+          onClick={openLangMenu("to")}
+          aria-haspopup="listbox"
+          aria-expanded={langMenuFor === "to" && Boolean(langAnchor)}
+          sx={{
+            ...langCapsuleBaseSx,
+            bgcolor: "primary.light",
+            color: "primary.main",
+          }}
+        >
+          {langShortName(toLangLabel)}
+        </Box>
+      </Stack>
+
+      {/* 主开关：整行状态 */}
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+      >
+        <Box>
+          <Typography
+            component="div"
+            sx={{
+              fontSize: tokens.font.sizeMd,
+              fontWeight: tokens.font.weightMedium,
+              color: "text.primary",
+            }}
+          >
+            {i18n("translate_alt")}
+          </Typography>
+          <Typography
+            component="div"
+            sx={{
+              fontFamily: tokens.font.mono,
+              fontSize: tokens.font.sizeCaption,
+              color: "text.secondary",
+            }}
+          >
+            {`${transOpen === "true" ? i18n("status_enabled") : i18n("status_disabled")}${commands["toggleTranslate"] ? ` · ${commands["toggleTranslate"]}` : ""}`}
+          </Typography>
+        </Box>
+        <Switch checked={transOpen === "true"} onChange={handleTransToggle} />
+      </Stack>
+
+      {/* 次级开关 2x2 */}
+      <Grid container columns={12} spacing={0.5} sx={{ pl: 1.5 }}>
         <Grid item xs={6}>
           <FormControlLabel
             control={
@@ -324,14 +356,14 @@ export default function PopupCont({
                 size="small"
                 name="autoScan"
                 value={autoScan === "true" ? "false" : "true"}
-                checked={autoScan === "true"}
+                checked={autoScan !== "false"}
                 onChange={handleChange}
               />
             }
             label={i18n("autoscan_alt")}
+            sx={compactLabelSx}
           />
         </Grid>
-        {/* 开关：扫描翻译所有 DOM 节点，包括隐藏元素等 */}
         <Grid item xs={6}>
           <FormControlLabel
             control={
@@ -344,24 +376,9 @@ export default function PopupCont({
               />
             }
             label={i18n("scan_all_nodes")}
+            sx={compactLabelSx}
           />
         </Grid>
-        {/* 开关：保留排版/富文本翻译 (识别加粗、链接等格式) */}
-        <Grid item xs={6}>
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                name="hasRichText"
-                value={hasRichText === "true" ? "false" : "true"}
-                checked={hasRichText === "true"}
-                onChange={handleChange}
-              />
-            }
-            label={i18n("richtext_alt")}
-          />
-        </Grid>
-        {/* 开关：仅显示译文 (不保留原文) */}
         <Grid item xs={6}>
           <FormControlLabel
             control={
@@ -374,9 +391,23 @@ export default function PopupCont({
               />
             }
             label={i18n("transonly_alt")}
+            sx={compactLabelSx}
           />
         </Grid>
-        {/* 开关：开启页面划词翻译框 */}
+        <Grid item xs={6}>
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                name="autoTransEnglish"
+                checked={setting?.autoTransEnglish !== false}
+                onChange={handleAutoTransEnglishToggle}
+              />
+            }
+            label={i18n("auto_trans_english")}
+            sx={compactLabelSx}
+          />
+        </Grid>
         <Grid item xs={6}>
           <FormControlLabel
             control={
@@ -389,218 +420,103 @@ export default function PopupCont({
               />
             }
             label={i18n("selection_translate")}
-          />
-        </Grid>
-        {/* 开关：开启鼠标悬浮翻译 */}
-        <Grid item xs={6}>
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                name="mouseHoverEnabled"
-                value={!mouseHoverEnabled}
-                checked={mouseHoverEnabled}
-                onChange={handleMousehoverToggle}
-              />
-            }
-            label={i18n("mousehover_translate")}
-          />
-        </Grid>
-        {/* 开关：纯文本扫描翻译模式 (更高性能，但不支持排版保留) */}
-        <Grid item xs={6}>
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                name="isPlainText"
-                value={!isPlainText}
-                checked={isPlainText}
-                onChange={handleChange}
-              />
-            }
-            label={i18n("plain_text_translate")}
+            sx={compactLabelSx}
           />
         </Grid>
       </Grid>
 
-      {/* 源语言与目标语言选择下拉菜单 */}
-      <Stack direction="row" spacing={2}>
-        <TextField
-          select
-          SelectProps={{ MenuProps: { disablePortal: true } }}
-          size="small"
-          value={fromLang}
-          name="fromLang"
-          label={i18n("from_lang")}
-          onChange={handleChange}
-          fullWidth
-        >
-          {OPT_LANGS_FROM.map(([lang, name]) => (
-            <MenuItem key={lang} value={lang}>
-              {name}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <TextField
-          select
-          SelectProps={{ MenuProps: { disablePortal: true } }}
-          size="small"
-          value={toLang}
-          name="toLang"
-          label={i18n("to_lang")}
-          onChange={handleChange}
-          fullWidth
-        >
-          {OPT_LANGS_TO.map(([lang, name]) => (
-            <MenuItem key={lang} value={lang}>
-              {name}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Stack>
-
-      {/* 翻译引擎服务商与译文排版样式选择 */}
-      <Stack direction="row" spacing={2}>
-        <TextField
-          select
-          SelectProps={{ MenuProps: { disablePortal: true } }}
-          size="small"
-          value={apiSlug}
-          name="apiSlug"
-          label={i18n("translate_service")}
-          onChange={handleChange}
-          fullWidth
-        >
-          {optApis.map(({ key, name }) => (
-            <MenuItem key={key} value={key}>
-              {name}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <TextField
-          select
-          SelectProps={{ MenuProps: { disablePortal: true } }}
-          size="small"
-          value={textStyle}
-          name="textStyle"
-          label={
-            commands["toggleStyle"]
-              ? `${i18n("text_style_alt")}(${commands["toggleStyle"]})`
-              : i18n("text_style_alt")
-          }
-          onChange={handleChange}
-          fullWidth
-        >
-          {allTextStyles.map((item) => (
-            <MenuItem key={item.styleSlug} value={item.styleSlug}>
-              {item.styleName}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Stack>
-
-      {/* 域名规则设置与黑名单配置 */}
-      <Stack>
-        {/* 作用域名选择下拉列表（包含整站、特定子域名等选择项） */}
-        <TextField
-          select
-          SelectProps={{ MenuProps: { disablePortal: true } }}
-          size="small"
-          value={selectedDomain}
-          label={i18n("domain")}
-          onChange={(e) => setSelectedDomain(e.target.value)}
-          fullWidth
-          sx={{ mb: 1 }}
-        >
-          {domainOptions.map((domain) => (
-            <MenuItem key={domain} value={domain} title={domain}>
-              {truncateMiddle(domain)}
-            </MenuItem>
-          ))}
-        </TextField>
-        {/* 规则相关的操作按钮：保存、黑名单操作、清理缓存 */}
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-        >
-          <Button
-            variant="text"
-            onClick={handleSaveRule}
-            disabled={domainOptions.length === 0}
+      {/* 服务与样式 */}
+      <Box>
+        <Stack direction="row" spacing={1}>
+          <TextField
+            select
+            SelectProps={{ MenuProps: { disablePortal: true } }}
+            size="small"
+            value={apiSlug}
+            name="apiSlug"
+            label={i18n("translate_service")}
+            onChange={handleChange}
+            fullWidth
           >
-            {i18n("save_rule")}
-          </Button>
-          <Button
-            variant="text"
-            onClick={
-              isInCurrentBlacklist
-                ? handleRemoveFromBlacklist
-                : handleAddToBlacklist
+            {optApis.map(({ key, name }) => (
+              <MenuItem key={key} value={key}>
+                {name}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            select
+            SelectProps={{ MenuProps: { disablePortal: true } }}
+            size="small"
+            value={textStyle}
+            name="textStyle"
+            label={
+              commands["toggleStyle"]
+                ? `${i18n("text_style_alt")}(${commands["toggleStyle"]})`
+                : i18n("text_style_alt")
             }
-            disabled={domainOptions.length === 0}
+            onChange={handleChange}
+            fullWidth
           >
-            {i18n(
-              isInCurrentBlacklist
-                ? "remove_from_blacklist"
-                : "add_to_blacklist"
-            )}
-          </Button>
-          <Button variant="text" onClick={handleClearCache}>
-            {i18n("clear_cache")}
-          </Button>
+            {allTextStyles.map((item) => (
+              <MenuItem key={item.styleSlug} value={item.styleSlug}>
+                {item.styleName}
+              </MenuItem>
+            ))}
+          </TextField>
         </Stack>
-        {/* 底部导航支持及通用设置入口 */}
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-        >
-          <Button
-            variant="text"
-            onClick={() => {
-              window.open(
-                "https://chromewebstore.google.com/detail/lingoflow/bdiifdefkgmcblbcghdlonllpjhhjgof/reviews",
-                "_blank"
-              );
-            }}
-          >
-            {i18n("comment_support")}
-          </Button>
-          <Button
-            variant="text"
-            onClick={() => {
-              window.open(
-                "https://github.com/Guivyn/lingoflow#%E8%B5%9E%E8%B5%8F",
-                "_blank"
-              );
-            }}
-          >
-            {i18n("appreciate_support")}
-          </Button>
-          <Button variant="text" onClick={handleOpenSetting}>
-            {i18n("setting")}
-          </Button>
-        </Stack>
-      </Stack>
-      {/* 操作成功提示气泡提示条 */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ open: false, message: "" })}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      </Box>
+
+      {/* 底部操作：赞赏支持与设置 */}
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
       >
-        <MuiAlert
-          onClose={() => setSnackbar({ open: false, message: "" })}
-          severity="success"
-          variant="filled"
-          sx={{ width: "100%" }}
+        <Button
+          variant="text"
+          onClick={() => {
+            window.open(
+              "https://github.com/Guivyn/lingoflow#%E8%B5%9E%E8%B5%8F",
+              "_blank"
+            );
+          }}
         >
-          {snackbar.message}
-        </MuiAlert>
-      </Snackbar>
+          {i18n("appreciate_support")}
+        </Button>
+        <IconButton
+          onClick={handleOpenSetting}
+          title={i18n("setting")}
+          aria-label={i18n("setting")}
+          sx={{ p: 0.5 }}
+        >
+          <SettingsIcon fontSize="small" />
+        </IconButton>
+      </Stack>
+
+      {/* 语言菜单 */}
+      <Menu
+        anchorEl={langAnchor}
+        open={Boolean(langAnchor)}
+        onClose={closeLangMenu}
+      >
+        {(langMenuFor === "from" ? sourceOptions : targetOptions).map(
+          ([value, name]) => (
+            <MenuItem
+              key={value}
+              value={value}
+              selected={(langMenuFor === "from" ? fromLang : toLang) === value}
+              onClick={() => {
+                handleChange({ target: { name: langMenuFor, value } });
+                closeLangMenu();
+              }}
+            >
+              {value === "auto" ? "Auto" : langShortName(name)}
+            </MenuItem>
+          )
+        )}
+      </Menu>
     </Stack>
   );
 }

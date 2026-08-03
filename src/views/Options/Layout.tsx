@@ -29,7 +29,7 @@ export default function Layout() {
   }, [location]);
 
   return (
-    <Box>
+    <Box sx={{ bgcolor: theme.palette.background.default, minHeight: "100vh" }}>
       <CssBaseline />
       <Header onDrawerToggle={handleDrawerToggle} />
 
@@ -46,7 +46,16 @@ export default function Layout() {
           />
         </Box>
 
-        <Box component="main" sx={{ flex: 1, p: 2, width: "100%" }}>
+        <Box
+          component="main"
+          sx={{
+            flex: 1,
+            width: "100%",
+            px: `${tokens.spacing.xxl}px`,
+            py: `${tokens.spacing.xxl}px`,
+            maxWidth: tokens.layout.contentMaxWidth + navWidth,
+          }}
+        >
           <Outlet />
         </Box>
       </Box>

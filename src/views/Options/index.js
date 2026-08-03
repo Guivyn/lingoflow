@@ -8,10 +8,10 @@ import { AlertProvider } from "../../hooks/Alert";
 import { ConfirmProvider } from "../../hooks/Confirm";
 import Apis from "./Apis";
 import Tranbox from "./Tranbox";
-import MouseHoverSetting from "./MouseHover";
 import SubtitleSetting from "./Subtitle";
 import StylesSetting from "./StylesSetting";
 import Providers from "./Providers";
+import Showcase from "../Showcase";
 
 /**
  * 选项设置中心 (Options) 根入口组件
@@ -29,10 +29,12 @@ export default function Options() {
                   <Route path="rules" element={<Rules />} />
                   <Route path="styles" element={<StylesSetting />} />
                   <Route path="tranbox" element={<Tranbox />} />
-                  <Route path="mousehover" element={<MouseHoverSetting />} />
                   <Route path="subtitle" element={<SubtitleSetting />} />
                   <Route path="apis" element={<Apis />} />
                   <Route path="providers" element={<Providers />} />
+                  {process.env.NODE_ENV === "development" && (
+                    <Route path="showcase" element={<Showcase />} />
+                  )}
                 </Route>
               </Routes>
             </HashRouter>

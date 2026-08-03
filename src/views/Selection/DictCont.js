@@ -2,12 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
-import Divider from "@mui/material/Divider";
 import Alert from "@mui/material/Alert";
 import CopyBtn from "./CopyBtn";
 import { useAsyncNow } from "../../hooks/Fetch";
 import { dictHandlers } from "./DictHandler";
 import { useI18n } from "../../hooks/I18n";
+import { tokens } from "../../ui/theme/tokens";
 
 /**
  * 词典释义主体渲染组件
@@ -19,6 +19,7 @@ import { useI18n } from "../../hooks/I18n";
  * @param {Object} props.dict - 当前选中的词典处理器配置项
  */
 function DictBody({ text, setCopyText, setRealWord, dict }) {
+  const i18n = useI18n();
   // 使用 useAsyncNow 发起即时的异步词典查询请求
   const { loading, error, data } = useAsyncNow(dict.apiFn, text);
 
@@ -44,11 +45,15 @@ function DictBody({ text, setCopyText, setRealWord, dict }) {
   }
 
   if (error) {
-    return <Alert severity="error">{error}</Alert>;
+    return (
+      <Alert severity="error">
+        {`${i18n("dictionary_failed")}: ${error}`}
+      </Alert>
+    );
   }
 
   if (!data) {
-    return <Typography>Not found!</Typography>;
+    return <Typography>{i18n("dict_not_found")}</Typography>;
   }
 
   return (
@@ -78,7 +83,16 @@ export default function DictCont({ text, enDict }) {
       {text && (
         <Stack direction="row" justifyContent="space-between">
           {/* 显示还原原形后的词语标题 */}
-          <Typography variant="subtitle1" style={{ fontWeight: "bold" }}>
+          <Typography
+            component="div"
+            sx={{
+              fontFamily: tokens.font.display,
+              fontSize: tokens.font.sizeLg,
+              fontWeight: tokens.font.weightSemibold,
+              lineHeight: 1.3,
+              color: "text.primary",
+            }}
+          >
             {realWord}
           </Typography>
           <Stack direction="row" justifyContent="space-between">
@@ -88,8 +102,6 @@ export default function DictCont({ text, enDict }) {
           </Stack>
         </Stack>
       )}
-
-      <Divider />
 
       {/* 词典渲染主体 */}
       {dict && (

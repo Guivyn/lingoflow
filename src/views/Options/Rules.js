@@ -3,7 +3,6 @@ import {
   AccordionDetails,
   AccordionSummary,
   AddIcon,
-  Alert,
   Box,
   Button,
   CancelIcon,
@@ -15,20 +14,23 @@ import {
   Grid,
   Input,
   MenuItem,
+  PageHeading,
   SaveIcon,
   Select,
+  SettingSection,
   ShowMoreButton,
   Stack,
   Switch,
   Tab,
   Tabs,
+  tokens,
   Typography,
   ValidationInput,
 } from "../../ui";
 import {
   GLOBAL_KEY,
   DEFAULT_RULE,
-  GLOBLA_RULE,
+  GLOBAL_RULE,
   OPT_LANGS_FROM_REVERSED as OPT_LANGS_FROM,
   OPT_LANGS_TO_REVERSED as OPT_LANGS_TO,
   DEFAULT_TRANS_TAG,
@@ -46,8 +48,7 @@ import { useAllTextStyles } from "../../hooks/CustomStyles";
 
 // 计算规则的初始表单值
 const calculateInitialValues = (rule) => {
-  // REVIEW: GLOBLA_RULE 存在拼写错误，疑似应为 GLOBAL_RULE。此处为兼容底层导出的拼写而沿用。
-  const base = rule?.pattern === "*" ? GLOBLA_RULE : DEFAULT_RULE;
+  const base = rule?.pattern === "*" ? GLOBAL_RULE : DEFAULT_RULE;
   return { ...base, ...(rule || {}) };
 };
 
@@ -98,6 +99,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
     grandStyle = "", // 针对选择器祖父元素的样式
     injectJs = "", // 页面注入 JS 脚本
     injectCss = "", // 页面注入 CSS 样式
+    enableScripts = false, // 是否允许该规则执行 JS/Hook 脚本
     apiSlug, // 指定的翻译服务标识
     fromLang, // 源语言
     toLang, // 目标语言
@@ -125,7 +127,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
     // transRemoveHook = "",
     splitParagraph = OPT_SPLIT_PARAGRAPH_DISABLE, // 段落切分策略
     splitLength = 0, // 段落切分最大长度
-    transOrder, // 文本顺序：由 DEFAULT_RULE / GLOBLA_RULE 提供初始值
+    transOrder, // 文本顺序：由 DEFAULT_RULE / GLOBAL_RULE 提供初始值
   } = formValues;
 
   // 判断当前表单值是否与初始值不同，决定是否激活“保存”按钮
@@ -185,8 +187,7 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
   const handleRestore = (e) => {
     e.preventDefault();
     setFormValues(({ pattern }) => ({
-      // REVIEW: GLOBLA_RULE 存在拼写错误。此处继续沿用。
-      ...(pattern === "*" ? GLOBLA_RULE : DEFAULT_RULE),
+      ...(pattern === "*" ? GLOBAL_RULE : DEFAULT_RULE),
       pattern,
     }));
   };
@@ -695,6 +696,39 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
               maxRows={10}
             />
 
+            {/* 是否允许执行本规则的 JS/Hook 脚本 */}
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              spacing={2}
+            >
+              <Box>
+                <Typography
+                  component="div"
+                  sx={{ fontSize: tokens.font.sizeMd, fontWeight: 500 }}
+                >
+                  {i18n("enable_rule_scripts", "允许执行页面脚本")}
+                </Typography>
+                <Typography
+                  component="div"
+                  variant="caption"
+                  color="text.secondary"
+                >
+                  {i18n(
+                    "enable_rule_scripts_helper",
+                    "控制 injectJs 与翻译 Hook 是否在本规则匹配的页面执行"
+                  )}
+                </Typography>
+              </Box>
+              <Switch
+                name="enableScripts"
+                checked={enableScripts === true}
+                disabled={disabled}
+                onChange={handleChange}
+              />
+            </Stack>
+
             {/* 翻译开始回调脚本配置 */}
             <CodeField
               size="small"
@@ -942,7 +976,8 @@ function UserRules({ rules }) {
   }
 
   return (
-    <Stack spacing={3}>
+    <SettingSection title={i18n("personal_rules")}>
+      <Stack spacing={3}>
       {/* 规则操作按钮栏 */}
       <Stack
         direction="row"
@@ -996,12 +1031,14 @@ function UserRules({ rules }) {
             <RuleAccordion key={rule.pattern} rule={rule} rules={rules} />
           ))}
       </Box>
-    </Stack>
+      </Stack>
+    </SettingSection>
   );
 }
 
 // 全局默认规则面板组件（单独将 pattern 为 "*" 的规则抽出来，作为第一标签页展示）
 function GlobalRule({ rules }) {
+  const i18n = useI18n();
   // 从自定义规则列表的末尾提取全局默认规则 '*'
   const globalRule = useMemo(
     () => rules.list[rules.list.length - 1],
@@ -1014,14 +1051,14 @@ function GlobalRule({ rules }) {
   }
 
   return (
-    <Stack spacing={3}>
+    <SettingSection title={i18n("global_rule")}>
       <RuleAccordion
         key={globalRule.pattern}
         rule={globalRule}
         rules={rules}
         isExpanded={true} // 默认展开全局规则面板
       />
-    </Stack>
+    </SettingSection>
   );
 }
 
@@ -1040,17 +1077,13 @@ export default function Rules() {
   return (
     <Box>
       <Stack spacing={3}>
-        {/* 顶部规则警示/说明提示框 */}
-        <Alert severity="info">
-          {i18n("rules_warn_1")}
-          <br />
-          {i18n("rules_warn_2")}
-          <br />
-          {i18n("rules_warn_3")}
-        </Alert>
+        <PageHeading
+          title={i18n("rules_setting")}
+          description={i18n("rules_warn_1")}
+        />
 
         {/* 规则分类选项卡导航 */}
-        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+        <Box>
           <Tabs value={activeTab} onChange={handleTabChange}>
             <Tab label={i18n("global_rule")} />
             <Tab label={i18n("personal_rules")} />
