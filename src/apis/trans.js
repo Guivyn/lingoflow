@@ -1,5 +1,8 @@
 import {
+  OPT_TRANS_GOOGLE,
   OPT_TRANS_MICROSOFT,
+  OPT_LANGS_TO_SPEC,
+  OPT_LANGS_SPEC_DEFAULT,
   defaultSystemPrompt,
   defaultSubtitlePrompt,
   defaultNobatchPrompt,
@@ -44,6 +47,8 @@ export { buildSubtitleSystemPrompt };
 
 const keyMap = new Map();
 const urlMap = new Map();
+const GOOGLE_TRANSLATE_URL =
+  "https://translate.googleapis.com/translate_a/single";
 
 const normalizeApiKey = (value = "") =>
   String(value)
@@ -583,17 +588,34 @@ export async function* handleTranslate(
   const enableStream = useStream && getProviderCapability(apiType, "stream");
 
   let token = "";
+  let requestApiType = apiType;
   if (apiType === OPT_TRANS_MICROSOFT) {
-    token = await msAuth();
-    if (!token) {
-      throw new Error("got msauth error");
+    try {
+      token = await msAuth();
+      if (!token) {
+        throw new Error("got msauth error");
+      }
+    } catch (err) {
+      // Edge 免费鉴权接口在部分网络不可用，自动降级到内置 Google 通道，保证翻译仍可用。
+      appLog("ms auth failed, fallback to google", err);
+      requestApiType = OPT_TRANS_GOOGLE;
+      token = "";
+      const googleLangMap =
+        OPT_LANGS_TO_SPEC[OPT_TRANS_GOOGLE] || OPT_LANGS_SPEC_DEFAULT;
+      from = googleLangMap.get(fromLang);
+      to = googleLangMap.get(toLang);
+      langMap = googleLangMap;
     }
   }
 
-  const getRequest = (requestUseStream) =>
+  const getRequest = (requestUseStream, requestTexts = texts) =>
     genTransReq({
       ...apiSetting,
-      texts,
+      apiType: requestApiType,
+      ...(requestApiType === OPT_TRANS_GOOGLE
+        ? { url: GOOGLE_TRANSLATE_URL }
+        : {}),
+      texts: requestTexts,
       from,
       to,
       fromLang,
@@ -606,7 +628,12 @@ export async function* handleTranslate(
       docInfo,
     });
 
-  const runNonStream = async function* (input, init, userMsg) {
+  const runNonStream = async function* (
+    input,
+    init,
+    userMsg,
+    requestTexts = texts
+  ) {
     const response = await fetchData(input, init, {
       useCache: false,
       usePool,
@@ -620,7 +647,7 @@ export async function* handleTranslate(
     }
 
     const result = await parseTransRes(response, {
-      texts,
+      texts: requestTexts,
       from,
       to,
       fromLang,
@@ -629,6 +656,7 @@ export async function* handleTranslate(
       history,
       userMsg,
       ...apiSetting,
+      apiType: requestApiType,
     });
     if (!result?.length) {
       throw new Error("translate got an unexpected result");
@@ -638,6 +666,38 @@ export async function* handleTranslate(
       yield { id: i, result: result[i] };
     }
   };
+
+  // Google 不支持批量打包，微软鉴权失败降级后逐条翻译，保持批次 id 对齐。
+  if (requestApiType === OPT_TRANS_GOOGLE && texts.length > 1) {
+    for (let i = 0; i < texts.length; i++) {
+      const [input, init, userMsg] = await getRequest(false, [texts[i]]);
+      const response = await fetchData(input, init, {
+        useCache: false,
+        usePool,
+        fetchInterval,
+        fetchLimit,
+        httpTimeout,
+        signal,
+      });
+      if (!response) {
+        throw new Error("translate got empty response");
+      }
+      const result = await parseTransRes(response, {
+        texts: [texts[i]],
+        from,
+        to,
+        fromLang,
+        toLang,
+        langMap,
+        history,
+        userMsg,
+        ...apiSetting,
+        apiType: requestApiType,
+      });
+      yield { id: i, result: result?.[0] };
+    }
+    return;
+  }
 
   const [input, init, userMsg] = await getRequest(enableStream);
 

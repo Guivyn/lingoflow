@@ -1,6 +1,11 @@
 import { handleTranslate } from "./trans";
-import { DEFAULT_API_LIST, OPT_TRANS_OPENAI } from "../config";
+import {
+  DEFAULT_API_LIST,
+  OPT_TRANS_MICROSOFT,
+  OPT_TRANS_OPENAI,
+} from "../config";
 import { fetchData, fetchStream } from "../libs/fetch";
+import { msAuth } from "../libs/auth";
 import { trustedTypesHelper } from "../libs/trustedTypes";
 
 jest.mock("query-string", () => ({
@@ -14,6 +19,10 @@ jest.mock("@streamparser/json", () => ({
 jest.mock("../libs/fetch", () => ({
   fetchData: jest.fn(),
   fetchStream: jest.fn(),
+}));
+
+jest.mock("../libs/auth", () => ({
+  msAuth: jest.fn(),
 }));
 
 jest.mock("../libs/docInfo", () => ({
@@ -90,6 +99,39 @@ describe("handleTranslate", () => {
     expect(fetchData).toHaveBeenCalledTimes(1);
     expect(JSON.parse(fetchStream.mock.calls[0][1].body).stream).toBe(true);
     expect(JSON.parse(fetchData.mock.calls[0][1].body).stream).toBe(false);
+    expect(result).toEqual([
+      {
+        id: 0,
+        result: ["你好", "en"],
+      },
+    ]);
+  });
+
+  test("falls back to google when microsoft auth endpoint fails", async () => {
+    msAuth.mockRejectedValueOnce(new Error("edge auth 404"));
+    fetchData.mockResolvedValueOnce({
+      sentences: [{ trans: "你好", orig: "hello" }],
+      src: "en",
+    });
+
+    const result = await collectAsyncGenerator(
+      handleTranslate(["hello"], {
+        from: "en",
+        to: "zh-Hans",
+        fromLang: "en",
+        toLang: "zh-CN",
+        langMap: () => "",
+        glossary: "",
+        apiSetting: getApiSetting(OPT_TRANS_MICROSOFT),
+        usePool: false,
+      })
+    );
+
+    expect(msAuth).toHaveBeenCalledTimes(1);
+    expect(fetchData).toHaveBeenCalledTimes(1);
+    const requestUrl = fetchData.mock.calls[0][0];
+    expect(requestUrl).toContain("translate.googleapis.com/translate_a/single");
+    expect(requestUrl).toContain("tl=zh-CN");
     expect(result).toEqual([
       {
         id: 0,
