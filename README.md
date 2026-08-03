@@ -1,39 +1,85 @@
 # LingoFlow（灵语）
 
-LingoFlow 是一款轻量 Chrome 双语翻译扩展，为网页、划词、悬停段落和 YouTube 字幕提供即时双语对照体验。
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%" alt="LingoFlow 灵语：网页、划词、悬停与 YouTube 字幕的即时双语对照">
+</p>
 
-> UI 规范见 [DESIGN.md](DESIGN.md)：AI 阅读伴侣方向，衬线标题 + 无衬线正文 + 等宽数据，暖米白与陶土色体系。
+LingoFlow 是一款轻量、开源的 Chrome 双语翻译扩展。它把网页、划词、悬停段落和 YouTube 字幕变成随时可对照的双语阅读体验，适合经常阅读外文网页、希望即时理解内容的用户。
+
+## 界面预览
+
+> 设置中心截图来自本地开发环境的真实界面；Popup 与划词气泡为已定稿的「AI 阅读伴侣」设计方向预览，均包含浅色、深色表现。
+
+<p align="center">
+  <img src="./assets/readme/screenshots/options-light.png" width="49%" alt="LingoFlow 设置中心真实界面（浅色）">
+  <img src="./assets/readme/screenshots/options-dark.png" width="49%" alt="LingoFlow 设置中心真实界面（深色）">
+  <br>
+  <img src="./assets/readme/screenshots/popup-light.png" width="49%" alt="LingoFlow Popup 与划词气泡设计预览（浅色）">
+  <img src="./assets/readme/screenshots/popup-dark.png" width="49%" alt="LingoFlow Popup 与划词气泡设计预览（深色）">
+</p>
+
+## 它是什么
+
+LingoFlow 为阅读外文网页的常见场景提供一套连续的双语对照体验：整页翻译负责文章主体，悬停翻译照顾段落级细节，划词翻译用于单词和短句，YouTube 字幕翻译则让视频内容也能跟着原文逐句对照。
+
+## 为什么不同
+
+- 自动扫描与规则匹配并行：绝大多数页面无需手写规则即可整页翻译，复杂站点再由内置规则与 SPA 动态监听兜底。
+- 按阅读场景提供交互面：整页、悬停、划词各有独立呈现方式，而不是把所有功能塞进同一个弹窗。
+- YouTube 字幕是一条独立管线：内置句子切分、AI 分句增强与独立字幕样式，不是简单地把文本丢给翻译接口。
+- 界面按阅读伴侣重新设计：衬线标题、无衬线正文、等宽数据，暖米白与陶土色体系，规范见 [DESIGN.md](DESIGN.md)。
 
 ## 功能
 
-- 整页双语翻译：规则匹配 + 自动扫描 + SPA 动态监听
+- 整页翻译：规则匹配、自动扫描、SPA 动态监听
 - 悬停翻译：行内插入或悬浮气泡两种模式
 - 划词翻译：多引擎对照、英文词典、输入联想
-- YouTube 字幕翻译：双语显示、句子切分、AI 分句增强
+- YouTube 字幕：双语显示、句子切分、AI 分句增强
 - 翻译引擎：Google、Google2、Microsoft、DeepL、DeepLX、DeepSeek、OpenAI、Custom
-- 流式输出、批处理聚合、上下文记忆、自定义 Prompt 与 Hook、术语表
+- 高级能力：流式输出、批处理聚合、上下文记忆、自定义 Prompt 与 Hook、术语表
 
 ## 安装
 
-1. 克隆仓库并执行 `pnpm build`
-2. 打开 `chrome://extensions`，启用“开发者模式”
+需要 Node.js 18+ 与 pnpm 9+（仓库通过 `.pnpm-version` 固定版本）。
+
+```bash
+git clone https://github.com/Guivyn/lingoflow.git
+cd lingoflow
+pnpm install
+pnpm build
+```
+
+构建完成后：
+
+1. 打开 `chrome://extensions`
+2. 启用“开发者模式”
 3. 点击“加载已解压的扩展程序”，选择 `build/chrome` 目录
 
 ## 快捷键
 
-- `Alt+K` 打开设置弹窗
-- `Alt+Q` 切换整页翻译
-- `Alt+S` 打开划词翻译面板
-- `Alt+C` 切换译文样式
+| 快捷键 | 作用 |
+| --- | --- |
+| `Alt+K` | 打开设置弹窗 |
+| `Alt+Q` | 切换整页翻译 |
+| `Alt+S` | 打开划词翻译面板 |
+| `Alt+C` | 切换译文样式 |
 
 ## 开发
 
 ```bash
 pnpm install
-pnpm test
-pnpm build
+pnpm start    # 本地开发，入口为 Options 设置页
+pnpm test     # 单元测试
+pnpm lint     # ESLint
+pnpm build    # 构建 Chrome 扩展
 ```
+
+## 致谢
+
+LingoFlow 的核心代码借鉴自 [fishjar/kiss-translator](https://github.com/fishjar/kiss-translator)（GPL-3.0）。我们保留了上游许可证，并在此基础上重写了页面扫描、规则匹配、译文渲染、YouTube 字幕管线与全新 UI 设计系统。
+
+感谢 fishjar 与 kiss-translator 社区的开源贡献。如果你喜欢 KISS Translator，也请到上游仓库点一个 Star。
 
 ## 许可证
 
-GPL-3.0
+本项目是 [fishjar/kiss-translator](https://github.com/fishjar/kiss-translator) 的修改版衍生作品，继续以 GPL-3.0 发布。LingoFlow 不是上游的官方项目，而是一个独立维护的衍生实现。完整许可证文本见 [LICENSE](LICENSE)。

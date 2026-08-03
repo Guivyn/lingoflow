@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420"
+     role="img" aria-labelledby="hero-title hero-desc"
+     font-family="'Segoe UI','PingFang SC','Microsoft YaHei UI',sans-serif">
+  <title id="hero-title">LingoFlow 灵语 - 轻量双语翻译 Chrome 扩展</title>
+  <desc id="hero-desc">LingoFlow 的双色 Logo、产品名、核心价值、快捷键，以及双语网页和 YouTube 字幕界面示意。</desc>
+
+  <rect width="1200" height="420" rx="24" fill="#FAF8F5"/>
+  <rect x="0" y="0" width="1200" height="420" rx="24" fill="none" stroke="#EAE4DA" stroke-width="2"/>
+
+  <g id="title-block">
+    <text x="64" y="64" font-size="18" fill="#6F6A61">OPEN SOURCE · CHROME EXTENSION · 双语阅读伴侣</text>
+
+    <rect x="64" y="86" width="24" height="72" rx="12" fill="#2F5BD9"/>
+    <rect x="96" y="102" width="24" height="48" rx="12" fill="#C96A4A"/>
+
+    <text x="64" y="158" font-family="Georgia,'Songti SC','Noto Serif SC',serif" font-size="54" font-weight="600" fill="#2A2723">LingoFlow</text>
+    <text x="64" y="206" font-size="25" fill="#2A2723">网页、划词、悬停与 YouTube 字幕的即时双语对照</text>
+    <text x="64" y="244" font-size="19" fill="#6F6A61">开源 Chrome 扩展 · 8 种翻译引擎 · 流式输出与 AI 分句</text>
+
+    <text x="64" y="288" font-size="18" fill="#2A2723">
+      <tspan font-family="ui-monospace,SFMono-Regular,Menlo,monospace">Alt+Q</tspan>
+      <tspan> 整页翻译</tspan>
+      <tspan fill="#C9C2B6">　·　</tspan>
+      <tspan font-family="ui-monospace,SFMono-Regular,Menlo,monospace">Alt+S</tspan>
+      <tspan> 划词翻译</tspan>
+      <tspan fill="#C9C2B6">　·　</tspan>
+      <tspan font-family="ui-monospace,SFMono-Regular,Menlo,monospace">Alt+K</tspan>
+      <tspan> 设置</tspan>
+    </text>
+
+    <rect x="64" y="318" width="472" height="54" rx="12" fill="#2A2723"/>
+    <text x="88" y="351" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18" fill="#FAF8F5">pnpm build  →  加载 build/chrome</text>
+  </g>
+
+  <g id="project-proof" transform="translate(640 64)">
+    <rect width="496" height="332" rx="16" fill="#FFFEFC" stroke="#EAE4DA" stroke-width="2"/>
+    <line x1="0" y1="52" x2="496" y2="52" stroke="#EAE4DA" stroke-width="2"/>
+
+    <circle cx="20" cy="26" r="4" fill="#D9482C"/>
+    <circle cx="36" cy="26" r="4" fill="#D97706"/>
+    <circle cx="52" cy="26" r="4" fill="#557A6A"/>
+    <rect x="150" y="14" width="196" height="24" rx="12" fill="#F3EFE8"/>
+    <text x="248" y="31" text-anchor="middle" font-size="16" fill="#6F6A61">example.com/reading</text>
+
+    <rect x="24" y="78" width="10" height="10" rx="3" fill="#2F5BD9"/>
+    <text x="44" y="88" font-size="18" font-weight="700" fill="#2F5BD9">EN</text>
+    <text x="24" y="116" font-size="22" fill="#2A2723">The morning light filled the street.</text>
+
+    <rect x="24" y="140" width="10" height="10" rx="3" fill="#C96A4A"/>
+    <text x="44" y="150" font-size="18" font-weight="700" fill="#C96A4A">中</text>
+    <text x="24" y="178" font-size="22" fill="#B2583B">晨光洒满了整条街道。</text>
+
+    <rect x="24" y="202" width="10" height="10" rx="3" fill="#2F5BD9"/>
+    <text x="44" y="212" font-size="18" font-weight="700" fill="#2F5BD9">EN</text>
+    <text x="24" y="240" font-size="22" fill="#2A2723">A quiet idea opens a new door.</text>
+
+    <rect x="24" y="264" width="10" height="10" rx="3" fill="#C96A4A"/>
+    <text x="44" y="274" font-size="18" font-weight="700" fill="#C96A4A">中</text>
+    <text x="24" y="302" font-size="22" fill="#B2583B">一个安静的念头，推开一扇新门。</text>
+
+    <rect x="24" y="322" width="448" height="66" rx="14" fill="#232019"/>
+    <text x="44" y="343" font-size="16" fill="#A29B8F">YouTube 字幕</text>
+    <text x="44" y="366" font-size="17" fill="#EFEAE1">What they said.</text>
+    <text x="44" y="385" font-size="18" fill="#D08263">他们说的话。</text>
+  </g>
+</svg>
