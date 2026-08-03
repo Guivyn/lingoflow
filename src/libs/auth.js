@@ -76,7 +76,8 @@ const _msAuth = () => {
           return cachedResult.token;
         }
       } catch (error) {
-        // 静默异常，随后落入下方逻辑重新发起请求
+        // 清理已 reject 的 Promise，避免失败后一直复用到坏缓存，允许下一次调用重新拉取 token。
+        tokenPromise = null;
       }
     }
 
