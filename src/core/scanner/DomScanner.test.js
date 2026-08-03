@@ -61,6 +61,49 @@ describe("DomScanner", () => {
     expect(onNode).toHaveBeenCalledWith(paragraph);
   });
 
+  test("github-style selector observes commit cells and about copy", () => {
+    document.body.innerHTML = `
+      <nav><a>Code</a></nav>
+      <div class="react-directory-row">
+        <div class="react-directory-row-commit-cell">
+          <a href="#"><span>feat: harden message channels</span></a>
+        </div>
+      </div>
+      <div class="BorderGrid-cell">
+        <p class="f4">A lightweight bilingual translation Chrome extension.</p>
+      </div>
+    `;
+    const onNode = jest.fn();
+    const scanner = new DomScanner({
+      rule: {
+        autoScan: "false",
+        rootsSelector: "body",
+        selector:
+          ".react-directory-row-commit-cell, .BorderGrid-cell p, .f4, .markdown-body td, .markdown-body th",
+        ignoreSelector: "",
+      },
+      setting: { transInterval: 0 },
+      translationTagName: "lingoflow",
+      getIgnoreSelector: () => "",
+      onNode,
+      getState: () => ({ enabled: true, transAllnow: true, rootMargin: 0 }),
+      isElementOrFragment: DomKit.isElementOrFragment,
+      isBlockNode: DomKit.isBlockNode,
+      hasBlockNode: DomKit.hasBlockNode,
+      shouldBreak: () => false,
+    });
+
+    scanner.init();
+
+    expect(onNode).toHaveBeenCalledWith(
+      document.querySelector(".react-directory-row-commit-cell")
+    );
+    expect(onNode).toHaveBeenCalledWith(document.querySelector(".f4"));
+    expect(
+      onNode.mock.calls.some(([node]) => node.textContent?.trim() === "Code")
+    ).toBe(false);
+  });
+
   test("notifies onRescan before scanning a changed container", async () => {
     jest.useFakeTimers();
     const onRescan = jest.fn();

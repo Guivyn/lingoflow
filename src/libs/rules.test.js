@@ -67,6 +67,20 @@ describe("rules", () => {
     expect(githubRule.grandStyle).toContain("height: auto");
   });
 
+  test("github rule covers repo listing commit messages and about copy", () => {
+    const githubRule = BUILTIN_RULES.find(
+      (rule) => rule.pattern === "github.com"
+    );
+
+    expect(githubRule.autoScan).toBe("false");
+    expect(githubRule.selector).toContain(".react-directory-row-commit-cell");
+    expect(githubRule.selector).toContain(
+      '[class*="react-directory"] [class*="commit-message"]'
+    );
+    expect(githubRule.selector).toContain(".BorderGrid-cell p");
+    expect(githubRule.selector).toContain(".markdown-body td");
+  });
+
   test("stackoverflow rule keeps tags and user cards untranslated", () => {
     const soRule = BUILTIN_RULES.find(
       (rule) => rule.pattern === "stackoverflow.com"
