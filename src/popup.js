@@ -3,9 +3,25 @@ import ReactDOM from "react-dom/client";
 import { SettingProvider } from "./hooks/Setting";
 import ThemeProvider from "./hooks/Theme";
 import Popup from "./views/Popup";
+import { browser } from "./libs/browser";
 
 // 标记当前上下文为 "popup"，方便其他共享库得知当前处于浏览器插件弹窗面板环境
 globalThis.__LINGOFLOW_CONTEXT__ = "popup";
+
+// 扩展页标签 favicon 显式指向内置品牌图标，避免静态链接失效或缓存导致不显示。
+const faviconHref = browser?.runtime?.getURL
+  ? browser.runtime.getURL("images/logo16.png")
+  : "images/logo16.png";
+const faviconLink =
+  document.querySelector('link[rel="icon"]') ||
+  (() => {
+    const link = document.createElement("link");
+    link.rel = "icon";
+    document.head.appendChild(link);
+    return link;
+  })();
+faviconLink.type = "image/png";
+faviconLink.href = faviconHref;
 
 // 夸克等受限扩展环境下，未捕获的 Promise 错误不显示在页面里，这里直接渲染到弹窗底部便于排查。
 window.addEventListener("unhandledrejection", (event) => {
