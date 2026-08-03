@@ -8,14 +8,9 @@ LingoFlow 是一款轻量、开源的 Chrome 双语翻译扩展。它把网页�
 
 ## 界面预览
 
-> 设置中心截图来自本地开发环境的真实界面；Popup 与划词气泡为已定稿的「AI 阅读伴侣」设计方向预览，均包含浅色、深色表现。
-
 <p align="center">
-  <img src="./assets/readme/screenshots/options-light.png" width="49%" alt="LingoFlow 设置中心真实界面（浅色）">
-  <img src="./assets/readme/screenshots/options-dark.png" width="49%" alt="LingoFlow 设置中心真实界面（深色）">
-  <br>
-  <img src="./assets/readme/screenshots/popup-light.png" width="49%" alt="LingoFlow Popup 与划词气泡设计预览（浅色）">
-  <img src="./assets/readme/screenshots/popup-dark.png" width="49%" alt="LingoFlow Popup 与划词气泡设计预览（深色）">
+  <img src="./assets/readme/screenshots/interface-1.png" width="49%" alt="LingoFlow 界面预览 1">
+  <img src="./assets/readme/screenshots/interface-2.png" width="49%" alt="LingoFlow 界面预览 2">
 </p>
 
 ## 它是什么
@@ -78,8 +73,9 @@ pnpm build    # 构建 Chrome 扩展
 
 LingoFlow 的核心代码借鉴自 [fishjar/kiss-translator](https://github.com/fishjar/kiss-translator)（GPL-3.0）。我们保留了上游许可证，并在此基础上重写了页面扫描、规则匹配、译文渲染、YouTube 字幕管线与全新 UI 设计系统。
 
-感谢 fishjar 与 kiss-translator 社区的开源贡献。如果你喜欢 KISS Translator，也请到上游仓库点一个 Star。
+感谢 fishjar 与 kiss-translator 社区的开源贡献。
+如果你喜欢 KISS Translator，也请到上游仓库点一个 Star。
 
 ## 许可证
 
-本项目是 [fishjar/kiss-translator](https://github.com/fishjar/kiss-translator) 的修改版衍生作品，继续以 GPL-3.0 发布。LingoFlow 不是上游的官方项目，而是一个独立维护的衍生实现。完整许可证文本见 [LICENSE](LICENSE)。
+GPL-3.0

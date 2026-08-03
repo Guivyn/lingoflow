@@ -10,10 +10,10 @@
   <g id="title-block">
     <text x="64" y="64" font-size="18" fill="#6F6A61">OPEN SOURCE · CHROME EXTENSION · 双语阅读伴侣</text>
 
-    <rect x="64" y="86" width="24" height="72" rx="12" fill="#2F5BD9"/>
-    <rect x="96" y="102" width="24" height="48" rx="12" fill="#C96A4A"/>
+    <rect x="64" y="84" width="28" height="84" rx="14" fill="#2F5BD9"/>
+    <rect x="98" y="102" width="28" height="54" rx="14" fill="#C96A4A"/>
 
-    <text x="64" y="158" font-family="Georgia,'Songti SC','Noto Serif SC',serif" font-size="54" font-weight="600" fill="#2A2723">LingoFlow</text>
+    <text x="144" y="146" font-family="Georgia,'Songti SC','Noto Serif SC',serif" font-size="54" font-weight="600" fill="#2A2723">LingoFlow</text>
     <text x="64" y="206" font-size="25" fill="#2A2723">网页、划词、悬停与 YouTube 字幕的即时双语对照</text>
     <text x="64" y="244" font-size="19" fill="#6F6A61">开源 Chrome 扩展 · 8 种翻译引擎 · 流式输出与 AI 分句</text>
 
@@ -50,17 +50,9 @@
     <text x="44" y="150" font-size="18" font-weight="700" fill="#C96A4A">中</text>
     <text x="24" y="178" font-size="22" fill="#B2583B">晨光洒满了整条街道。</text>
 
-    <rect x="24" y="202" width="10" height="10" rx="3" fill="#2F5BD9"/>
-    <text x="44" y="212" font-size="18" font-weight="700" fill="#2F5BD9">EN</text>
-    <text x="24" y="240" font-size="22" fill="#2A2723">A quiet idea opens a new door.</text>
-
-    <rect x="24" y="264" width="10" height="10" rx="3" fill="#C96A4A"/>
-    <text x="44" y="274" font-size="18" font-weight="700" fill="#C96A4A">中</text>
-    <text x="24" y="302" font-size="22" fill="#B2583B">一个安静的念头，推开一扇新门。</text>
-
-    <rect x="24" y="322" width="448" height="66" rx="14" fill="#232019"/>
-    <text x="44" y="343" font-size="16" fill="#A29B8F">YouTube 字幕</text>
-    <text x="44" y="366" font-size="17" fill="#EFEAE1">What they said.</text>
-    <text x="44" y="385" font-size="18" fill="#D08263">他们说的话。</text>
+    <rect x="24" y="236" width="448" height="100" rx="16" fill="#232019"/>
+    <text x="46" y="266" font-size="18" fill="#A29B8F">YouTube 字幕</text>
+    <text x="46" y="296" font-size="20" fill="#EFEAE1">What they said.</text>
+    <text x="46" y="322" font-size="22" fill="#D08263">他们说的话。</text>
   </g>
 </svg>
