@@ -34,7 +34,9 @@ const fetchRule = async () => {
   }
 
   if (contentRes && !contentRes.error) {
-    return contentRes;
+    // 全局设置以本地存储为准，避免长驻标签页的旧内存状态覆盖用户已持久化的开关。
+    const setting = await getSettingWithDefault();
+    return { rule: contentRes.rule, setting };
   }
 
   try {

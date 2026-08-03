@@ -18,6 +18,7 @@ import {
   MSG_TRANS_TOGGLE,
   MSG_TRANS_PUTRULE,
   MSG_TRANS_PUTSETTING,
+  MSG_RELOAD_SETTING,
   MSG_COMMAND_SHORTCUTS,
   OPT_LANGS_FROM_REVERSED as OPT_LANGS_FROM,
   OPT_LANGS_TO_REVERSED as OPT_LANGS_TO,
@@ -151,6 +152,13 @@ export default function PopupCont({
       await persistSetting(nextSetting);
     } catch (err) {
       appLog("persist autoTransEnglish", err);
+    }
+
+    // 让所有已打开标签页从存储重读配置，避免旧标签页继续使用过期状态。
+    if (isExt) {
+      sendBgMsg(MSG_RELOAD_SETTING).catch((err) => {
+        appLog("broadcast autoTransEnglish reload", err);
+      });
     }
 
     try {
