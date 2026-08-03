@@ -20,8 +20,7 @@ LingoFlow is a lightweight Chrome extension that turns webpages, selected text, 
 ## Shortcuts
 
 - `Alt+K` Open settings popup
-- `Alt+Q` Toggle page translation
-- `Alt+S` Open selection translation
+- `Alt+S` Toggle page translation
 - `Alt+C` Toggle translation styles
 
 ## Development

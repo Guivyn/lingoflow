@@ -18,11 +18,8 @@
     <text x="64" y="244" font-size="19" fill="#6F6A61">开源 Chrome 扩展 · 8 种翻译引擎 · 流式输出与 AI 分句</text>
 
     <text x="64" y="288" font-size="18" fill="#2A2723">
-      <tspan font-family="ui-monospace,SFMono-Regular,Menlo,monospace">Alt+Q</tspan>
-      <tspan> 整页翻译</tspan>
-      <tspan fill="#C9C2B6">　·　</tspan>
       <tspan font-family="ui-monospace,SFMono-Regular,Menlo,monospace">Alt+S</tspan>
-      <tspan> 划词翻译</tspan>
+      <tspan> 整页翻译</tspan>
       <tspan fill="#C9C2B6">　·　</tspan>
       <tspan font-family="ui-monospace,SFMono-Regular,Menlo,monospace">Alt+K</tspan>
       <tspan> 设置</tspan>
@@ -50,9 +47,9 @@
     <text x="44" y="150" font-size="18" font-weight="700" fill="#C96A4A">中</text>
     <text x="24" y="178" font-size="22" fill="#B2583B">晨光洒满了整条街道。</text>
 
-    <rect x="24" y="236" width="448" height="100" rx="16" fill="#232019"/>
-    <text x="46" y="266" font-size="18" fill="#A29B8F">YouTube 字幕</text>
-    <text x="46" y="296" font-size="20" fill="#EFEAE1">What they said.</text>
-    <text x="46" y="322" font-size="22" fill="#D08263">他们说的话。</text>
+    <rect x="24" y="206" width="448" height="100" rx="16" fill="#232019"/>
+    <text x="46" y="236" font-size="18" fill="#A29B8F">YouTube 字幕</text>
+    <text x="46" y="266" font-size="20" fill="#EFEAE1">What they said.</text>
+    <text x="46" y="292" font-size="22" fill="#D08263">他们说的话。</text>
   </g>
 </svg>

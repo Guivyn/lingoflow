@@ -9,8 +9,8 @@ LingoFlow 是一款轻量、开源的 Chrome 双语翻译扩展。它把网页�
 ## 界面预览
 
 <p align="center">
-  <img src="./assets/readme/screenshots/interface-1.png" width="49%" alt="LingoFlow 界面预览 1">
   <img src="./assets/readme/screenshots/interface-2.png" width="49%" alt="LingoFlow 界面预览 2">
+  <img src="./assets/readme/screenshots/interface-1.png" width="49%" alt="LingoFlow 界面预览 1">
 </p>
 
 ## 它是什么
@@ -55,8 +55,7 @@ pnpm build
 | 快捷键 | 作用 |
 | --- | --- |
 | `Alt+K` | 打开设置弹窗 |
-| `Alt+Q` | 切换整页翻译 |
-| `Alt+S` | 打开划词翻译面板 |
+| `Alt+S` | 切换整页翻译 |
 | `Alt+C` | 切换译文样式 |
 
 ## 开发
@@ -71,9 +70,8 @@ pnpm build    # 构建 Chrome 扩展
 
 ## 致谢
 
-LingoFlow 的核心代码借鉴自 [fishjar/kiss-translator](https://github.com/fishjar/kiss-translator)（GPL-3.0）。我们保留了上游许可证，并在此基础上重写了页面扫描、规则匹配、译文渲染、YouTube 字幕管线与全新 UI 设计系统。
-
-感谢 fishjar 与 kiss-translator 社区的开源贡献。
+LingoFlow 的核心代码借鉴自 [fishjar/kiss-translator](https://github.com/fishjar/kiss-translator)（GPL-3.0）。我们保留了在此基础上重写了页面扫描、规则匹配、译文渲染、YouTube 字幕管线与全新 UI 设计系统。<br>
+感谢 fishjar 与 kiss-translator 社区的开源贡献。<br>
 如果你喜欢 KISS Translator，也请到上游仓库点一个 Star。
 
 ## 许可证

@@ -58,7 +58,7 @@
     },
     "toggleTranslate": {
       "suggested_key": {
-        "default": "Alt+Q"
+        "default": "Alt+S"
       },
       "description": "__MSG_toggle_translate__"
     },
@@ -69,9 +69,6 @@
       "description": "__MSG_toggle_translate_only__"
     },
     "openTranbox": {
-      "suggested_key": {
-        "default": "Alt+S"
-      },
       "description": "__MSG_open_tranbox__"
     },
     "openSeparateWindow": {
