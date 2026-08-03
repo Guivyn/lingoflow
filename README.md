@@ -17,7 +17,7 @@ LingoFlow 是一款轻量 Chrome 双语翻译扩展，为网页、划词、悬�
 
 1. 克隆仓库并执行 `pnpm build`
 2. 打开 `chrome://extensions`，启用“开发者模式”
-3. 点击“加载已解压的扩展程序”，选择 `build/` 目录
+3. 点击“加载已解压的扩展程序”，选择 `build/chrome` 目录
 
 ## 快捷键
 
