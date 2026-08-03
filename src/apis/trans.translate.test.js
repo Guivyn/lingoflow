@@ -6,6 +6,7 @@ import {
 } from "../config";
 import { fetchData, fetchStream } from "../libs/fetch";
 import { msAuth } from "../libs/auth";
+import { apiBingTranslate } from "./bing";
 import { trustedTypesHelper } from "../libs/trustedTypes";
 
 jest.mock("query-string", () => ({
@@ -23,6 +24,10 @@ jest.mock("../libs/fetch", () => ({
 
 jest.mock("../libs/auth", () => ({
   msAuth: jest.fn(),
+}));
+
+jest.mock("./bing", () => ({
+  apiBingTranslate: jest.fn(),
 }));
 
 jest.mock("../libs/docInfo", () => ({
@@ -109,6 +114,7 @@ describe("handleTranslate", () => {
 
   test("falls back to google when microsoft auth endpoint fails", async () => {
     msAuth.mockRejectedValueOnce(new Error("edge auth 404"));
+    apiBingTranslate.mockRejectedValueOnce(new Error("bing unavailable"));
     fetchData.mockResolvedValueOnce({
       sentences: [{ trans: "你好", orig: "hello" }],
       src: "en",
@@ -128,10 +134,42 @@ describe("handleTranslate", () => {
     );
 
     expect(msAuth).toHaveBeenCalledTimes(1);
+    expect(apiBingTranslate).toHaveBeenCalledTimes(1);
     expect(fetchData).toHaveBeenCalledTimes(1);
     const requestUrl = fetchData.mock.calls[0][0];
     expect(requestUrl).toContain("translate.googleapis.com/translate_a/single");
     expect(requestUrl).toContain("tl=zh-CN");
+    expect(result).toEqual([
+      {
+        id: 0,
+        result: ["你好", "en"],
+      },
+    ]);
+  });
+
+  test("uses bing fallback before google when microsoft auth fails", async () => {
+    msAuth.mockRejectedValueOnce(new Error("edge auth 404"));
+    apiBingTranslate.mockResolvedValueOnce([["你好", "en"]]);
+
+    const result = await collectAsyncGenerator(
+      handleTranslate(["hello"], {
+        from: "en",
+        to: "zh-Hans",
+        fromLang: "en",
+        toLang: "zh-CN",
+        langMap: () => "",
+        glossary: "",
+        apiSetting: getApiSetting(OPT_TRANS_MICROSOFT),
+        usePool: false,
+      })
+    );
+
+    expect(apiBingTranslate).toHaveBeenCalledWith(
+      ["hello"],
+      "en",
+      "zh-Hans"
+    );
+    expect(fetchData).not.toHaveBeenCalled();
     expect(result).toEqual([
       {
         id: 0,

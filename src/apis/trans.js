@@ -24,6 +24,7 @@ import {
   parseSTRes,
 } from "../providers/shared";
 import { msAuth } from "../libs/auth";
+import { apiBingTranslate } from "./bing";
 import { createInterpreter } from "../libs/interpreter";
 import {
   parseJsonObj,
@@ -596,15 +597,24 @@ export async function* handleTranslate(
         throw new Error("got msauth error");
       }
     } catch (err) {
-      // Edge 免费鉴权接口在部分网络不可用，自动降级到内置 Google 通道，保证翻译仍可用。
-      appLog("ms auth failed, fallback to google", err);
-      requestApiType = OPT_TRANS_GOOGLE;
-      token = "";
-      const googleLangMap =
-        OPT_LANGS_TO_SPEC[OPT_TRANS_GOOGLE] || OPT_LANGS_SPEC_DEFAULT;
-      from = googleLangMap.get(fromLang);
-      to = googleLangMap.get(toLang);
-      langMap = googleLangMap;
+      // Edge 免费鉴权接口在部分网络不可用，先走 Bing 网页版免费通道，再失败才降级 Google。
+      appLog("ms auth failed, try bing fallback", err);
+      try {
+        const bingResults = await apiBingTranslate(texts, from, to);
+        for (let i = 0; i < bingResults.length; i++) {
+          yield { id: i, result: bingResults[i] };
+        }
+        return;
+      } catch (bingErr) {
+        appLog("bing fallback failed, fallback to google", bingErr);
+        requestApiType = OPT_TRANS_GOOGLE;
+        token = "";
+        const googleLangMap =
+          OPT_LANGS_TO_SPEC[OPT_TRANS_GOOGLE] || OPT_LANGS_SPEC_DEFAULT;
+        from = googleLangMap.get(fromLang);
+        to = googleLangMap.get(toLang);
+        langMap = googleLangMap;
+      }
     }
   }
 
