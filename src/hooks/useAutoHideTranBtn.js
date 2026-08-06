@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 /**
  * 翻译按钮自动隐藏机制自定义 Hook。
@@ -12,6 +12,12 @@ export default function useAutoHideTranBtn(
   setShowBtn,
   getSelection = () => window.getSelection()
 ) {
+  const showBtnRef = useRef(showBtn);
+
+  useEffect(() => {
+    showBtnRef.current = showBtn;
+  }, [showBtn]);
+
   useEffect(() => {
     // 如果按钮本就处于隐藏状态，无需做任何事件监听
     if (!showBtn) return;
@@ -28,6 +34,7 @@ export default function useAutoHideTranBtn(
     // 在其中高频判断并触发状态更新（setShowBtn(false)）可能带来性能开销。
     // 可以考虑引入轻量级去抖（debounce）或者仅在状态真正发生 true -> false 突变时才执行状态派发。
     const handleSelectionChange = () => {
+      if (!showBtnRef.current) return;
       const selection = getSelection();
       if (!selection || selection.isCollapsed) setShowBtn(false);
     };

@@ -42,6 +42,7 @@ export class DomScanner {
   #isShadowRootJsInjected = false;
   #windowMessageHandler = null;
   #debouncedFindShadowRoot = null;
+  #shadowScanScheduled = false;
 
   #containerObserver = null;
   #documentElementObserver = null;
@@ -191,6 +192,7 @@ export class DomScanner {
     this.#rootNodes.clear();
     this.#observedNodes = new WeakSet();
     this.#plainTextPreprocessingNodes = new WeakSet();
+    this.#shadowScanScheduled = false;
   }
 
   #ensureContentObservers() {
@@ -298,13 +300,18 @@ export class DomScanner {
   }
 
   #findAndObserveShadowRoot() {
-    try {
-      this.#findAllShadowRoots().forEach((shadowRoot) => {
-        this.#startObserveShadowRoot(shadowRoot);
-      });
-    } catch (err) {
-      appLog("findAllShadowRoots", err);
-    }
+    if (this.#shadowScanScheduled) return;
+    this.#shadowScanScheduled = true;
+    scheduleIdle(() => {
+      this.#shadowScanScheduled = false;
+      try {
+        this.#findAllShadowRoots().forEach((shadowRoot) => {
+          this.#startObserveShadowRoot(shadowRoot);
+        });
+      } catch (err) {
+        appLog("findAllShadowRoots", err);
+      }
+    }, 120);
   }
 
   #getShadowRoot(element) {
@@ -361,10 +368,7 @@ export class DomScanner {
 
     let current = startNode;
     while (current && current !== document.body) {
-      if (
-        this.#isBlockNode?.(current) ||
-        this.#observedNodes.has(current)
-      ) {
+      if (this.#isBlockNode?.(current) || this.#observedNodes.has(current)) {
         for (const root of this.#rootNodes) {
           if (root.contains(current)) {
             return current;

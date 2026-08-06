@@ -12,6 +12,10 @@ import { isBg } from "./browser";
 import { appLog } from "./log";
 import { parseResponse } from "./response";
 
+const HTTP_TIMEOUT_CACHE_TTL = 5000;
+let cachedHttpTimeout = null;
+let cachedHttpTimeoutAt = 0;
+
 /**
  * 将用户配置的请求超时时间统一归一化为毫秒。
  *
@@ -34,11 +38,20 @@ export const normalizeHttpTimeout = (timeout) => {
 export const resolveHttpTimeout = async (opts = {}) => {
   let timeout = opts?.httpTimeout;
   if (!timeout) {
-    try {
-      timeout = (await getSettingWithDefault())?.httpTimeout;
-    } catch (err) {
-      appLog("getSettingWithDefault", err);
+    const now = Date.now();
+    if (
+      cachedHttpTimeout === null ||
+      now - cachedHttpTimeoutAt >= HTTP_TIMEOUT_CACHE_TTL
+    ) {
+      try {
+        const setting = await getSettingWithDefault();
+        cachedHttpTimeout = setting?.httpTimeout ?? DEFAULT_HTTP_TIMEOUT;
+        cachedHttpTimeoutAt = now;
+      } catch (err) {
+        appLog("getSettingWithDefault", err);
+      }
     }
+    timeout = cachedHttpTimeout ?? DEFAULT_HTTP_TIMEOUT;
   }
 
   return normalizeHttpTimeout(timeout);

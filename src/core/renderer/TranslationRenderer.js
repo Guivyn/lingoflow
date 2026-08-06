@@ -889,7 +889,10 @@ export class TranslationRenderer {
       style.id = styleId;
       document.head.appendChild(style);
     }
-    style.textContent += `\n${this.#textStylesRaw || ""}`;
+    const raw = this.#textStylesRaw || "";
+    if (style.textContent.trim() !== raw.trim()) {
+      style.textContent = raw;
+    }
   }
 
   #isDarkMode() {

@@ -14,6 +14,7 @@ export default class DomManager {
   #reactRoot = null;
   #isVisible = false;
   #isProcessing = false;
+  #cache = null;
 
   _id;
   _className;
@@ -104,6 +105,7 @@ export default class DomManager {
 
     this.#hostElement = null;
     this.#reactRoot = null;
+    this.#cache = null;
     this.#isVisible = false;
     this.#isProcessing = false;
     logger.info(`Component with id "${this._id}" has been destroyed.`);
@@ -127,15 +129,11 @@ export default class DomManager {
    */
   updateProps(newProps) {
     this._props = { ...this._props, ...newProps };
-    if (this.#reactRoot && this.#hostElement) {
+    if (this.#reactRoot && this.#hostElement && this.#cache) {
       const ComponentToRender = this._ReactComponent;
-      const cache = createCache({
-        key: this._id,
-        prepend: true,
-      });
       this.#reactRoot.render(
         <React.StrictMode>
-          <CacheProvider value={cache}>
+          <CacheProvider value={this.#cache}>
             <ComponentToRender {...this._props} />
           </CacheProvider>
         </React.StrictMode>
@@ -161,6 +159,7 @@ export default class DomManager {
       key: this._id,
       prepend: true,
     });
+    this.#cache = cache;
 
     const enhancedProps = {
       ...props,
@@ -171,7 +170,7 @@ export default class DomManager {
     this.#reactRoot = ReactDOM.createRoot(host);
     this.#reactRoot.render(
       <React.StrictMode>
-        <CacheProvider value={cache}>
+        <CacheProvider value={this.#cache}>
           <ComponentToRender {...enhancedProps} />
         </CacheProvider>
       </React.StrictMode>

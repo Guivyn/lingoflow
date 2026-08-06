@@ -187,6 +187,7 @@ function getTargetContext(target) {
     "p, li, blockquote, article, section, main, div"
   );
   return (container?.textContent || element?.textContent || "")
+    .slice(0, 2000)
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 1000);
@@ -203,6 +204,7 @@ function getSelectionContext(selection) {
     );
     if (!container) return "";
     return (container?.textContent || element?.textContent || "")
+      .slice(0, 2000)
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 1000);

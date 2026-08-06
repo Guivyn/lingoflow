@@ -9,6 +9,7 @@ export default class ShadowDomManager {
   #reactRoot = null;
   #isVisible = false;
   #isProcessing = false;
+  #cache = null;
 
   _id;
   _className;
@@ -92,6 +93,7 @@ export default class ShadowDomManager {
 
     this.#hostElement = null;
     this.#reactRoot = null;
+    this.#cache = null;
     this.#isVisible = false;
     this.#isProcessing = false;
     logger.info(`Component with id "${this._id}" has been destroyed.`);
@@ -111,22 +113,17 @@ export default class ShadowDomManager {
    * @param {Object} props - 最新 props
    */
   #remount(props) {
-    if (!this.#reactRoot || !this.#hostElement) {
+    if (!this.#reactRoot || !this.#hostElement || !this.#cache) {
       return;
     }
     const ComponentToRender = this._ReactComponent;
-    const cache = createCache({
-      key: this._id,
-      prepend: true,
-      container: this.#hostElement.shadowRoot,
-    });
     const enhancedProps = {
       ...props,
       onClose: this.hide.bind(this),
     };
     this.#reactRoot.render(
       <React.StrictMode>
-        <CacheProvider value={cache}>
+        <CacheProvider value={this.#cache}>
           <ComponentToRender {...enhancedProps} />
         </CacheProvider>
       </React.StrictMode>
@@ -152,6 +149,7 @@ export default class ShadowDomManager {
       prepend: true,
       container: shadowContainer,
     });
+    this.#cache = cache;
 
     const enhancedProps = {
       ...props,
@@ -162,7 +160,7 @@ export default class ShadowDomManager {
     this.#reactRoot = ReactDOM.createRoot(appRoot);
     this.#reactRoot.render(
       <React.StrictMode>
-        <CacheProvider value={cache}>
+        <CacheProvider value={this.#cache}>
           <ComponentToRender {...enhancedProps} />
         </CacheProvider>
       </React.StrictMode>
