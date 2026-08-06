@@ -67,14 +67,12 @@ function MenuItem({ children, onClick, disabled = false }) {
  * @param {boolean} props.disabled - 是否禁用该开关
  */
 function Switch({ label, name, value, onChange, disabled }) {
-  // REVIEW: 这里的 handleClick 依赖了 value。当每次开关被点击切换时，value 会随之改变，
-  // 导致该 useCallback 重新生成并返回新的函数引用，使得 useCallback 并没有起到缓存函数引用的效果。
-  const handleClick = useCallback(() => {
+  const handleClick = () => {
     if (disabled) return;
 
     // 点击时状态取反派发
     onChange({ name, value: !value });
-  }, [disabled, onChange, name, value]);
+  };
 
   return (
     <MenuItem onClick={handleClick} disabled={disabled}>

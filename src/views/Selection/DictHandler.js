@@ -4,6 +4,26 @@ import { OPT_DICT_BING, OPT_DICT_YOUDAO } from "../../config";
 import { apiMicrosoftDict, apiYoudaoDict } from "../../apis";
 import { tokens } from "../../ui/theme/tokens";
 
+function highlightTerm(text, term) {
+  if (!text || !term) {
+    return text;
+  }
+  const escaped = String(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = String(text).split(new RegExp(`(${escaped})`, "ig"));
+  return parts.map((part, index) =>
+    part.toLowerCase() === String(term).toLowerCase() ? (
+      <span
+        key={index}
+        style={{ fontWeight: "bold", color: tokens.color.blue }}
+      >
+        {part}
+      </span>
+    ) : (
+      part
+    )
+  );
+}
+
 /**
  * 各种英文词典的解析与渲染处理器策略映射表
  */
@@ -58,7 +78,10 @@ export const dictHandlers = {
             <Typography
               component="li"
               key={idx}
-              sx={{ mb: `${tokens.spacing.xs}px`, fontSize: tokens.font.sizeMd }}
+              sx={{
+                mb: `${tokens.spacing.xs}px`,
+                fontSize: tokens.font.sizeMd,
+              }}
             >
               {pos && `[${pos}] `}
               {def}
@@ -134,18 +157,11 @@ export const dictHandlers = {
                 sx={{ mb: `${tokens.spacing.sm}px` }}
               >
                 {/* 英文例句中对查询单词进行高亮处理 */}
-                <Typography component="div" sx={{ fontSize: tokens.font.sizeMd }}>
-                  {/* REVIEW: 使用 split(data.word) 进行单词拆分高亮可能会失效，若例句中单词由于首字母大写或时态变化（例如 "Word" 或 "words"）而与 data.word 不完全相等时，将无法高亮。建议使用不区分大小写的正则匹配进行替换和高亮。 */}
-                  {sentence.eng?.split(data.word)?.map((part, i, arr) => (
-                    <span key={i}>
-                      {i > 0 && (
-                        <span style={{ fontWeight: "bold", color: tokens.color.blue }}>
-                          {data.word}
-                        </span>
-                      )}
-                      {part}
-                    </span>
-                  ))}
+                <Typography
+                  component="div"
+                  sx={{ fontSize: tokens.font.sizeMd }}
+                >
+                  {highlightTerm(sentence.eng, data.word)}
                 </Typography>
                 {/* 中文例句对照 */}
                 <Typography
@@ -230,7 +246,10 @@ export const dictHandlers = {
             <Typography
               component="li"
               key={idx}
-              sx={{ mb: `${tokens.spacing.xs}px`, fontSize: tokens.font.sizeMd }}
+              sx={{
+                mb: `${tokens.spacing.xs}px`,
+                fontSize: tokens.font.sizeMd,
+              }}
             >
               {pos && `[${pos}] `}
               {tran}
@@ -261,23 +280,15 @@ export const dictHandlers = {
                   key={idx}
                   sx={{ mb: `${tokens.spacing.sm}px` }}
                 >
-                  <Typography component="div" sx={{ fontSize: tokens.font.sizeMd }}>
+                  <Typography
+                    component="div"
+                    sx={{ fontSize: tokens.font.sizeMd }}
+                  >
                     {/* 同样在英文例句中高亮当前词汇 */}
-                    {/* REVIEW: 同样存在大小写不同导致 split 无法高亮的问题。 */}
-                    {sentence.sentence
-                      ?.split(data.ec?.word?.["return-phrase"])
-                      ?.map((part, i, arr) => (
-                        <span key={i}>
-                          {i > 0 && data.ec?.word?.["return-phrase"] && (
-                            <span
-                              style={{ fontWeight: "bold", color: tokens.color.blue }}
-                            >
-                              {data.ec.word["return-phrase"]}
-                            </span>
-                          )}
-                          {part}
-                        </span>
-                      ))}
+                    {highlightTerm(
+                      sentence.sentence,
+                      data.ec?.word?.["return-phrase"]
+                    )}
                   </Typography>
                   <Typography
                     component="div"

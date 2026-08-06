@@ -138,9 +138,11 @@ export const createSubtitleIndexAligner = (events = []) => {
       );
       const [top, second] = tailCands;
       // 同组同距视为歧义，宁可不纠正。
+      const topHasOffset = top.offset > 0;
+      const secondHasOffset = second ? second.offset > 0 : false;
       if (
         second &&
-        (top.offset > 0) === (second.offset > 0) &&
+        topHasOffset === secondHasOffset &&
         top.dist === second.dist
       ) {
         return null;

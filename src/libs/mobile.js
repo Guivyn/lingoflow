@@ -11,7 +11,7 @@ export const isMobile = (() => {
     const isAndroid = /Android/i.test(ua);
     const isiOS = /iPhone|iPad|iPod/i.test(ua);
 
-    // REVIEW: iPadOS 13+ 默认会伪装成桌面版浏览器，UA 包含 "Macintosh" 而非 "iPad"。
+    // iPadOS 13+ 默认会伪装成桌面版浏览器，UA 包含 "Macintosh" 而非 "iPad"。
     // 此时通过联合校验 UA 包含 "Macintosh" 且物理屏幕最大触控点数 maxTouchPoints > 1
     // 可以精准判断出是 iPadOS 桌面模式，该设计非常有必要。
     const isiPadDesktop = /Macintosh/i.test(ua) && navigator.maxTouchPoints > 1;

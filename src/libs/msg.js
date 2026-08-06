@@ -18,9 +18,7 @@ export const getCurTab = async () => {
         return tabs[0];
       }
       if (!Array.isArray(tabs)) {
-        lastError = new Error(
-          `tabs.query returned non-array: ${String(tabs)}`
-        );
+        lastError = new Error(`tabs.query returned non-array: ${String(tabs)}`);
       }
     } catch (err) {
       lastError = err;
@@ -45,7 +43,7 @@ export const getCurTabId = async () => {
 
 /**
  * 向扩展后台 Service Worker (Background) 发送单向或双向消息。
- * REVIEW: 该方法依赖 `browser?.runtime` API，只能在浏览器扩展环境（Content Script, Popup, Options 等）下工作。
+ * 说明：该方法依赖 `browser?.runtime` API，只能在浏览器扩展环境（Content Script, Popup, Options 等）下工作。
  * 在油猴 Userscript 环境中不可使用（油猴需使用特定 GM 接口或 CustomEvent 传递信息）。
  * @param {string} action 指令动作名称
  * @param {Object} args 指令参数数据
@@ -66,7 +64,7 @@ export const sendTabMsg = async (action, args) => {
 
   // 向指定 ID 的标签页发送消息，并捕获常见的由于注入未就绪产生的错误
   return browser.tabs.sendMessage(tabId, { action, args }).catch((err) => {
-    // REVIEW: 屏蔽两种常见的无害通信错误：
+    // 屏蔽两种常见的无害通信错误：
     // 1. "Could not establish connection" (多发于前台 content script 尚未加载完毕或无响应)
     // 2. "Receiving end does not exist" (常见于用户在不支持注入扩展的浏览器内置特权页面如 chrome:// 上触发了消息)
     // 此处静默返回，避免未就绪的通信异常打断业务逻辑调用链或污染扩展错误页。
@@ -76,9 +74,7 @@ export const sendTabMsg = async (action, args) => {
     ) {
       return;
     } else {
-      throw new Error(
-        `tabs.sendMessage failed: ${err?.message || err}`
-      );
+      throw new Error(`tabs.sendMessage failed: ${err?.message || err}`);
     }
   });
 };

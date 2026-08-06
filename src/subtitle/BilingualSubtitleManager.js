@@ -56,9 +56,7 @@ export class BilingualSubtitleManager {
     if (this.#setting.originStyle === LEGACY_SUBTITLE_ORIGIN_STYLE) {
       this.#setting.originStyle = SUBTITLE_ORIGIN_STYLE;
     }
-    if (
-      this.#setting.translationStyle === LEGACY_SUBTITLE_TRANSLATION_STYLE
-    ) {
+    if (this.#setting.translationStyle === LEGACY_SUBTITLE_TRANSLATION_STYLE) {
       this.#setting.translationStyle = SUBTITLE_TRANSLATION_STYLE;
     }
     this.#videoEl = videoEl;
@@ -226,8 +224,9 @@ export class BilingualSubtitleManager {
     this.#captionWindowEl.style.pointerEvents = "auto";
     this.#captionWindowEl.style.cursor = "grab";
     this.#captionWindowEl.style.opacity = "1";
-    const reduceMotion =
-      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    const reduceMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)"
+    )?.matches;
     if (!reduceMotion && !/transition/i.test(this.#setting.windowStyle || "")) {
       this.#captionWindowEl.style.transition =
         "opacity 200ms cubic-bezier(0.2, 0.7, 0.2, 1), transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1)";
@@ -423,6 +422,9 @@ export class BilingualSubtitleManager {
    */
   onSeeking() {
     this.#throttledTriggerTranslations.cancel(); // 暂停预翻译，防止产生大量断续的无效预翻译网络请求
+    this.#translationSessionId += 1; // 使 seek 前在途请求的回调全部失效
+    this.#abortController?.abort(); // 中止 seek 前尚未返回的网络请求
+    this.#abortController = new AbortController();
     // 强制高亮展示对应处的字幕，且不在此触发翻译
     this.#syncToCurrentTime({ forceRender: true, triggerTranslations: false });
   }
@@ -595,8 +597,9 @@ export class BilingualSubtitleManager {
       }
 
       this.#paperEl.style.display = "block";
-      const reduceMotion =
-        window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      const reduceMotion = window.matchMedia?.(
+        "(prefers-reduced-motion: reduce)"
+      )?.matches;
       if (reduceMotion) {
         this.#captionWindowEl.style.opacity = "1";
       } else {
@@ -653,15 +656,6 @@ export class BilingualSubtitleManager {
 
   /**
    * 调用大模型或常规翻译 API 对单个字幕进行翻译，并将翻译成功的译文缓存到字幕对象上。
-   *
-   * // REVIEW: 视频进度 Seek 导致的在途预翻译请求资源浪费与字幕回刷隐患。
-   * //    当用户频繁拖拽视频进度条（Seeking / Seeked）时，代码仅仅取消了防抖触发定时器 `#throttledTriggerTranslations.cancel()`，
-   * //    但并没有更新 `#translationSessionId` 或中止（Abort）先前已发起的在途异步翻译网络请求。
-   * //    由于 `#translationSessionId` 只在实例销毁 `destroy()` 时递增，导致 seek 发生前已经在途的那些不再需要的预翻译请求在返回时，
-   * //    其 `sessionId !== this.#translationSessionId` 校验仍然会通过。
-   * //    这不仅会浪费 API 请求额度和网络带宽，还会在翻译完成后，如果用户已 seek 到其他地方，
-   * //    因为 subtitle 引用被错误改写而导致未来再次播放到该处时字幕显示不准，或是在 seek 到位后突然被过期请求回调触发重新渲染导致屏幕闪烁。
-   * //    推荐在 `onSeeking` 阶段也将 `this.#translationSessionId += 1` 并重置 `AbortController` 中止上一段进度的所有未决请求。
    *
    * @param {object} subtitle - 待翻译的目标字幕数据条目
    */

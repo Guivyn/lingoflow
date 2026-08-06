@@ -12,10 +12,7 @@ export const XMLHttpRequestInjector = () => {
       if (typeof url === "string" && url.includes("timedtext")) {
         this.addEventListener("load", function () {
           // 向主应用派发字幕数据，使用了安全的原点限制 (window.location.origin)
-          // REVIEW: 接口拦截不完全风险。
-          // 目前仅重写拦截了 `XMLHttpRequest` 对象，但这极易因网页底层升级或使用了 `fetch` API 获取字幕而失效。
-          // 许多现代网页应用正在用 `fetch` 全面替代 `XHR`。
-          // 推荐同步劫持 `window.fetch` 方法，以实现对不同 HTTP 请求客户端的完整兼容拦截。
+          // 目前仅重写拦截了 `XMLHttpRequest` 对象；网页底层升级或改用 `fetch` 后该拦截可能失效。
           window.postMessage(
             {
               type: "LINGOFLOW_XHR_DATA_YOUTUBE",

@@ -26,8 +26,8 @@ export const trustedTypesHelper = (() => {
         // 使用 DOMPurify 清洗注入的 HTML，保证译文容器中没有恶意代码
         createHTML: (string) => DOMPurify.sanitize(string),
 
-        // REVIEW: createScript 和 createScriptURL 目前只是原样返回，仅能绕过 CSP 检测，但无法拦截恶意的恶意脚本字符串注入。
-        // 如果插件以后会接收外部不受信源的脚本，建议在这里进行正则或者白名单过滤。
+        // 脚本注入仅来自扩展自身的设置与规则，属于可信输入；
+        // 外部消息在进入后台时已由 requestGuard 做来源与大小校验。
         createScript: (string) => string,
         createScriptURL: (string) => string,
       });

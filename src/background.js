@@ -154,7 +154,7 @@ async function persistSeparateWindowBounds(bounds) {
  */
 async function openSeparateWindowWithSavedBounds() {
   try {
-    // REVIEW: 窗口单例机制。若窗口已存在且被创建过，则通过查询所有窗口状态直接聚焦，避免重复创建
+    // 窗口单例机制：若窗口已存在且被创建过，则通过查询所有窗口状态直接聚焦，避免重复创建。
     if (separateWindowId !== null) {
       const allWindows = await browser.windows.getAll();
       const existingWin = allWindows.find((w) => w?.id === separateWindowId);
@@ -216,10 +216,15 @@ async function updateCacheFromActual(windowId) {
         width: Math.round(win.width),
         height: Math.round(win.height),
       };
-      appLog("Bounds cached via fallback:", lastKnownBounds);
-      // REVIEW: 针对“获取到的 left 和 top 均为 0”以及“重启后窗口越来越大”的问题：
-      // 在一些 Linux 窗口管理器、macOS 或 Firefox 兼容层中，如果窗口刚创建就立即触发或在焦点切换时，
-      // OS 返回的 window.left/top 经常会存在暂时的 0 值。应该在 left/top 均不为 0 时才允许覆盖 lastKnownBounds。
+      if (win.left !== 0 && win.top !== 0) {
+        lastKnownBounds = {
+          left: Math.round(win.left),
+          top: Math.round(win.top),
+          width: Math.round(win.width),
+          height: Math.round(win.height),
+        };
+        appLog("Bounds cached via fallback:", lastKnownBounds);
+      }
     }
   } catch (e) {
     // 忽略窗口已被关闭时的查询异常
@@ -240,8 +245,12 @@ browser.windows?.onFocusChanged?.addListener?.(async (windowId) => {
  * 此时只实时更新内存中的 lastKnownBounds 缓存，不频繁写入 Storage，防止 Storage API 限频报错。
  */
 browser.windows?.onBoundsChanged?.addListener?.((win) => {
-  if (separateWindowId !== null && win?.id === separateWindowId) {
-    // REVIEW: 同样需要警惕在拖拽过程中 win.left / top 偶尔返回 0 的异常，此处可判定 if (win.left !== 0 && win.top !== 0) 再予更新
+  if (
+    separateWindowId !== null &&
+    win?.id === separateWindowId &&
+    win.left !== 0 &&
+    win.top !== 0
+  ) {
     lastKnownBounds = {
       left: win.left ?? lastKnownBounds.left,
       top: win.top ?? lastKnownBounds.top,
@@ -415,8 +424,7 @@ async function updateCspRules({ csplist, orilist }) {
       rulesToAdd.push(...newOriRules);
     }
 
-    // REVIEW: 批量更新 DNR 规则。在部分不支持 MV3 动态规则的旧浏览器（如旧版 Firefox）中可能会抛错，
-    // 在 catch 中已做了捕获处理，能够保障基础功能的正常工作，但无法去除 CSP 限制。
+    // 批量更新 DNR 规则；不支持的旧浏览器会在 catch 中降级处理。
     if (idsToRemove.length > 0 || rulesToAdd.length > 0) {
       await browser.declarativeNetRequest.updateDynamicRules({
         removeRuleIds: idsToRemove,
@@ -482,7 +490,7 @@ browser.runtime.onStartup.addListener(async () => {
     tryClearCaches();
   }
 
-  // REVIEW: 针对“Firefox 重启后菜单消失”的系统 Bug，此处在启动时必须重新添加一次 addContextMenus
+  // 针对 Firefox 重启后菜单消失的系统 Bug，启动时重新添加一次右键菜单。
   addContextMenus(contextMenuType);
 
   updateCspRules({ csplist, orilist });

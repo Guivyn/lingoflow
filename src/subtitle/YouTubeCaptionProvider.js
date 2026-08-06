@@ -80,6 +80,8 @@ export class YouTubeCaptionProvider {
 
   // 挂载在视频右侧/下方的双语字幕列表面板管理器实例
   #subtitleListManager = null;
+  // 广告开始时保存的用户倍速，广告结束时恢复
+  #savedPlaybackRate = null;
 
   /**
    * 创建 YouTube 字幕处理器实例，并初始化用户配置、国际化和播放器 UI 管理器。
@@ -275,8 +277,9 @@ export class YouTubeCaptionProvider {
           if (node.matches(adLayoutSelector)) {
             logger.debug("Youtube Provider: AD start playing!", node);
             if (videoEl && skipAd) {
-              // REVIEW: 沿用原有直接 16 倍速并跳到广告末尾的行为，可能触发 YouTube 风控。
-              // REVIEW: 广告结束时仍会重置到 1 倍速，可能覆盖用户自定义倍速；后续应单独修复。
+              if (this.#savedPlaybackRate === null) {
+                this.#savedPlaybackRate = videoEl.playbackRate || 1;
+              }
               videoEl.playbackRate = 16;
               videoEl.currentTime = videoEl.duration;
             }
@@ -304,7 +307,10 @@ export class YouTubeCaptionProvider {
               this.#playerUi.hideYtCaption();
             }
             if (videoEl && skipAd) {
-              videoEl.playbackRate = 1;
+              if (this.#savedPlaybackRate !== null) {
+                videoEl.playbackRate = this.#savedPlaybackRate;
+                this.#savedPlaybackRate = null;
+              }
             }
             this.#managerInstance?.setIsAdPlaying(false);
           }

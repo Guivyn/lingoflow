@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -22,14 +22,18 @@ function DictBody({ text, setCopyText, setRealWord, dict }) {
   const i18n = useI18n();
   // 使用 useAsyncNow 发起即时的异步词典查询请求
   const { loading, error, data } = useAsyncNow(dict.apiFn, text);
+  const latestTextRef = useRef(text);
+
+  useEffect(() => {
+    latestTextRef.current = text;
+  }, [text]);
 
   // 当词典查询数据返回后，触发对原形词及待复制内容的回调更新
   useEffect(() => {
-    if (!data) {
+    if (!data || latestTextRef.current !== text) {
       return;
     }
 
-    // REVIEW: 潜在的异步竞态问题。若 text 或 dict 发生变化，在 useAsyncNow 还没有返回新 data 的加载期间 (loading 为 true，data 仍是旧值)，这个 useEffect 可能会由于 text / dict 依赖改变而提早触发，导致将旧的 data 数据应用在新的 text 上产生错误的合并。建议在此处增加对于 data 是否匹配当前查询 text 的安全校验。
     const realWord = dict.reWord(data) || text;
     const copyText = [realWord, dict.toText(data).join("\n")].join("\n");
     setRealWord(realWord);
@@ -46,9 +50,7 @@ function DictBody({ text, setCopyText, setRealWord, dict }) {
 
   if (error) {
     return (
-      <Alert severity="error">
-        {`${i18n("dictionary_failed")}: ${error}`}
-      </Alert>
+      <Alert severity="error">{`${i18n("dictionary_failed")}: ${error}`}</Alert>
     );
   }
 

@@ -17,9 +17,12 @@ jest.mock("../../hooks/Api", () => ({
   useApiItem: jest.fn(),
 }));
 
-jest.mock("../../hooks/Prompt", () => ({
-  usePromptList: () => ({ prompts: [] }),
-}));
+jest.mock("../../hooks/Prompt", () => {
+  const { PRESET_PROMPTS } = require("../../config");
+  return {
+    usePromptList: () => ({ prompts: PRESET_PROMPTS }),
+  };
+});
 
 jest.mock("../../hooks/Confirm", () => ({
   useConfirm: () => jest.fn(),
@@ -46,34 +49,37 @@ jest.mock("../../libs/modelList", () => ({
   fetchModelList: jest.fn(),
 }));
 
-jest.mock("../../ui/components/ReusableAutocomplete/ReusableAutocomplete", () => {
-  return function MockReusableAutocomplete({
-    name,
-    label,
-    value,
-    options = [],
-    onChange,
-    onFocus,
-    textFieldProps = {},
-  }) {
-    return (
-      <label>
-        {label}
-        <input
-          name={name}
-          value={value || ""}
-          onChange={onChange}
-          onFocus={onFocus}
-          data-options={options.join(",")}
-          aria-invalid={textFieldProps.error ? "true" : "false"}
-        />
-        {textFieldProps.helperText ? (
-          <span>{textFieldProps.helperText}</span>
-        ) : null}
-      </label>
-    );
-  };
-});
+jest.mock(
+  "../../ui/components/ReusableAutocomplete/ReusableAutocomplete",
+  () => {
+    return function MockReusableAutocomplete({
+      name,
+      label,
+      value,
+      options = [],
+      onChange,
+      onFocus,
+      textFieldProps = {},
+    }) {
+      return (
+        <label>
+          {label}
+          <input
+            name={name}
+            value={value || ""}
+            onChange={onChange}
+            onFocus={onFocus}
+            data-options={options.join(",")}
+            aria-invalid={textFieldProps.error ? "true" : "false"}
+          />
+          {textFieldProps.helperText ? (
+            <span>{textFieldProps.helperText}</span>
+          ) : null}
+        </label>
+      );
+    };
+  }
+);
 
 const { useApiList, useApiItem } = require("../../hooks/Api");
 

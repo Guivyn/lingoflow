@@ -57,8 +57,8 @@ function TranBoxHeader({
   // 请求在独立的无边框小窗口中打开翻译框
   const openSeparateWindow = useCallback(() => {
     sendBgMsg(MSG_OPEN_SEPARATE_WINDOW);
-    // REVIEW: 在独立小窗口中打开翻译后，并未同时调用 setShowBox(false) 来隐藏当前页面上的划词翻译框，这可能导致页面上残留已打开的翻译框，体验上可进一步优化。
-  }, []);
+    setShowBox(false);
+  }, [setShowBox]);
 
   // 鼠标移出按钮后，自动取消焦点
   const blurOnLeave = (e) => e.currentTarget.blur();
@@ -303,10 +303,10 @@ function TranBoxContent({
         "&::-webkit-scrollbar-track": {
           background: scrollbarTrackColor,
         },
-              "&::-webkit-scrollbar-thumb": {
-                backgroundColor: scrollbarThumbColor,
-                borderRadius: "8px",
-                border: `2px solid ${theme.palette.background.paper}`,
+        "&::-webkit-scrollbar-thumb": {
+          backgroundColor: scrollbarThumbColor,
+          borderRadius: "8px",
+          border: `2px solid ${theme.palette.background.paper}`,
         },
         "&::-webkit-scrollbar-thumb:hover": {
           backgroundColor: alpha(theme.palette.text.primary, 0.36),

@@ -105,7 +105,7 @@ export const API_SPE_TYPES = {
   darkIcon: new Set([OPT_TRANS_DEEPL, OPT_TRANS_DEEPLX, OPT_TRANS_OPENAI]),
 };
 
-// REVIEW: 思考模式参数映射：定义各 API 的思考开关和强度参数。
+// 思考模式参数映射：定义各 API 的思考开关和强度参数。
 // 这里的设计可以将 AI 推理模型的“思考过程”(Reasoning Effort) 与普通参数解耦，支持可视化调节。
 // type: 对应的厂商/平台类型；efforts: 思考强度级别列表 (如 max, high 等)，null 表示仅支持开启/关闭，无多档强度可选。
 // disableSupported: 是否允许用户手动关闭思考模式，默认 true。若为 false 则说明该模型强制开启思考（如 Claude 的部分高推理模型）。
@@ -470,12 +470,10 @@ Input: [{"id":0,"text":"Once"},{"id":1,"text":"the"},{"id":2,"text":"assets"},{"
 Output: [{"e":8,"o":"Once the assets are ready, open the storyboard tab.","t":"素材准备好后，打开故事板标签页。"},{"e":14,"o":"This is where everything comes together.","t":"一切从这里开始整合。"},{"e":22,"o":"If a scene does not match your idea,","t":"如果某个场景与你的想法不符，"},{"e":33,"o":"regenerate it or adjust the prompt carefully until it feels right.","t":"请重新生成，或仔细调整提示词，直到效果合适。"}]`;
 
 const defaultRequestHook = `async (args, { url, body, headers, userMsg, method } = {}) => {
-  console.log("request hook args:", { args, url, body, headers, userMsg, method });
   // return { url, body, headers, userMsg, method };
 };`;
 
 const defaultResponseHook = `async ({ res, ...args }) => {
-  console.log("reaponse hook args:", { res, args });
   // const translations = [["你好", "zh"]];
   // const modelMsg = "";
   // return { translations, modelMsg };

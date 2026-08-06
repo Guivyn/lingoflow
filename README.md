@@ -33,6 +33,8 @@ LingoFlow 为阅读外文网页的常见场景提供一套连续的双语对照�
 - 翻译引擎：Google、Google2、Microsoft、DeepL、DeepLX、DeepSeek、OpenAI、Custom
 - 高级能力：流式输出、批处理聚合、上下文记忆、自定义 Prompt 与 Hook、术语表
 
+自定义翻译接口的接入与 Hook 说明见 [custom-api_v2.md](custom-api_v2.md)。
+
 ## 安装
 
 需要 Node.js 18+ 与 pnpm 9+（仓库通过 `.pnpm-version` 固定版本）。

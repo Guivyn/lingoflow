@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { limitNumber } from "../../libs/utils";
-import { isMobile } from "../../libs/mobile";
 import { putFab } from "../../libs/storage";
 import { debounce } from "../../libs/utils";
 import Paper from "@mui/material/Paper";
@@ -68,17 +67,17 @@ export default function Draggable({
   const [hover, setHover] = useState(false);
   const [origin, setOrigin] = useState(null); // 拖动起始的参考原点坐标和 client 坐标
   const containerRef = useRef(null);
+  const safeWidth = windowWidth || 1;
+  const safeHeight = windowHeight || 1;
 
   // 用百分比的形式保存位置，以便在视口大小 resize 时等比例缩放位置
-  // REVIEW: 这里的 left / windowWidth 和 top / windowHeight 在首帧 windowWidth/Height 为 0 的异常场景下，
-  // 会产生值为 NaN 或 Infinity 的致命错误。推荐使用 (windowWidth || 1) 对除数进行安全拦截。
   const latestPosition = useRef({
-    x: left / windowWidth,
-    y: top / windowHeight,
+    x: left / safeWidth,
+    y: top / safeHeight,
   });
   const [position, setPosition] = useState({
-    x: left / windowWidth,
-    y: top / windowHeight,
+    x: left / safeWidth,
+    y: top / safeHeight,
   });
   // 缓存防抖的 putFab，用于将最新的拖拽坐标写入本地 storage 持久化
   const setFabPosition = useMemo(() => debounce(putFab, 500), []);
@@ -116,8 +115,8 @@ export default function Draggable({
     }
 
     const currentPosition = {
-      x: position.x * windowWidth,
-      y: position.y * windowHeight,
+      x: position.x * safeWidth,
+      y: position.y * safeHeight,
     };
 
     const edgePosition = getEdgePosition({
@@ -133,8 +132,8 @@ export default function Draggable({
     applyTransform(edgePosition.x, edgePosition.y);
 
     const percentageEdge = {
-      x: edgePosition.x / windowWidth,
-      y: edgePosition.y / windowHeight,
+      x: edgePosition.x / safeWidth,
+      y: edgePosition.y / safeHeight,
     };
     setPosition(percentageEdge);
     setFabPosition(edgePosition);
@@ -150,16 +149,18 @@ export default function Draggable({
     position.x,
     position.y,
     applyTransform,
+    safeWidth,
+    safeHeight,
   ]);
 
   // 鼠标/手指按下，标记拖拽开始并记录起始坐标
   const handlePointerDown = (e) => {
-    !isMobile && e.target.setPointerCapture(e.pointerId); // 捕获指针事件，使得移出当前元素时仍能响应 move
+    e.target.setPointerCapture?.(e.pointerId); // 捕获指针事件，使得移出当前元素时仍能响应 move
     onStart && onStart();
     const rect = containerRef.current?.getBoundingClientRect();
-    const currentX = rect ? rect.left : position.x * windowWidth;
-    const currentY = rect ? rect.top : position.y * windowHeight;
-    const { clientX, clientY } = isMobile ? e.targetTouches[0] : e;
+    const currentX = rect ? rect.left : position.x * safeWidth;
+    const currentY = rect ? rect.top : position.y * safeHeight;
+    const { clientX, clientY } = e;
     setOrigin({ x: currentX, y: currentY, clientX, clientY });
   };
 
@@ -167,7 +168,7 @@ export default function Draggable({
   const handlePointerMove = (e) => {
     onMove && onMove();
     if (!origin) return;
-    const { clientX, clientY } = isMobile ? e.targetTouches[0] : e;
+    const { clientX, clientY } = e;
     const dx = clientX - origin.clientX;
     const dy = clientY - origin.clientY;
     let x = origin.x + dx;
@@ -179,8 +180,8 @@ export default function Draggable({
 
     applyTransform(x, y);
     const relativePosition = {
-      x: x / windowWidth,
-      y: y / windowHeight,
+      x: x / safeWidth,
+      y: y / safeHeight,
     };
     setPosition(relativePosition);
     latestPosition.current = relativePosition;
@@ -214,19 +215,6 @@ export default function Draggable({
     return origin ? 0.8 : 1;
   }, [origin, snapEdge, hover]);
 
-  // 根据移动端/PC端不同绑定不同的触摸/指针监听属性
-  const touchProps = isMobile
-    ? {
-        onTouchStart: handlePointerDown,
-        onTouchMove: handlePointerMove,
-        onTouchEnd: handlePointerUp,
-      }
-    : {
-        onPointerDown: handlePointerDown,
-        onPointerMove: handlePointerMove,
-        onPointerUp: handlePointerUp,
-      };
-
   return (
     <div
       ref={containerRef}
@@ -248,7 +236,9 @@ export default function Draggable({
           style={{
             touchAction: "none", // 阻止浏览器默认的手势滑页行为，以便拖拽正常工作
           }}
-          {...touchProps}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
         >
           {handler}
         </div>

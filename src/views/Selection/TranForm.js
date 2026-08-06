@@ -443,7 +443,6 @@ export default function TranForm({
               onFocus={() => {
                 setEditMode(true);
               }}
-              // REVIEW: TextField 的 onBlur 会立即触发 setEditMode(false) 并提交数据，而 DoneIcon 的 onClick 也会执行相同逻辑。这会在点击提交按钮时产生多余重入。更关键的是，在某些系统或移动端环境下，onBlur 优先于 click 触发会使 EditMode 瞬间置为 false，导致 DoneIcon 被提早销毁而无法正常响应 onClick 事件。建议在图标按钮上改用 onMouseDown + preventDefault，或使用 onCommit 统一提交通道。
               onBlur={() => {
                 setEditMode(false);
                 setText(editText.trim());
@@ -462,6 +461,7 @@ export default function TranForm({
                       /* 编辑模式：显示提交勾选图标 */
                       <IconButton
                         size="small"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={(e) => {
                           e.stopPropagation();
                           setEditMode(false);

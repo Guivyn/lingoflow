@@ -43,25 +43,33 @@ export default class DomManager {
   }
 
   /**
-   * 显示组件
+   * 显示组件；已挂载时同步刷新新传入的 props。
    * @param {Object} props - 可选的新 props，如果不提供则使用构造函数中的 props
    */
   show(props) {
-    if (this.#isVisible || this.#isProcessing) {
+    if (this.#isProcessing) {
       return;
     }
 
-    if (!this.#hostElement) {
-      this.#isProcessing = true;
-      try {
-        this.#mount(props || this._props);
-      } catch (error) {
-        logger.warn(`Failed to mount component with id "${this._id}":`, error);
-        this.#isProcessing = false;
-        return;
-      } finally {
-        this.#isProcessing = false;
+    if (this.#hostElement) {
+      if (props) {
+        this._props = { ...this._props, ...props };
+        this.updateProps(this._props);
       }
+      this.#hostElement.style.display = "";
+      this.#isVisible = true;
+      return;
+    }
+
+    this.#isProcessing = true;
+    try {
+      this.#mount(props || this._props);
+    } catch (error) {
+      logger.warn(`Failed to mount component with id "${this._id}":`, error);
+      this.#isProcessing = false;
+      return;
+    } finally {
+      this.#isProcessing = false;
     }
 
     this.#hostElement.style.display = "";
@@ -115,13 +123,10 @@ export default class DomManager {
 
   /**
    * 更新组件 props（仅在组件已挂载时有效）
-   * // REVIEW: 内部属性未更新隐患。在 updateProps() 执行中，虽然成功调用了渲染器更新 DOM 上的组件，
-   * // 但并没有将新的 newProps 同步更新到实例的 `this._props` 中。
-   * // 导致后续如果通过 `toggle()` 或不传参数的 `show()` 再次显示组件时，
-   * // 仍会读取到挂载初期在构造器中传入的旧 props 引用，产生数据不同步的 BUG。
    * @param {Object} newProps - 新的 props
    */
   updateProps(newProps) {
+    this._props = { ...this._props, ...newProps };
     if (this.#reactRoot && this.#hostElement) {
       const ComponentToRender = this._ReactComponent;
       const cache = createCache({
@@ -131,7 +136,7 @@ export default class DomManager {
       this.#reactRoot.render(
         <React.StrictMode>
           <CacheProvider value={cache}>
-            <ComponentToRender {...newProps} />
+            <ComponentToRender {...this._props} />
           </CacheProvider>
         </React.StrictMode>
       );

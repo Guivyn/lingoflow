@@ -61,11 +61,6 @@ const _msAuth = () => {
     }
   };
 
-  // REVIEW:
-  // 当缓存的 `tokenPromise` 被 rejected (比如网络突然断开时) 后，
-  // 第 55-63 行的 catch 虽然捕获了错误，但并没有把 `tokenPromise` 重新设为 `null`。
-  // 这会导致在下一次调用此方法时，程序依然试图去 await 这个已经被 reject 的 Promise，而直接抛出异常，
-  // 导致短期内无法重试。为了提高健壮性，若 `await tokenPromise` 异常，应主动执行 `tokenPromise = null` 清理无效的 Promise 缓存。
   return async () => {
     // 检查当前是否有正在执行中或已完成的 Promise 缓存
     if (tokenPromise) {

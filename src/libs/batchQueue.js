@@ -39,9 +39,6 @@ const BatchQueue = (
 
   /**
    * 处理当前队列中的任务
-   * // REVIEW: 1. 异步生成器中断与对齐隐患。这里强依赖底层 taskFn 异步生成器产出的每一项 item.id 能与 tasksToProcess 数组的索引精确对应。
-   * // 如果翻译源 API 在内部产生错误、提前 break 退出或返回了错误的 id（越界或不合法），会导致部分段落无法 resolve。
-   * // 并且如果流式迭代器由于任意异常（如超时）意外中断，在 catch 块中，所有未被 resolve 的任务都会被统一 reject 报错。
    */
   const processQueue = async () => {
     // 每次开始处理，清除延迟定时器
@@ -74,9 +71,12 @@ const BatchQueue = (
       endIndex++;
     }
 
-    // 从全局队列中截取要处理的任务
+    // 从全局队列中截取要处理的任务，并记录生成器侧使用的稳定 id
     if (endIndex > 0) {
-      tasksToProcess = queue.splice(0, endIndex);
+      tasksToProcess = queue.splice(0, endIndex).map((task, index) => ({
+        ...task,
+        id: index,
+      }));
     }
 
     if (tasksToProcess.length === 0) {
@@ -96,7 +96,7 @@ const BatchQueue = (
         for await (const item of generator) {
           const id = item.id;
           const isComplete = item.isComplete !== false; // 默认完成状态为 true
-          const taskItem = tasksToProcess[id];
+          const taskItem = tasksToProcess.find((item) => item.id === id);
 
           if (taskItem) {
             // 流式渲染的中间状态回调（当 isComplete 为 false 且有分块回调时）
@@ -239,13 +239,10 @@ export const getBatchQueue = (key, taskFn, options) => {
 
 /**
  * 销毁并清除所有活跃的批处理队列
- * // REVIEW: queueMap 内存泄漏隐患。本方法遍历了 queueMap 的所有 value 并调用了 queue.destroy()，
- * // 但并没有调用 `queueMap.clear()` 或从 Map 中删除这些被销毁的 queue 引用。
- * // 导致这些已被 destroy 的 BatchQueue 实例依然驻留在 Map 中，这不仅会产生内存泄漏，
- * // 还可能导致后续相同 key 再次调用 getBatchQueue(key) 时，返回一个已被 destroy 无法正常工作的死实例。
  */
 export const clearAllBatchQueue = () => {
   for (const queue of queueMap.values()) {
     queue.destroy();
   }
+  queueMap.clear();
 };

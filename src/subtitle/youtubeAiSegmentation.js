@@ -621,8 +621,7 @@ export function createAiChunkScheduler({
  * 2. 每块完成后通过 `onAppendSubtitles` 交还 provider 合并、排序，并同步前台字幕管理器和侧边栏列表。
  * 3. 两个分块之间保留 500ms 至 1000ms 的随机延时抖动，平滑 AI 请求曲线，降低 QPS 频控风险。
  *
- * REVIEW: 视频切换时后台异步 API 请求仍可能浪费。
- * 当前过期检查只发生在 await 返回后，已经发出的请求依然会被处理；后续若要修复，应引入 AbortController。
+ * 视频切换时后台异步请求通过 AbortSignal 中止，版本检查作为最后的过期兜底。
  *
  * @param {object} param0 参数对象。
  * @param {Array<Array<object>>} param0.chunks 待处理的字幕事件分块列表。

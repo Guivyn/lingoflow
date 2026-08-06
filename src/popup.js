@@ -14,14 +14,6 @@ window.addEventListener("unhandledrejection", (event) => {
   const message =
     reason?.stack || reason?.message || String(reason || "unknown error");
   console.error("[popup-unhandled]", message);
-
-  const box = document.createElement("pre");
-  box.style.cssText =
-    "position:fixed;left:0;right:0;bottom:0;max-height:140px;overflow:auto;" +
-    "background:#7f1d1d;color:#fff;font-size:11px;padding:8px;z-index:999999;" +
-    "white-space:pre-wrap;word-break:break-all;margin:0;";
-  box.textContent = `[unhandled] ${message}`;
-  document.body.appendChild(box);
 });
 
 const root = ReactDOM.createRoot(document.getElementById("root"));

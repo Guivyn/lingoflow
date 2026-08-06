@@ -112,7 +112,10 @@ export function SettingProvider({ children, context }) {
     if (!isOptionsPage || !isExt || isLoading) return;
     const timer = setTimeout(() => {
       sendBgMsg(MSG_RELOAD_SETTING).catch((err) => {
-        logger.error("Failed to notify content scripts to reload settings", err);
+        logger.error(
+          "Failed to notify content scripts to reload settings",
+          err
+        );
       });
     }, 800);
     return () => clearTimeout(timer);
@@ -122,15 +125,12 @@ export function SettingProvider({ children, context }) {
   const updateSetting = useCallback((objOrFn) => update(objOrFn), [update]);
 
   // 快捷更新特定子对象键的方法（如仅更新 customStyles 或是 shortcuts 字段）
-  // REVIEW: 此处 `async (obj)` 声明为了异步函数，但其内部并无任何使用 `await` 的异步处理。
-  // 这种多余的 async 声明是不必要的，应当去除以保证代码精简纯净（为维持原业务逻辑一致性，此处只做 review 标识，不做代码精细修改）。
   const updateChild = useCallback(
-    (key) => async (obj) => {
+    (key) => (obj) =>
       updateSetting((prev) => ({
         ...prev,
         [key]: { ...(prev?.[key] || {}), ...obj },
-      }));
-    },
+      })),
     [updateSetting]
   );
 

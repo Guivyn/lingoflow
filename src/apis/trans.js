@@ -18,11 +18,7 @@ import {
   buildSystemPrompt,
   buildUserPrompt,
 } from "../core/prompt/PromptBuilder";
-import {
-  getPauseLevel,
-  parseAIRes,
-  parseSTRes,
-} from "../providers/shared";
+import { getPauseLevel, parseAIRes, parseSTRes } from "../providers/shared";
 import { msAuth } from "../libs/auth";
 import { apiBingTranslate } from "./bing";
 import { createInterpreter } from "../libs/interpreter";
@@ -149,7 +145,7 @@ const genInit = ({
     let payload = JSON.stringify(body);
     const id = body?.params?.id;
 
-    // REVIEW: 极其硬核的 WAF (网关指纹防火墙) 特征规避设计！
+    // WAF（网关指纹防火墙）特征规避策略。
     // 很多公开的 JSON-RPC 翻译网关由于序列化格式完全一致，极易被 WAF 通过报文指纹拦截阻断。
     // 此处针对 body 中的随机 id 动态对方法字段进行了微小的空格格式抖动（在冒号前或后加入空格），
     // 能够破坏 WAF 的静态字符串指纹匹配，达到长期稳定抗封防盾的效果。

@@ -190,8 +190,7 @@ function processSubtitles({
   maxWords = 15,
   maxDurationMs = 10000,
 } = {}) {
-  // REVIEW: pause 连词词库仍然硬编码为英文单词。
-  // 对西语、法语、德语等其他空格分隔语言，逻辑连词切分支持仍有局限。
+  // pause 连词词库目前以英文为主，对其他空格分隔语言的逻辑连词切分支持仍有局限。
   const groupedPauseWords = {
     1: new Set([
       "actually",

@@ -1,7 +1,7 @@
 import IconButton from "@mui/material/IconButton";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LibraryAddCheckIcon from "@mui/icons-material/LibraryAddCheck";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * 复制文本内容按钮组件
@@ -13,6 +13,16 @@ import { useState } from "react";
 export default function CopyBtn({ text, title = "copy" }) {
   // copied 状态标识是否刚刚成功执行了复制操作
   const [copied, setCopied] = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(
+    () => () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    },
+    []
+  );
 
   const handleClick = async (e) => {
     e.stopPropagation();
@@ -20,10 +30,10 @@ export default function CopyBtn({ text, title = "copy" }) {
     await navigator.clipboard.writeText(text);
     setCopied(true);
 
-    // REVIEW: 1. setTimeout 内部执行 clearTimeout(timer) 逻辑属于冗余操作。
-    // REVIEW: 2. 如果组件在 500ms 内卸载，此时定时器未被注销依然会触发异步 setState 导致潜在的 React warning，建议在组件卸载时进行定时器的清理。
-    const timer = setTimeout(() => {
-      clearTimeout(timer);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => {
       setCopied(false);
     }, 500);
   };

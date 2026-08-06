@@ -1,5 +1,12 @@
 #!/usr/bin/env zx
-import { $, argv } from "zx";
+import { $, argv, quote } from "zx";
+
+// 在 Windows 上使用 cmd.exe，避免 zx 默认使用 WSL bash 导致 npm 命令无法执行。
+if (process.platform === "win32") {
+  $.shell = "cmd.exe";
+  $.prefix = "";
+  $.quote = quote;
+}
 
 /**
  * 版本号更新脚本

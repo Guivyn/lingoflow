@@ -197,9 +197,7 @@ export class Translator {
 
   /**
    * 判断目标元素是否为块级（Block）节点
-   * // REVIEW: 缓存失效风险。使用 WeakMap 缓存了元素的 block 判定结果，如果在页面运行期间，
-   * // 某个元素的 display 样式被动态修改（如从 none 变更为 block，或者从 inline 变更为 block），
-   * // displayCache 中缓存的旧状态不会被失效或刷新，这可能导致后续的扫描和翻译无法准确处理该节点。
+   * 缓存会在页面重新扫描时整体失效，以覆盖运行期间动态样式变化。
    * @param {Node} el - 待检测的 DOM 节点
    * @returns {boolean}
    */
@@ -928,7 +926,7 @@ export class Translator {
         this.#apiSetting.useStream &&
         API_SPE_TYPES.stream.has(this.#apiSetting.apiType);
 
-      // REVIEW: 极佳的性能优化设计 (RequestAnimationFrame 缓冲刷新)！
+      // RequestAnimationFrame 缓冲刷新，将多次 DOM 更新合并到同一帧。
       // 大模型流式输出（onStreamChunk）返回速率极快（每秒可达几十次）。
       // 若每次收到数据都直接操作 DOM 修改 innerText 刷新页面，极易导致浏览器主线程阻塞和严重的 Layout Thrashing (布局抖动)。
       // 此处引入了 RAF (requestAnimationFrame) 刷新缓冲区，限制每秒最多渲染 60 次（FPS 锁帧），

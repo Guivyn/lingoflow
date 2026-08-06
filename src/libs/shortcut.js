@@ -32,14 +32,14 @@ export const shortcutListener = (
       return;
     }
 
-    // REVIEW: 必须在将 key 从 pressedKeys 移除前先触发 onKeyUp，
+    // 必须在将 key 从 pressedKeys 移除前先触发 onKeyUp，
     // 以便在回调执行时，pressedKeys 内部依然能保持松开瞬间的完整多键组合状态。
     onKeyUp(new Set(pressedKeys), e);
     pressedKeys.delete(e.code);
   };
 
-  // REVIEW: 极具鲁棒性的设计。当窗口失焦时，浏览器可能无法捕获到后续的 keyup 事件，
-  // 导致某些按键状态被永久卡死在 pressedKeys 中。通过监听 blur 及时清除可完美规避该 Bug。
+  // 当窗口失焦时，浏览器可能无法捕获到后续的 keyup 事件，
+  // 导致某些按键状态被永久卡死在 pressedKeys 中；监听 blur 及时清除可规避该问题。
   const handleBlur = () => {
     pressedKeys.clear();
   };
@@ -71,7 +71,7 @@ export const shortcutRegister = (targetKeys = [], fn, target = window) => {
   let hasInterference = false; // 抗干扰标志，标识本次按键过程中是否混入了非目标按键
 
   const onKeyDown = (pressedKeys, event) => {
-    // REVIEW: 若按下了任何不属于目标快捷键集合的其它干扰按键，则立刻将干扰状态置为 true，
+    // 若按下了任何不属于目标快捷键集合的其它干扰按键，则立刻将干扰状态置为 true，
     // 防止用户乱按一气或输入普通文本时误触发快捷动作。
     if (!targetKeySet.has(event.code)) {
       hasInterference = true;

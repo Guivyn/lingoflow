@@ -71,9 +71,8 @@ export function useAudio(src) {
         const data = await fetchData(src, {}, { expect: "audio" });
         if (ignore) return;
 
-        // REVIEW: 这里的 objectUrl 声明了但未被赋值（在 loadAudio 内部成功拿到 data 后，没有将 data 赋值给外层的 objectUrl 变量）。
-        // 这会导致在组件卸载或 src 改变触发 cleanup 时，URL.revokeObjectURL(objectUrl) 不起作用（objectUrl 依然为 null）。
-        // 如果 fetchData 返回的是通过 URL.createObjectURL 生成的 Blob URL，将会引发内存泄漏。
+        objectUrl =
+          typeof data === "string" && data.startsWith("blob:") ? data : null;
         audio.src = data;
 
         setLoading(false);

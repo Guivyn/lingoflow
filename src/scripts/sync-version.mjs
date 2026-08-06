@@ -37,8 +37,14 @@ for (const file of filesToSync) {
     try {
         if (file.type === "env") {
             // 处理 .env 文件
+            if (!(await fs.exists(file.path))) {
+                console.log(chalk.gray(`⏭️  跳过（不存在）: ${path.relative(rootDir, file.path)}`));
+                continue;
+            }
             let content = await fs.readFile(file.path, "utf-8");
-            const newContent = content.replace(file.pattern, file.replacement);
+            const newContent = content.match(file.pattern)
+                ? content.replace(file.pattern, file.replacement)
+                : `${content.trimEnd()}\n${file.replacement}\n`;
 
             if (content !== newContent) {
                 await fs.writeFile(file.path, newContent, "utf-8");

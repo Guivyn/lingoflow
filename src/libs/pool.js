@@ -12,6 +12,7 @@ class TaskPool {
   #retryInterval = 1000; // 发生错误时的重试间隔时间（毫秒）
   #limit; // 最大并发限制数
   #interval; // 任务最小启动时间间隔（毫秒），防止请求过于高频
+  #retryTimers = new Map(); // 重试定时器，用于 clear() 时统一取消
 
   #currentConcurrent = 0; // 当前正在执行的任务数
   #lastExecutionTime = 0; // 上一个任务的启动时间戳，用于计算延迟
@@ -87,11 +88,13 @@ class TaskPool {
       appLog("task pool", err);
       // 如果发生异常且重试次数未达到上限，则安排延迟重试
       if (retry < this.#maxRetry) {
-        setTimeout(() => {
+        const retryTimer = setTimeout(() => {
+          this.#retryTimers.delete(retryTimer);
           // 将重试的任务重新放入队列头部，以保证重试任务优先被执行
           this.#pool.unshift({ ...task, retry: retry + 1 });
           this.#scheduleNext();
         }, this.#retryInterval);
+        this.#retryTimers.set(retryTimer, task);
       } else {
         // 达到最大重试次数后，抛出错误并拒绝 Promise
         reject(err);
@@ -134,19 +137,20 @@ class TaskPool {
 
   /**
    * 清空任务池
-   * // REVIEW: 定时器未清理风险。如果有些任务在 catch 块中，已经处于 setTimeout 延迟重试阶段（重试定时器还未触发），
-   * // 此时调用 clear()，由于这些任务还没有被放回 #pool 队列中，所以 clear() 无法将它们 reject 并清理。
-   * // 当 #retryInterval 延迟到期后，setTimeout 回调仍会触发并把任务 unshift 进 #pool，然后重新触发调度启动，
-   * // 这会导致已经被 clear 清理的请求池重新产生残留的“僵尸重试任务”继续运行。
    */
   clear() {
     // 拒绝队列中所有等待执行的任务
     for (const task of this.#pool) {
       task.reject("the task pool was cleared");
     }
+    for (const [timer, task] of this.#retryTimers) {
+      clearTimeout(timer);
+      task.reject("the task pool was cleared");
+    }
 
     // 清空任务队列
     this.#pool.length = 0;
+    this.#retryTimers.clear();
     // 取消挂起的调度定时器
     if (this.#schedulerTimer) {
       clearTimeout(this.#schedulerTimer);

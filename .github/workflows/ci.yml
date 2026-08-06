@@ -26,6 +26,8 @@ jobs:
 
       - run: pnpm test:ci
 
-      - run: pnpm build:ci
+      - run: pnpm build+zip
         env:
           GENERATE_SOURCEMAP: "false"
+
+      - run: test -f build/chrome.zip

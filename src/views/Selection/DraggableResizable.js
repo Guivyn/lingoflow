@@ -1,7 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
-import { isMobile } from "../../libs/mobile";
 import { useTheme, alpha } from "@mui/material/styles";
 import { limitNumber } from "../../libs/utils";
 import {
@@ -42,11 +41,11 @@ function Pointer({
 
   // 指针/触控按下事件
   function handlePointerDown(e) {
-    // 非移动端环境，对指针捕获进行锁定，防止拖出元素边界时事件丢失
-    !isMobile && e.target.setPointerCapture(e.pointerId);
+    // 对指针捕获进行锁定，防止拖出元素边界时事件丢失
+    e.target.setPointerCapture?.(e.pointerId);
 
-    // 获取初始触点 client 坐标 (兼容移动端 Touch 事件)
-    const { clientX, clientY } = isMobile ? e.targetTouches[0] : e;
+    // 获取初始触点 client 坐标
+    const { clientX, clientY } = e;
     setOrigin({
       x: position.x,
       y: position.y,
@@ -59,7 +58,7 @@ function Pointer({
 
   // 指针/触控移动事件
   function handlePointerMove(e) {
-    const { clientX, clientY } = isMobile ? e.targetTouches[0] : e;
+    const { clientX, clientY } = e;
     if (origin) {
       // 计算偏移量
       const dx = clientX - origin.clientX;
@@ -151,21 +150,13 @@ function Pointer({
     setOrigin(null);
   }
 
-  // REVIEW: handlePointerDown 中针对 isMobile 使用 TouchEvent 的 targetTouches[0] 获取坐标，非 isMobile 使用 PointerEvent。但在一些混合模式设备上（同时支持触屏和鼠标），使用 PointerEvent 代替 TouchEvent 可以获得更好的跨设备体验，同时能避免因 TouchEvent 与 PointerEvent 双重监听导致的事件冲突。
-  const touchProps = isMobile
-    ? {
-        onTouchStart: handlePointerDown,
-        onTouchMove: handlePointerMove,
-        onTouchEnd: handlePointerUp,
-      }
-    : {
-        onPointerDown: handlePointerDown,
-        onPointerMove: handlePointerMove,
-        onPointerUp: handlePointerUp,
-      };
-
   return (
-    <div {...props} {...touchProps}>
+    <div
+      {...props}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+    >
       {children}
     </div>
   );

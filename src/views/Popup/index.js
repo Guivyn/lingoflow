@@ -76,7 +76,6 @@ function Trantab() {
   // 获取全局设置
   const { setting } = useSetting();
 
-  // REVIEW: 如果在异步加载未完成或出现异常时 setting 仍为 null / undefined，此处直接解构 setting 将导致 TypeError 崩溃。建议对 setting 进行判空保护，例如：const { tranboxSetting = {}, transApis = [], langDetector = {} } = setting || {};
   const {
     tranboxSetting: {
       enDict,
@@ -87,12 +86,12 @@ function Trantab() {
       toLang2,
       aiDictApiSlug,
       aiDictPromptSlug,
-    },
-    transApis,
-    langDetector,
-    prompts,
-    subtitleSetting,
-  } = setting;
+    } = {},
+    transApis = [],
+    langDetector = {},
+    prompts = [],
+    subtitleSetting = {},
+  } = setting || {};
   const resolvedTransApis = useMemo(
     () => resolveApiPromptList(transApis, prompts, subtitleSetting),
     [prompts, subtitleSetting, transApis]
@@ -150,7 +149,9 @@ export default function Popup() {
       setQueryError("");
       try {
         // ?preview=1 仅用于 QA 截图：用示例数据渲染完整弹窗内容
-        if (new URLSearchParams(window.location.search).get("preview") === "1") {
+        if (
+          new URLSearchParams(window.location.search).get("preview") === "1"
+        ) {
           setRule({
             transOpen: "true",
             autoScan: "true",
@@ -211,7 +212,9 @@ export default function Popup() {
   // 独立窗口模式下只显示文本翻译输入框组件
   if (isSeparate) {
     return (
-      <Box sx={{ bgcolor: theme.palette.background.default, minHeight: "100vh" }}>
+      <Box
+        sx={{ bgcolor: theme.palette.background.default, minHeight: "100vh" }}
+      >
         <Trantab />
       </Box>
     );

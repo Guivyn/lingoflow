@@ -24,7 +24,7 @@ export default function useAutoHideTranBtn(
     };
 
     // 监听选区变化：如果当前选区不存在，或是选区被折叠（collapsed，即没有选中实际文本内容），隐藏翻译按钮
-    // REVIEW: selectionchange 事件是一个超高频触发事件（在用户鼠标滑过文本或精细选择文字的整个拖拽期间会持续高频发生）。
+    // selectionchange 事件是超高频触发事件（在用户鼠标滑过文本或精细选择文字的整个拖拽期间会持续高频发生）。
     // 在其中高频判断并触发状态更新（setShowBtn(false)）可能带来性能开销。
     // 可以考虑引入轻量级去抖（debounce）或者仅在状态真正发生 true -> false 突变时才执行状态派发。
     const handleSelectionChange = () => {

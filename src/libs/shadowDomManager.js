@@ -37,30 +37,33 @@ export default class ShadowDomManager {
   }
 
   /**
-   * 显示组件
-   * // REVIEW: 热更新 props 失效漏洞。
-   * // 如果组件当前已被挂载且处于隐藏状态，此时调用 `show(props)` 并传入了新的 props，
-   * // 由于 `this.#hostElement` 已经存在，执行流会直接跳过 `#mount()` 重新挂载渲染的过程，
-   * // 仅仅同步修改样式为显示状态 `this.#hostElement.style.display = ""`。
-   * // 这导致新传入的 `props` 根本没有应用并渲染到界面上，仍然只显示先前挂载时的旧属性值。
+   * 显示组件；已挂载时同步刷新新传入的 props。
    * @param {Object} props - 可选的新 props
    */
   show(props) {
-    if (this.#isVisible || this.#isProcessing) {
+    if (this.#isProcessing) {
       return;
     }
 
-    if (!this.#hostElement) {
-      this.#isProcessing = true;
-      try {
-        this.#mount(props || this._props);
-      } catch (error) {
-        logger.warn(`Failed to mount component with id "${this._id}":`, error);
-        this.#isProcessing = false;
-        return;
-      } finally {
-        this.#isProcessing = false;
+    if (this.#hostElement) {
+      if (props) {
+        this._props = { ...this._props, ...props };
+        this.#remount(this._props);
       }
+      this.#hostElement.style.display = "";
+      this.#isVisible = true;
+      return;
+    }
+
+    this.#isProcessing = true;
+    try {
+      this.#mount(props || this._props);
+    } catch (error) {
+      logger.warn(`Failed to mount component with id "${this._id}":`, error);
+      this.#isProcessing = false;
+      return;
+    } finally {
+      this.#isProcessing = false;
     }
 
     this.#hostElement.style.display = "";
@@ -100,6 +103,34 @@ export default class ShadowDomManager {
     } else {
       this.show(props || this._props);
     }
+  }
+
+  /**
+   * 已挂载时用最新 props 重新渲染组件。
+   * @private
+   * @param {Object} props - 最新 props
+   */
+  #remount(props) {
+    if (!this.#reactRoot || !this.#hostElement) {
+      return;
+    }
+    const ComponentToRender = this._ReactComponent;
+    const cache = createCache({
+      key: this._id,
+      prepend: true,
+      container: this.#hostElement.shadowRoot,
+    });
+    const enhancedProps = {
+      ...props,
+      onClose: this.hide.bind(this),
+    };
+    this.#reactRoot.render(
+      <React.StrictMode>
+        <CacheProvider value={cache}>
+          <ComponentToRender {...enhancedProps} />
+        </CacheProvider>
+      </React.StrictMode>
+    );
   }
 
   #mount(props) {

@@ -172,8 +172,5 @@ class Logger {
 // 导出单例 Logger 供外部模块调用
 export const logger = new Logger();
 
-// REVIEW: appLog 作为 logger.info 的快捷别名导出，但实际上 debug 或 warn 在日常拦截异常中用的也很多。
-// 可以考虑后续提供类似的快捷别名或直接鼓励大家使用 logger.warn/error 以保持日志语义清晰。
+// appLog 作为 logger.info 的快捷别名导出。
 export const appLog = logger.info.bind(logger);
-
-// TODO：debug日志埋点

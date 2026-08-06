@@ -5,6 +5,7 @@ import {
   useCallback,
   useRef,
   useMemo,
+  useEffect,
 } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -72,11 +73,12 @@ export function ConfirmProvider({ children }) {
     setDialogConfig(null);
   };
 
-  // REVIEW: 如果在 Dialog 打开的情况下，ConfirmProvider 组件突然被卸载(Unmount)（例如用户关闭弹出页或切换视图），
-  // 则 resolveRef.current 对应的 Promise 将保持在永远 pending 的状态。
-  // 建议增加 useEffect 监听卸载事件，并在 cleanup 时执行：
-  // if (resolveRef.current) resolveRef.current(false);
-  // 以妥善完成外部可能正在 await 的异步任务。
+  useEffect(
+    () => () => {
+      resolveRef.current?.(false);
+    },
+    []
+  );
 
   return (
     <ConfirmContext.Provider value={confirm}>

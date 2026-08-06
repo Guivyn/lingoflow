@@ -9,7 +9,6 @@ import { OPT_STYLE_NONE } from "./styles";
 // --- 规则模式关键字 ---
 export const GLOBAL_KEY = "*"; // 全局匹配键名，表示继承全局设置
 
-
 export const DEFAULT_TRANS_TAG = "font"; // 默认翻译译文所外包的 HTML 标签名
 const DEFAULT_SELECT_STYLE =
   "-webkit-line-clamp: unset; max-height: none; height: auto;"; // 默认放开高度限制的 CSS，防止翻译后因译文变长导致文本截断或溢出
@@ -141,7 +140,7 @@ export const GLOBLA_RULE = GLOBAL_RULE;
 // 预设规则列表，初始化时直接注册
 export const DEFAULT_RULES = [GLOBAL_RULE];
 
-// REVIEW: 针对特定高频复杂网页做特殊定制的内置规则映射表。
+// 针对特定高频复杂网页做特殊定制的内置规则映射表。
 // 这些预置规则解决了各大平台（如维基百科、黑客新闻、X/Twitter、YouTube直播、GitHub）由于动态加载、复杂的 CSS 结构、大量的干扰元素所导致的翻译错位或不完整问题。
 const RULES_MAP = {
   // "www.google.com/search": {
