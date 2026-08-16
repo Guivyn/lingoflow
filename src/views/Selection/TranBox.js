@@ -22,7 +22,7 @@ import { MSG_OPEN_SEPARATE_WINDOW } from "../../config/msg.js";
 import { sendBgMsg } from "../../libs/msg.js";
 import { isExt } from "../../libs/client.js";
 import { useTheme, alpha } from "@mui/material/styles";
-import ProductSignature from "../../components/ProductSignature";
+import ProductSignature from "../../ui/components/ProductSignature";
 import { isValidWord } from "../../libs/utils";
 import { useDarkMode } from "../../hooks/ColorMode";
 import { tokens } from "../../ui/theme/tokens";

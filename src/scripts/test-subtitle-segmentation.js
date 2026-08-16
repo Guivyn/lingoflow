@@ -14,7 +14,7 @@ import {
 import { buildBilingualVtt } from "../subtitle/vtt.js";
 
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
-const SAMPLE_ROOT = path.join(PROJECT_ROOT, "testdata/subtitle-samples");
+const SAMPLE_ROOT = path.join(PROJECT_ROOT, "src/testdata/subtitle-samples");
 const OUTPUT_ROOT = path.join(PROJECT_ROOT, "tmp/subtitle-segmentation");
 
 /** 解析 `--name=value` 和 `--name value` 两种命令行参数。 */

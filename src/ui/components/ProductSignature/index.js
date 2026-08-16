@@ -1,7 +1,7 @@
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
-import { tokens } from "../../ui/theme/tokens";
+import { tokens } from "../../theme/tokens";
 
 const SIGNAL_ITEMS = [
   { label: "EN", type: "mono", color: "info" },

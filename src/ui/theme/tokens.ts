@@ -1,5 +1,5 @@
 /**
- * LingoFlow 设计系统基础令牌（见仓库根目录 DESIGN.md）。
+ * LingoFlow 设计系统基础令牌（见仓库 docs/DESIGN.md）。
  * 页面代码不直接消费 MUI 主题，统一从这里读取语义化 token。
  */
 export const tokens = {

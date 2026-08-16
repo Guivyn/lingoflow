@@ -165,7 +165,7 @@ describe("youtubeSubtitleProcessing", () => {
       fs.readFileSync(
         path.join(
           process.cwd(),
-          "testdata/subtitle-samples/english-asr-zero-pause.json"
+          "src/testdata/subtitle-samples/english-asr-zero-pause.json"
         ),
         "utf8"
       )
@@ -235,7 +235,7 @@ describe("youtubeSubtitleProcessing", () => {
       fs.readFileSync(
         path.join(
           process.cwd(),
-          "testdata/subtitle-samples/english-asr-zero-pause.json"
+          "src/testdata/subtitle-samples/english-asr-zero-pause.json"
         ),
         "utf8"
       )
@@ -301,7 +301,7 @@ describe("youtubeSubtitleProcessing", () => {
     (lang, file, texts) => {
       const source = JSON.parse(
         fs.readFileSync(
-          path.join(process.cwd(), "testdata/subtitle-samples", file),
+          path.join(process.cwd(), "src/testdata/subtitle-samples", file),
           "utf8"
         )
       );

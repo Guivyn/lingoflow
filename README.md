@@ -22,7 +22,7 @@ LingoFlow 为阅读外文网页的常见场景提供一套连续的双语对照�
 - 自动扫描与规则匹配并行：绝大多数页面无需手写规则即可整页翻译，复杂站点再由内置规则与 SPA 动态监听兜底。
 - 按阅读场景提供交互面：整页、悬停、划词各有独立呈现方式，而不是把所有功能塞进同一个弹窗。
 - YouTube 字幕是一条独立管线：内置句子切分、AI 分句增强与独立字幕样式，不是简单地把文本丢给翻译接口。
-- 界面按阅读伴侣重新设计：衬线标题、无衬线正文、等宽数据，暖米白与陶土色体系，规范见 [DESIGN.md](DESIGN.md)。
+- 界面按阅读伴侣重新设计：衬线标题、无衬线正文、等宽数据，暖米白与陶土色体系，规范见 [docs/DESIGN.md](docs/DESIGN.md)。
 
 ## 功能
 
@@ -33,7 +33,7 @@ LingoFlow 为阅读外文网页的常见场景提供一套连续的双语对照�
 - 翻译引擎：Google、Google2、Microsoft、DeepL、DeepLX、DeepSeek、OpenAI、Custom
 - 高级能力：流式输出、批处理聚合、上下文记忆、自定义 Prompt 与 Hook、术语表
 
-自定义翻译接口的接入与 Hook 说明见 [custom-api_v2.md](custom-api_v2.md)。
+自定义翻译接口的接入与 Hook 说明见 [docs/custom-api_v2.md](docs/custom-api_v2.md)。
 
 ## 安装
 

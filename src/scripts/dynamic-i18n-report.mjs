@@ -4,7 +4,7 @@ import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
 const SRC = path.join(ROOT, "src");
-const OUT = path.join(ROOT, "dynamic-i18n-report.json");
+const OUT = path.join(ROOT, "reports/dynamic-i18n-report.json");
 
 const files = [];
 (function walk(dir) {
@@ -125,6 +125,7 @@ for (const file of files) {
   }
 }
 
+fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 console.log(`dynamic i18n report: ${report.length} template calls`);
 for (const item of report) {

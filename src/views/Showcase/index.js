@@ -4,7 +4,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 import { useTheme } from "@mui/material/styles";
-import ProductSignature from "../../components/ProductSignature";
+import ProductSignature from "../../ui/components/ProductSignature";
 import PopupHeader from "../Popup/Header";
 import PopupCont from "../Popup/PopupCont";
 import TranForm from "../Selection/TranForm";

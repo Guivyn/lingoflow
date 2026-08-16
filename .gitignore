@@ -35,4 +35,4 @@ package-lock.json
 *.zip
 .repomixignore
 .agents
-dynamic-i18n-report.json
+/reports/

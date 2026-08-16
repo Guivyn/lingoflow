@@ -4,7 +4,7 @@ import Stack from "@mui/material/Stack";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useI18n } from "../../hooks/I18n";
-import ProductSignature from "../../components/ProductSignature";
+import ProductSignature from "../../ui/components/ProductSignature";
 
 /**
  * Popup 弹窗页面头部组件

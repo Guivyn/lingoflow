@@ -6,7 +6,7 @@ import Box from "@mui/material/Box";
 import DarkModeButton from "./DarkModeButton";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
-import ProductSignature from "../../components/ProductSignature";
+import ProductSignature from "../../ui/components/ProductSignature";
 import { tokens } from "../../ui";
 
 /**
