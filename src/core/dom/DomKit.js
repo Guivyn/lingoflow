@@ -164,6 +164,8 @@ export const DomKit = {
   object, option, param, picture, progress,
   select, script, style, svg, track, textarea, template,
   video, wbr, .notranslate, [contenteditable='true'], [translate='no'],
+  [hidden], [aria-hidden='true'], .sr-only, .visually-hidden,
+  [class*='visually-hidden'],
   .tag, .tags, .post-tag, .s-tag, .badge, .badges, .chip, .chips,
   [class*="badge"], [class*="chip"],
   .breadcrumb, .breadcrumbs, [class*="breadcrumb"],

@@ -207,6 +207,32 @@ describe("Translator rule styles", () => {
     expect(requestedTexts.every((text) => text.trim())).toBe(true);
   });
 
+  test("skips hidden responsive duplicate copies during full page translation", async () => {
+    apiTranslate.mockImplementation(({ text }) =>
+      Promise.resolve({
+        trText: `Translated ${text}`,
+        isSame: false,
+      })
+    );
+    document.body.innerHTML = `
+      <main id="root">
+        <p style="display: block">1 Open</p>
+        <p style="display: none">1 Open</p>
+        <p hidden>8 Closed</p>
+      </main>
+    `;
+
+    createTranslator({}, { minLength: 0 });
+    await flushAsync();
+
+    const requestedTexts = apiTranslate.mock.calls.map(([args]) => args.text);
+
+    expect(
+      requestedTexts.filter((text) => text.trim() === "1 Open")
+    ).toHaveLength(1);
+    expect(requestedTexts).not.toContain("8 Closed");
+  });
+
   test("still translates mixed inline text groups", async () => {
     apiTranslate.mockResolvedValue({
       trText: "Translated mixed inline content",
@@ -234,7 +260,7 @@ describe("Translator rule styles", () => {
     expect(combinedRequestedText).toContain("Text");
     expect(combinedRequestedText).toContain("tail");
     expect(wrapper).not.toBeNull();
-    expect(wrapper.textContent).toBe("Translated mixed inline content");
+    expect(wrapper.textContent.trim()).toBe("Translated mixed inline content");
   });
 
   test("skips translating github-style repo paths", async () => {
@@ -796,5 +822,4 @@ describe("Translator rule styles", () => {
     expect(style.textContent.length).toBeGreaterThan(0);
     expect(shadowRoot.querySelectorAll("style")).toHaveLength(1);
   });
-
 });

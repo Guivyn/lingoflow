@@ -47,17 +47,60 @@ export class RuleMatcher {
   isIgnoredElement(node) {
     return (
       node?.nodeType === Node.ELEMENT_NODE &&
-      node.matches?.(this.#ignoreSelector)
+      node.closest?.(this.#ignoreSelector)
     );
+  }
+
+  isVisibleElement(node) {
+    if (!isElementOrFragment(node) || node.nodeType !== Node.ELEMENT_NODE) {
+      return true;
+    }
+
+    if (
+      node.matches?.(
+        '[hidden], [aria-hidden="true"], .sr-only, .visually-hidden, [class*="visually-hidden"]'
+      )
+    ) {
+      return false;
+    }
+
+    if (typeof node.checkVisibility === "function") {
+      try {
+        return node.checkVisibility();
+      } catch (err) {
+        appLog("checkVisibility failed", err);
+      }
+    }
+
+    let current = node;
+    while (current && current.nodeType === Node.ELEMENT_NODE) {
+      if (
+        current.matches?.(
+          '[hidden], [aria-hidden="true"], .sr-only, .visually-hidden, [class*="visually-hidden"]'
+        )
+      ) {
+        return false;
+      }
+
+      const style = window.getComputedStyle?.(current);
+      if (
+        style &&
+        (style.display === "none" ||
+          style.visibility === "hidden" ||
+          style.visibility === "collapse")
+      ) {
+        return false;
+      }
+
+      current = current.parentElement;
+    }
+
+    return true;
   }
 
   matchesBlockSelector(node) {
     const selector = this.#rule.blockSelector?.trim();
-    if (
-      !selector ||
-      this.#blockSelectorInvalid ||
-      !isElementOrFragment(node)
-    ) {
+    if (!selector || this.#blockSelectorInvalid || !isElementOrFragment(node)) {
       return false;
     }
 

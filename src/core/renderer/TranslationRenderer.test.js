@@ -12,7 +12,12 @@ const placeholderConfig = {
   placeholderRegex: /{{\d+}}/g,
 };
 
-function createRenderer(rule = {}, setting = {}) {
+function createRenderer(
+  rule = {},
+  setting = {},
+  placeholderConfigOverride = placeholderConfig,
+  isVisibleElement = () => true
+) {
   return new TranslationRenderer({
     rule: {
       transOrder: "original-first",
@@ -27,9 +32,10 @@ function createRenderer(rule = {}, setting = {}) {
       ...setting,
     },
     tags: DomKit.TAGS,
-    getPlaceholderConfig: () => placeholderConfig,
+    getPlaceholderConfig: () => placeholderConfigOverride,
     getTerms: () => ({ values: [], regex: null }),
     isIgnoredElement: () => false,
+    isVisibleElement,
     shouldBreak: () => false,
     translationTagName: "lingoflow",
   });
@@ -123,6 +129,79 @@ describe("TranslationRenderer", () => {
 
     expect(host.querySelector("b")?.textContent).toBe("world");
     expect(document.querySelector("lingoflow")).toBeNull();
+  });
+
+  test("serializes whitespace between adjacent inline elements", () => {
+    document.body.innerHTML =
+      '<main id="root"><p id="host"><span>Hello</span> <span>world</span></p></main>';
+    const host = document.getElementById("host");
+    const renderer = createRenderer({ hasRichText: "true" });
+
+    const [processedString] = renderer.serializeForTranslation(
+      Array.from(host.childNodes),
+      ""
+    );
+
+    expect(processedString).toContain("</i1> <i2>");
+  });
+
+  test("skips hidden inline duplicates inside a visible group", () => {
+    document.body.innerHTML =
+      '<main id="root"><p id="host"><span>Visible</span><span style="display: none">Hidden copy</span></p></main>';
+    const host = document.getElementById("host");
+    const renderer = createRenderer(
+      { hasRichText: "true" },
+      {},
+      placeholderConfig,
+      (node) => node.style?.display !== "none"
+    );
+
+    const [processedString] = renderer.serializeForTranslation(
+      Array.from(host.childNodes),
+      ""
+    );
+
+    expect(processedString).toContain("Visible");
+    expect(processedString).not.toContain("Hidden copy");
+  });
+
+  test("restores adjacent placeholders merged by a translation service", () => {
+    const renderer = createRenderer();
+    const placeholderMap = new Map([
+      ["{{10}}", "A"],
+      ["{{11}}", "B"],
+    ]);
+
+    expect(renderer.restoreFromTranslation("x{{1011}}y", placeholderMap)).toBe(
+      "xABy"
+    );
+  });
+
+  test("restores merged placeholders with single-brace delimiters", () => {
+    const singleBraceConfig = {
+      ...placeholderConfig,
+      startDelimiter: "{",
+      endDelimiter: "}",
+      placeholderRegex: /\{\d+\}/g,
+    };
+    const renderer = createRenderer({}, {}, singleBraceConfig);
+    const placeholderMap = new Map([
+      ["{10}", "A"],
+      ["{11}", "B"],
+    ]);
+
+    expect(renderer.restoreFromTranslation("x{1011}y", placeholderMap)).toBe(
+      "xABy"
+    );
+  });
+
+  test("keeps unknown merged placeholder digits intact", () => {
+    const renderer = createRenderer();
+    const placeholderMap = new Map([["{{1}}", "A"]]);
+
+    expect(renderer.restoreFromTranslation("x{{12}}y", placeholderMap)).toBe(
+      "x{{12}}y"
+    );
   });
 
   test("keeps translation inside a flex item instead of adding a flex sibling", () => {
@@ -237,4 +316,24 @@ describe("TranslationRenderer", () => {
     expect(wrapper.querySelector(".lingoflow-space")).not.toBeNull();
   });
 
+  test("tag placeholders do not force short translations onto their own line", () => {
+    document.body.innerHTML =
+      '<main id="root"><p id="host">Hello <b>world</b></p></main>';
+    const host = document.getElementById("host");
+    const nodes = Array.from(host.childNodes);
+    const renderer = createRenderer();
+    const { wrapper } = renderer.createWrapper({
+      nodes,
+      processedString: "<i1>Hi</i1><i2>!</i2>",
+      toLang: "zh-CN",
+      transTag: "font",
+      textStyle: "none",
+      transOrder: "original-first",
+      hideOrigin: false,
+      newlineLength: 10,
+    });
+
+    expect(wrapper.classList.contains("lingoflow-long")).toBe(false);
+    expect(wrapper.querySelector(".lingoflow-space")).not.toBeNull();
+  });
 });

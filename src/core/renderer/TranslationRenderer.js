@@ -14,6 +14,7 @@ export class TranslationRenderer {
   #getPlaceholderConfig;
   #getTerms;
   #isIgnoredElement;
+  #isVisibleElement;
   #shouldBreak;
   #translationTagName;
 
@@ -37,6 +38,7 @@ export class TranslationRenderer {
     getPlaceholderConfig,
     getTerms,
     isIgnoredElement,
+    isVisibleElement,
     shouldBreak,
     translationTagName = APP_LCNAME,
   }) {
@@ -46,6 +48,7 @@ export class TranslationRenderer {
     this.#getPlaceholderConfig = getPlaceholderConfig;
     this.#getTerms = getTerms;
     this.#isIgnoredElement = isIgnoredElement;
+    this.#isVisibleElement = isVisibleElement;
     this.#shouldBreak = shouldBreak;
     this.#translationTagName = translationTagName;
     this.#createTextStyles();
@@ -76,7 +79,7 @@ export class TranslationRenderer {
 
       if (node.nodeType === Node.TEXT_NODE) {
         let text = node.textContent;
-        if (!text.trim()) return "";
+        if (!text.trim()) return /\s/.test(text) ? " " : "";
 
         if (combinedTermsRegex) {
           combinedTermsRegex.lastIndex = 0;
@@ -102,7 +105,10 @@ export class TranslationRenderer {
       }
 
       if (node.nodeType === Node.ELEMENT_NODE) {
-        if (this.#isIgnoredElement(node)) {
+        if (
+          this.#isIgnoredElement(node) ||
+          this.#isVisibleElement?.(node) === false
+        ) {
           return "";
         }
 
@@ -191,8 +197,7 @@ export class TranslationRenderer {
 
     if (!translatedText) return "";
 
-    const { safeTag, openRegex, closeRegex, placeholderRegex } =
-      this.#getPlaceholderConfig();
+    const { safeTag, openRegex, closeRegex } = this.#getPlaceholderConfig();
     const restoreAttr = "data-lingoflow-restore";
     let textToParse = translatedText;
     let result = translatedText;
@@ -230,12 +235,95 @@ export class TranslationRenderer {
       appLog("DOMParser restore failed, fallback to raw", e);
     }
 
-    result = result.replace(
-      placeholderRegex,
-      (match) => placeholderMap.get(match) || match
-    );
+    result = this.#restorePlaceholders(result, placeholderMap);
 
     return result;
+  }
+
+  #restorePlaceholders(text, placeholderMap) {
+    const { startDelimiter, endDelimiter } = this.#getPlaceholderConfig();
+    const escapedStart = DomKit.escapeRegex(startDelimiter);
+    const escapedEnd = DomKit.escapeRegex(endDelimiter);
+    const placeholderPattern = new RegExp(
+      `${escapedStart}(\\d+)${escapedEnd}`,
+      "g"
+    );
+    const numbers = new Set();
+    let maxNumberLength = 0;
+
+    placeholderMap.forEach((value, key) => {
+      if (
+        typeof value !== "string" ||
+        !key.startsWith(startDelimiter) ||
+        !key.endsWith(endDelimiter)
+      ) {
+        return;
+      }
+
+      const number = key.slice(
+        startDelimiter.length,
+        key.length - endDelimiter.length
+      );
+      if (/^\d+$/.test(number)) {
+        numbers.add(number);
+        maxNumberLength = Math.max(maxNumberLength, number.length);
+      }
+    });
+
+    const splitMemo = new Map();
+    const splitNumbers = (digits) => {
+      if (!digits) return [];
+      if (splitMemo.has(digits)) return splitMemo.get(digits);
+
+      let best = null;
+      let bestScore = -1;
+
+      for (
+        let length = Math.min(digits.length, maxNumberLength);
+        length >= 1;
+        length--
+      ) {
+        const head = digits.slice(0, length);
+        if (!numbers.has(head)) continue;
+
+        const rest = splitNumbers(digits.slice(length));
+        if (!rest) continue;
+
+        const candidate = [head, ...rest];
+        let score = 0;
+        for (let i = 1; i < candidate.length; i++) {
+          if (Number(candidate[i]) === Number(candidate[i - 1]) + 1) {
+            score++;
+          }
+        }
+
+        if (score > bestScore) {
+          best = candidate;
+          bestScore = score;
+        }
+      }
+
+      splitMemo.set(digits, best);
+      return best;
+    };
+
+    return text.replace(placeholderPattern, (match, digits) => {
+      const directKey = `${startDelimiter}${digits}${endDelimiter}`;
+      if (placeholderMap.has(directKey)) {
+        return placeholderMap.get(directKey);
+      }
+
+      const parts = splitNumbers(digits);
+      if (!parts) return match;
+
+      return parts
+        .map(
+          (part) =>
+            placeholderMap.get(`${startDelimiter}${part}${endDelimiter}`) ||
+            `${startDelimiter}${part}${endDelimiter}`
+        )
+        .join("");
+    });
   }
 
   createWrapper({
@@ -289,7 +377,10 @@ export class TranslationRenderer {
     inner.style.opacity = "0";
     inner.style.transition = `opacity ${tokens.motion.fast}ms ${tokens.motion.easing}`;
 
-    if (forceNewLine || processedString.length > newlineLength) {
+    if (
+      forceNewLine ||
+      this.#getDisplayLength(processedString) > newlineLength
+    ) {
       wrapper.classList.add("lingoflow-long");
       wrapper.appendChild(inner);
     } else {
@@ -341,6 +432,12 @@ export class TranslationRenderer {
     });
 
     return { wrapper, inner };
+  }
+
+  #getDisplayLength(processedString) {
+    const { placeholderRegex } = this.#getPlaceholderConfig();
+    return processedString.replace(placeholderRegex, "").replace(/<[^>]+>/g, "")
+      .length;
   }
 
   renderTranslation({ wrapper, htmlString }) {

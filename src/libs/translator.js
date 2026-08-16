@@ -534,6 +534,9 @@ export class Translator {
       isIgnoredElement: this.#ruleMatcher.isIgnoredElement.bind(
         this.#ruleMatcher
       ),
+      isVisibleElement: this.#ruleMatcher.isVisibleElement.bind(
+        this.#ruleMatcher
+      ),
       shouldBreak: this.#ruleMatcher.shouldBreak.bind(this.#ruleMatcher),
       translationTagName: this.#translationTagName,
     });
@@ -698,7 +701,8 @@ export class Translator {
   async #processNode(node) {
     if (
       this.#processedNodes.has(node) ||
-      !Translator.isElementOrFragment(node)
+      !Translator.isElementOrFragment(node) ||
+      !this.#ruleMatcher.isVisibleElement(node)
     ) {
       return;
     }
