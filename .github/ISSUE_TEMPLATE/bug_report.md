@@ -11,7 +11,7 @@ assignees: ''
 - OS / 操作系统:     [e.g. Windows 11, macOS 14]
 - Browser / 浏览器:     [e.g. Chrome 120]
 - Software Type / 软件类型:     [e.g. Extension / 扩展]
-- Version / 版本号:     [e.g. v1.1.3]
+- Version / 版本号:     [e.g. v1.2.0]
 
 2. Description / 问题描述
 A clear and concise description of what the bug is.
