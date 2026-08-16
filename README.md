@@ -37,7 +37,7 @@ LingoFlow 为阅读外文网页的常见场景提供一套连续的双语对照�
 
 ## 安装
 
-需要 Node.js 18+ 与 pnpm 9+（仓库通过 `.pnpm-version` 固定版本）。
+需要 Node.js 18+ 与 pnpm 10+（仓库通过 `.pnpm-version` 固定版本）。
 
 ```bash
 git clone https://github.com/Guivyn/lingoflow.git

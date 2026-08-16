@@ -139,7 +139,7 @@ export default class TranslatorManager {
   /**
    * 重启运行期子模块，用于 SPA 替换 body/html 后重新挂载。
    *
-   * restart 不会重新注册全局消息监听、快捷键、触屏手势或油猴菜单。
+   * restart 不会重新注册全局消息监听、快捷键或触屏手势。
    * 它只快照当前运行期状态，销毁挂 DOM 的子模块，再用快照创建新实例。
    * 这能保留用户当前的翻译开关、划词翻译开关和输入框翻译开关。
    */
@@ -165,8 +165,8 @@ export default class TranslatorManager {
   /**
    * 停止前台翻译业务并释放所有注册项。
    *
-   * stop 会清理 SPA timer/observer、全局通信监听、快捷键、触屏手势、
-   * 油猴菜单和运行期子模块。stop 后 body/html 变化不应再触发 restart。
+   * stop 会清理 SPA timer/observer、全局通信监听、快捷键、触屏手势
+   * 和运行期子模块。stop 后 body/html 变化不应再触发 restart。
    */
   stop() {
     if (!this.#isActive) {

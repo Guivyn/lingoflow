@@ -311,7 +311,7 @@ function TranBoxContent({
         "&::-webkit-scrollbar-thumb:hover": {
           backgroundColor: alpha(theme.palette.text.primary, 0.36),
         },
-        // Firefox
+        // 标准滚动条样式（Chrome 121+ 同样支持）
         scrollbarWidth: "thin",
         scrollbarColor: `${scrollbarThumbColor} ${scrollbarTrackColor}`,
 

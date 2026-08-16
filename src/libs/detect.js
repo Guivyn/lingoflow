@@ -28,8 +28,6 @@ const langdetectFns = {
  *
  * 说明：
  * 第 52 行调用的 `browser?.i18n?.detectLanguage` 接口仅在标准的 WebExtension 扩展环境中有效。
- * 在油猴脚本（Tampermonkey等）环境中，由于无法直接访问完整的 WebExtension 级 API，本地检测必然会报错并进入 catch 分支。
- * 针对油猴客户端，检测工作基本完全依赖远程语言识别服务。因此这套兜底设计是非常合理且必要的。
  */
 export const tryDetectLang = async (text, langDetector = "-") => {
   let deLang = "";

@@ -78,9 +78,9 @@ async ({ res, ...args }) => {
 /** 为字幕断句工作台集中生成六种界面语言的文案映射。 */
 export const I18N = {
   app_name: {
-    zh: `简约翻译`,
+    zh: `灵语`,
     en: `LingoFlow`,
-    zh_TW: `簡約翻譯`,
+    zh_TW: `靈語`,
     ja: `LingoFlow`,
     ko: `LingoFlow`,
     tr: `LingoFlow`,

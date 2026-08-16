@@ -81,12 +81,8 @@ async function updateIcon(isActive, tabId) {
     192: `images/logo192${suffix}.png`,
   };
   try {
-    // 兼容 MV3 (browser.action) 和 MV2 (browser.browserAction) 规范下的 Firefox 和 Chrome
-    if (browser.action) {
-      await browser.action.setIcon({ path, tabId });
-    } else {
-      await browser.browserAction.setIcon({ path, tabId });
-    }
+    // Chrome MV3 扩展：使用 browser.action 更新图标
+    await browser.action.setIcon({ path, tabId });
   } catch (err) {
     appLog("updateIcon error", err);
   }
@@ -232,7 +228,7 @@ async function updateCacheFromActual(windowId) {
 }
 
 /**
- * 监听窗口焦点切换事件 (用于兼容不支持 boundsChanged 的 Firefox)
+ * 监听窗口焦点切换事件，在窗口重新获得焦点时兜底刷新位置缓存。
  */
 browser.windows?.onFocusChanged?.addListener?.(async (windowId) => {
   if (separateWindowId !== null) {
@@ -490,7 +486,7 @@ browser.runtime.onStartup.addListener(async () => {
     tryClearCaches();
   }
 
-  // 针对 Firefox 重启后菜单消失的系统 Bug，启动时重新添加一次右键菜单。
+  // 浏览器/扩展启动时重建右键菜单，避免菜单状态丢失。
   addContextMenus(contextMenuType);
 
   updateCspRules({ csplist, orilist });

@@ -6,4 +6,4 @@
 import { CLIENT_EXTS } from "../config";
 
 export const client = process.env.REACT_APP_CLIENT; // 获取当前的客户端标识
-export const isExt = CLIENT_EXTS.includes(client); // 是否为浏览器插件扩展环境 (Chrome, Edge, Firefox, Thunderbird)
+export const isExt = CLIENT_EXTS.includes(client); // 是否为浏览器插件扩展环境（当前仅支持 Chrome）

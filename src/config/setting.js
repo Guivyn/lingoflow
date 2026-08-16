@@ -1,6 +1,6 @@
 /**
  * @file setting.js
- * @description 应用默认全局设置定义模块。定义快捷键、默认输入框即时翻译规则、划词翻译与词典面板配置、字幕样式及同步 WebDAV 基础结构。
+ * @description 应用默认全局设置定义模块。定义快捷键、默认输入框即时翻译规则、划词翻译与词典面板配置、字幕样式等基础结构。
  */
 
 import { LogLevel } from "../libs/log";

@@ -44,7 +44,6 @@ export const getCurTabId = async () => {
 /**
  * 向扩展后台 Service Worker (Background) 发送单向或双向消息。
  * 说明：该方法依赖 `browser?.runtime` API，只能在浏览器扩展环境（Content Script, Popup, Options 等）下工作。
- * 在油猴 Userscript 环境中不可使用（油猴需使用特定 GM 接口或 CustomEvent 传递信息）。
  * @param {string} action 指令动作名称
  * @param {Object} args 指令参数数据
  * @returns {Promise<*>} 后台响应的数据

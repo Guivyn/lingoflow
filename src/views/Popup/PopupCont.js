@@ -198,21 +198,11 @@ export default function PopupCont({
     (async () => {
       try {
         const commands = {};
-        if (isExt) {
-          // 扩展环境：向后台 Background 发送消息查询系统级绑定的快捷键
-          const res = await sendBgMsg(MSG_COMMAND_SHORTCUTS);
-          res.forEach(({ name, shortcut }) => {
-            commands[name] = shortcut;
-          });
-        } else {
-          // 油猴脚本等非扩展环境：从传入的全局 settings.shortcuts 中读取并格式化
-          const shortcuts = setting?.shortcuts;
-          if (shortcuts) {
-            Object.entries(shortcuts).forEach(([key, val]) => {
-              commands[key] = val.join("+");
-            });
-          }
-        }
+        // 扩展环境：向后台 Background 发送消息查询系统级绑定的快捷键
+        const res = await sendBgMsg(MSG_COMMAND_SHORTCUTS);
+        res.forEach(({ name, shortcut }) => {
+          commands[name] = shortcut;
+        });
         setCommands(commands);
       } catch (err) {
         appLog("query cmds", err);

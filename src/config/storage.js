@@ -1,6 +1,6 @@
 /**
  * @file storage.js
- * @description 存储相关的常量配置模块。定义保存在本地（如 chrome.storage.local）和云端同步（如 WebDAV）中的键名 (Key) 及版本化规则。
+ * @description 存储相关的常量配置模块。定义保存在本地（如 chrome.storage.local）中的键名 (Key) 及版本化规则。
  */
 
 import { APP_NAME, APP_VERSION } from "./app";

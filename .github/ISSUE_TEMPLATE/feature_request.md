@@ -8,8 +8,8 @@ assignees: ''
 ---
 
 1. Software Type / 软件类型
--   Type / 类型: [e.g. Extension / 扩展, Script / 脚本]
--   Target Browsers / 希望能工作的浏览器: [e.g. Chrome, Edge, Firefox, Safari]
+-   Type / 类型: [e.g. Extension / 扩展]
+-   Target Browser / 目标浏览器: [e.g. Chrome 120]
 
 2. Is your feature request related to a problem? / 您的需求是否与某个问题相关？
 A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]

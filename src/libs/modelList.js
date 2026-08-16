@@ -133,8 +133,8 @@ export function createModelListRequest({ modelListUrl, key }) {
 /**
  * 拉取并解析当前 API 配置对应的模型列表。
  *
- * 这里使用项目统一的普通请求代理层，确保 WebExtension、userscript、background
- * 等运行环境都能复用已有的跨域、超时和错误解析逻辑。
+ * 这里使用项目统一的普通请求代理层，确保扩展各运行环境（Content Script、Background 等）
+ * 都能复用已有的跨域、超时和错误解析逻辑。
  *
  * @param {Object} params 参数对象。
  * @param {string} params.apiType 当前 API 类型。

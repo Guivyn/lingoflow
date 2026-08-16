@@ -119,7 +119,7 @@ export const getHttpCachePolyfill = (input, init) => {
     return sendBgMsg(msgGetCacheName(), { input, init });
   }
 
-  // 油猴/网页/后台端点：直接本地查询
+  // 后台端点：直接本地查询
   return getHttpCache({ input, init });
 };
 
@@ -143,6 +143,6 @@ export const putHttpCachePolyfill = (input, init, data) => {
     return sendBgMsg(MSG_PUT_HTTPCACHE, { input, init, data });
   }
 
-  // 油猴/网页/后台端点：直接本地写入
+  // 后台端点：直接本地写入
   return putHttpCache({ input, init, data });
 };

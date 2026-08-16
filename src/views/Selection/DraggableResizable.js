@@ -373,7 +373,7 @@ export default function DraggableResizable({
               "&::-webkit-scrollbar-thumb:hover": {
                 backgroundColor: alpha(theme.palette.text.primary, 0.36),
               },
-              // firefox
+              // 标准滚动条样式（Chrome 121+ 同样支持）
               scrollbarWidth: "thin",
               scrollbarColor: `${scrollbarThumbColor} ${scrollbarTrackColor}`,
             };
