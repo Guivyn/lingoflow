@@ -13,9 +13,11 @@ LingoFlow is a lightweight Chrome extension that turns webpages, selected text, 
 
 ## Install
 
-1. Clone the repository and run `pnpm build`
+1. Clone the repository and run `pnpm build` (output goes to `build/chrome/`)
 2. Open `chrome://extensions` and enable Developer mode
-3. Click "Load unpacked" and select the `build/` folder
+3. Click "Load unpacked" and select the `build/chrome/` folder
+
+For a release package, run `pnpm build+zip`; the archive is `build/chrome.zip`.
 
 ## Shortcuts
 
@@ -28,7 +30,7 @@ LingoFlow is a lightweight Chrome extension that turns webpages, selected text, 
 ```bash
 pnpm install
 pnpm test
-pnpm build
+pnpm build   # builds the Chrome extension into build/chrome/
 ```
 
 ## License

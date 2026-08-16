@@ -46,11 +46,13 @@ pnpm install
 pnpm build
 ```
 
-构建完成后：
+构建产物统一输出到 `build/chrome/`，加载扩展时请固定使用该目录：
 
 1. 打开 `chrome://extensions`
 2. 启用“开发者模式”
 3. 点击“加载已解压的扩展程序”，选择 `build/chrome` 目录
+
+发布打包使用 `pnpm build+zip`，产物为 `build/chrome.zip`。
 
 ## 快捷键
 
@@ -67,7 +69,7 @@ pnpm install
 pnpm start    # 本地开发，入口为 Options 设置页
 pnpm test     # 单元测试
 pnpm lint     # ESLint
-pnpm build    # 构建 Chrome 扩展
+pnpm build    # 构建 Chrome 扩展（自动同步版本号），产物输出到 build/chrome/
 ```
 
 ## 致谢

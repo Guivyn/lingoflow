@@ -36,7 +36,6 @@
     "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
     "i18n:report": "node src/scripts/dynamic-i18n-report.mjs",
     "test:ci": "cross-env CI=true react-app-rewired test --watchAll=false --runInBand",
-    "build:ci": "cross-env REACT_APP_CLIENT=chrome CI=true react-app-rewired build",
     "build": "pnpm sync-version && pnpm format && pnpm build:chrome",
     "zip": "zx src/scripts/archive.mjs",
     "build+zip": "cross-env CI=true pnpm build && pnpm zip",
