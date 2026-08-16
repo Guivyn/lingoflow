@@ -1,7 +1,7 @@
 import { BilingualSubtitleManager } from "./BilingualSubtitleManager";
-import { apiTranslate } from "../apis/index.js";
+import { apiTranslate } from "../services";
 
-jest.mock("../apis/index.js", () => ({
+jest.mock("../services", () => ({
   apiTranslate: jest.fn(),
   apiMicrosoftDict: jest.fn(),
 }));

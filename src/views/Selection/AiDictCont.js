@@ -4,7 +4,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { apiDict } from "../../apis";
+import { apiDict } from "../../services";
 import { useI18n } from "../../hooks/I18n";
 import { BrowserTtsBtn } from "./AudioBtn";
 import CopyBtn from "./CopyBtn";

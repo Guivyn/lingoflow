@@ -1,4 +1,4 @@
-jest.mock("../apis", () => ({
+jest.mock("../services", () => ({
   apiTranslate: jest.fn(),
 }));
 
@@ -10,7 +10,7 @@ jest.mock("./detect", () => ({
   tryDetectLang: jest.fn(),
 }));
 
-const { apiTranslate } = require("../apis");
+const { apiTranslate } = require("../services");
 const { Translator } = require("./translator");
 const { tryDetectLang } = require("./detect");
 

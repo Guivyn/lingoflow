@@ -1,11 +1,11 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import TranCont from "./TranCont";
-import { apiTranslate } from "../../apis";
+import { apiTranslate } from "../../services";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-jest.mock("../../apis", () => ({
+jest.mock("../../services", () => ({
   apiTranslate: jest.fn(),
 }));
 

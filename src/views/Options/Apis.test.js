@@ -41,7 +41,7 @@ jest.mock("../../hooks/Setting", () => ({
   }),
 }));
 
-jest.mock("../../apis", () => ({
+jest.mock("../../services", () => ({
   apiTranslate: jest.fn(),
 }));
 

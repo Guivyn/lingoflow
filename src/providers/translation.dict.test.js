@@ -1,7 +1,7 @@
 import { fetchData, fetchStream } from "../libs/fetch";
 import { getStreamDelta } from "../libs/stream";
 import { DEFAULT_API_LIST, OPT_TRANS_OPENAI } from "../config";
-import { handleDict } from "./trans";
+import { handleDict } from "./translation";
 
 jest.mock("query-string", () => ({
   stringify: (obj) => new URLSearchParams(obj).toString(),

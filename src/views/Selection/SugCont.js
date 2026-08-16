@@ -1,7 +1,7 @@
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
-import { apiBaiduSuggest, apiYoudaoSuggest } from "../../apis";
+import { apiBaiduSuggest, apiYoudaoSuggest } from "../../services";
 import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
 import { OPT_SUG_BAIDU, OPT_SUG_YOUDAO } from "../../config";

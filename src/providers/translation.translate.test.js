@@ -1,4 +1,4 @@
-import { handleTranslate } from "./trans";
+import { handleTranslate } from "./translation";
 import {
   DEFAULT_API_LIST,
   OPT_TRANS_MICROSOFT,

@@ -3,7 +3,7 @@ import {
   detectSubtitleProtocol,
   formatIndexSubtitleEvents,
   handleSubtitle,
-} from "./trans";
+} from "./translation";
 import {
   DEFAULT_API_LIST,
   OPT_TRANS_DEEPSEEK,

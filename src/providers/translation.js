@@ -11,14 +11,14 @@ import {
   defaultSystemPromptXml,
   defaultSystemPromptLines,
 } from "../config";
-import { getProvider, getProviderCapability } from "../providers";
+import { getProvider, getProviderCapability } from "./index";
 import {
   buildSubtitleSystemPrompt,
   buildSubtitleUserPrompt,
   buildSystemPrompt,
   buildUserPrompt,
 } from "../core/prompt/PromptBuilder";
-import { getPauseLevel, parseAIRes, parseSTRes } from "../providers/shared";
+import { getPauseLevel, parseAIRes, parseSTRes } from "./shared";
 import { msAuth } from "../libs/auth";
 import { apiBingTranslate } from "./bing";
 import { createInterpreter } from "../libs/interpreter";
@@ -37,7 +37,7 @@ import {
 } from "../libs/stream";
 import { appLog } from "../libs/log";
 import { fetchData, fetchStream } from "../libs/fetch";
-import { getMsgHistory } from "./translationContext";
+import { getMsgHistory } from "../services/translationContext";
 import { getDocInfo } from "../libs/docInfo";
 
 export { buildSubtitleSystemPrompt };

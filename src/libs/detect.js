@@ -11,7 +11,7 @@ import {
   OPT_LANGDETECTOR_MAP,
 } from "../config";
 import { browser } from "./browser";
-import { apiGoogleLangdetect, apiMicrosoftLangdetect } from "../apis";
+import { apiGoogleLangdetect, apiMicrosoftLangdetect } from "../services";
 import { appLog } from "./log";
 
 // 各个平台的语言检测函数映射表

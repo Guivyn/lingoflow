@@ -1,7 +1,7 @@
 import { logger } from "../libs/log.js";
 import { truncateWords, throttle } from "../libs/utils.js";
 import { decodeHTMLEntities } from "../libs/html.js";
-import { apiTranslate } from "../apis/index.js";
+import { apiTranslate } from "../services";
 import { resolveApiPromptSettings } from "../config/prompt.js";
 import { trustedTypesHelper } from "../libs/trustedTypes.js";
 import { isSubtitleModeEnabled } from "./modes.js";

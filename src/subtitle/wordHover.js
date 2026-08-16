@@ -1,4 +1,4 @@
-import { apiMicrosoftDict } from "../apis/index.js";
+import { apiMicrosoftDict } from "../services";
 import { logger } from "../libs/log.js";
 import { trustedTypesHelper } from "../libs/trustedTypes.js";
 

@@ -5,7 +5,7 @@
 
 import { getMsauth, setMsauth } from "./storage";
 import { appLog } from "./log";
-import { apiMsAuth } from "../apis";
+import { apiMsAuth } from "../services";
 
 /**
  * 解析微软翻译 JWT 格式 Token 的过期时间戳 (exp)

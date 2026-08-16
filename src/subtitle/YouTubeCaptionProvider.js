@@ -1,5 +1,5 @@
 import { logger } from "../libs/log.js";
-import { apiSubtitle, apiSummarizeContext } from "../apis/index.js";
+import { apiSubtitle, apiSummarizeContext } from "../services";
 import { BilingualSubtitleManager } from "./BilingualSubtitleManager.js";
 import { YouTubeSubtitleList } from "./YouTubeSubtitleList.js";
 import { MSG_XHR_DATA_YOUTUBE, API_SPE_TYPES } from "../config";
@@ -8,7 +8,7 @@ import { newI18n } from "../config";
 import { buildBilingualVtt } from "./vtt.js";
 import { getDocInfo } from "../libs/docInfo.js";
 import { isSubtitleModeEnabled } from "./modes.js";
-import { clearMsgHistory } from "../apis/translationContext.js";
+import { clearMsgHistory } from "../services/translationContext.js";
 import {
   buildTrackKey,
   findCaptionTrack,

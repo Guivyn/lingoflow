@@ -1,7 +1,7 @@
 import Typography from "@mui/material/Typography";
 import { AudioBtn, BaiduAudioBtn } from "./AudioBtn";
 import { OPT_DICT_BING, OPT_DICT_YOUDAO } from "../../config";
-import { apiMicrosoftDict, apiYoudaoDict } from "../../apis";
+import { apiMicrosoftDict, apiYoudaoDict } from "../../services";
 import { tokens } from "../../ui/theme/tokens";
 
 function highlightTerm(text, term) {

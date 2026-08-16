@@ -1,11 +1,11 @@
 import { YouTubeSubtitleList } from "./YouTubeSubtitleList";
-import { apiMicrosoftDict } from "../apis/index.js";
+import { apiMicrosoftDict } from "../services";
 
 jest.mock("../libs/storage.js", () => ({
   getSettingWithDefault: jest.fn(() => Promise.resolve({ darkMode: "light" })),
 }));
 
-jest.mock("../apis/index.js", () => ({
+jest.mock("../services", () => ({
   apiMicrosoftDict: jest.fn(),
 }));
 

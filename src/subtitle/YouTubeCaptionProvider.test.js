@@ -1,5 +1,5 @@
 import { act } from "react";
-import { apiSubtitle, apiSummarizeContext } from "../apis/index.js";
+import { apiSubtitle, apiSummarizeContext } from "../services";
 import { YouTubeCaptionProvider } from "./YouTubeCaptionProvider.js";
 import { getCaptionTracks, getSubtitleEvents } from "./youtubeCaptionTracks.js";
 import { eventsToSubtitles } from "./youtubeAiSegmentation.js";
@@ -14,12 +14,12 @@ jest.mock("../config", () => ({
   newI18n: () => (key) => key,
 }));
 
-jest.mock("../apis/index.js", () => ({
+jest.mock("../services", () => ({
   apiSubtitle: jest.fn(),
   apiSummarizeContext: jest.fn(),
 }));
 
-jest.mock("../apis/translationContext.js", () => ({
+jest.mock("../services/translationContext.js", () => ({
   clearMsgHistory: jest.fn(),
 }));
 jest.mock("../libs/docInfo.js", () => ({ getDocInfo: () => ({}) }));

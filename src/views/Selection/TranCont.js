@@ -4,7 +4,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useEffect, useMemo, useState } from "react";
-import { apiTranslate } from "../../apis";
+import { apiTranslate } from "../../services";
 import {
   API_SPE_TYPES,
   OPT_TRANS_GOOGLE,

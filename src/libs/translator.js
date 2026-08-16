@@ -26,7 +26,7 @@ import { DomKit } from "../core/dom/DomKit";
 import { createInterpreter } from "./interpreter";
 import { clearFetchPool } from "./pool";
 import { scheduleIdle, genEventName, parseAITerms } from "./utils";
-import { apiTranslate } from "../apis";
+import { apiTranslate } from "../services";
 import { appLog } from "./log";
 import { clearAllBatchQueue } from "./batchQueue";
 import { tryDetectLang } from "./detect";

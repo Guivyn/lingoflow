@@ -12,7 +12,7 @@ import { useAlert } from "../../hooks/Alert";
 import { useApiList, useApiItem } from "../../hooks/Api";
 import { useConfirm } from "../../hooks/Confirm";
 import { resolveApiPromptSettings } from "../../config/prompt";
-import { apiTranslate } from "../../apis";
+import { apiTranslate } from "../../services";
 import { fetchModelList } from "../../libs/modelList";
 import {
   AddIcon,

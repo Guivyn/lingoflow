@@ -5,7 +5,7 @@ import {
   CircularProgress,
   Box,
 } from "@mui/material";
-import { apiZdic } from "../../apis/zdic";
+import { apiZdic } from "../../services/zdic";
 import { AudioBtn } from "./AudioBtn";
 import { useI18n } from "../../hooks/I18n";
 import { tokens } from "../../ui/theme/tokens";
