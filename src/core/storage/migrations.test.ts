@@ -7,13 +7,45 @@ import { SETTINGS_SCHEMA_VERSION } from "./schema";
 import {
   SETTINGS_VERSION_V2,
   SETTINGS_VERSION_V3,
+  SETTINGS_VERSION_V4,
 } from "../../config/prompt";
 
 describe("settings migrations", () => {
   test("keeps version constants in sync", () => {
     expect(CURRENT_SETTINGS_VERSION).toBe(SETTINGS_SCHEMA_VERSION);
-    expect(CURRENT_SETTINGS_VERSION).toBe(SETTINGS_VERSION_V3);
+    expect(CURRENT_SETTINGS_VERSION).toBe(SETTINGS_VERSION_V4);
     expect(SETTINGS_MIGRATIONS[CURRENT_SETTINGS_VERSION]).toBeDefined();
+  });
+
+  test("upgrades legacy batch defaults while preserving custom values", () => {
+    const migrated = runSettingMigrations({
+      version: SETTINGS_VERSION_V3,
+      transApis: [
+        {
+          apiSlug: "openai",
+          apiType: "OpenAI",
+          batchInterval: 400,
+          batchConcurrency: 1,
+        },
+        {
+          apiSlug: "my-custom",
+          apiType: "Custom",
+          batchInterval: 500,
+          batchConcurrency: 3,
+        },
+      ],
+    });
+
+    expect(migrated.version).toBe(CURRENT_SETTINGS_VERSION);
+    const transApis = migrated.transApis as Array<Record<string, unknown>>;
+    expect(transApis[0]).toMatchObject({
+      batchInterval: 150,
+      batchConcurrency: 2,
+    });
+    expect(transApis[1]).toMatchObject({
+      batchInterval: 500,
+      batchConcurrency: 3,
+    });
   });
 
   test("returns current settings unchanged", () => {

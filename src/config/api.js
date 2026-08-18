@@ -7,10 +7,10 @@
 export const DEFAULT_HTTP_TIMEOUT = 30; // 调用超时时间 (单位：秒)
 export const DEFAULT_FETCH_LIMIT = 10; // 默认最大并行请求/任务数量
 export const DEFAULT_FETCH_INTERVAL = 100; // 默认任务间隔时间 (单位：毫秒)
-export const DEFAULT_BATCH_INTERVAL = 400; // 批处理合并请求的等待延迟时间 (单位：毫秒)
+export const DEFAULT_BATCH_INTERVAL = 150; // 批处理合并请求的等待延迟时间 (单位：毫秒)
 export const DEFAULT_BATCH_SIZE = 20; // 每次翻译请求最多合并发送的 DOM 段落数量
 export const DEFAULT_BATCH_LENGTH = 10000; // 每次翻译请求发送的最大字符数限制
-export const DEFAULT_BATCH_CONCURRENCY = 1; // 同时执行的聚合批次数量
+export const DEFAULT_BATCH_CONCURRENCY = 2; // 同时执行的聚合批次数量
 export const DEFAULT_CONTEXT_SIZE = 3; // AI 翻译时保留的上下文会话历史轮数
 
 // --- 翻译内容替换占位符 ---
@@ -60,7 +60,7 @@ export const OPT_ALL_TRANS_TYPES = [
   OPT_TRANS_CUSTOMIZE,
 ];
 
-export const OPT_LANGDETECTOR_ALL = [OPT_TRANS_GOOGLE, OPT_TRANS_MICROSOFT];
+export const OPT_LANGDETECTOR_ALL = [OPT_TRANS_GOOGLE];
 
 export const OPT_LANGDETECTOR_MAP = new Set(OPT_LANGDETECTOR_ALL);
 

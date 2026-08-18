@@ -5,7 +5,6 @@ import {
   STOKEY_RULES,
   STOKEY_FAB,
   STOKEY_TRANBOX,
-  STOKEY_MSAUTH,
   DEFAULT_SETTING,
   DEFAULT_RULES,
   DEFAULT_API_LIST,
@@ -163,7 +162,6 @@ const migrateLegacyAppStorage = async () => {
     STOKEY_RULES,
     STOKEY_FAB,
     STOKEY_TRANBOX,
-    STOKEY_MSAUTH,
   ];
 
   for (const key of keys) {
@@ -237,10 +235,6 @@ export const getTranBox = () => getObj(STOKEY_TRANBOX);
 const putTranBox = (obj) => putObj(STOKEY_TRANBOX, obj);
 // 节流处理高频更新的 TranBox 位置写入
 export const debouncePutTranBox = debounce(putTranBox, 300);
-
-// --- 微软云服务授权 Token 存取 ---
-export const getMsauth = () => getObj(STOKEY_MSAUTH);
-export const setMsauth = (val) => setObj(STOKEY_MSAUTH, val);
 
 /**
  * 首次加载或升级时，尝试向本地写入系统默认初始数据。

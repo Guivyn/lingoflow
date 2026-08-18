@@ -499,8 +499,7 @@ export const apiSummarizeContext = async ({
 };
 
 // 辅助 API 子模块再导出，保持对外导入路径 "../services" 不变。
-export { apiMsAuth } from "./auth";
-export { apiGoogleLangdetect, apiMicrosoftLangdetect } from "./langdetect";
+export { apiGoogleLangdetect } from "./langdetect";
 export { apiMicrosoftDict, apiYoudaoDict } from "./dictionary";
 export { apiBaiduSuggest, apiYoudaoSuggest } from "./suggest";
 export * from "./zdic";

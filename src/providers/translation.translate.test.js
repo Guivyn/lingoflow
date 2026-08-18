@@ -1,11 +1,13 @@
-import { handleTranslate } from "./translation";
+import {
+  handleTranslate,
+  __resetFallbackCircuitBreakers,
+} from "./translation";
 import {
   DEFAULT_API_LIST,
   OPT_TRANS_MICROSOFT,
   OPT_TRANS_OPENAI,
 } from "../config";
 import { fetchData, fetchStream } from "../libs/fetch";
-import { msAuth } from "../libs/auth";
 import { apiBingTranslate } from "./bing";
 import { trustedTypesHelper } from "../libs/trustedTypes";
 
@@ -20,10 +22,6 @@ jest.mock("@streamparser/json", () => ({
 jest.mock("../libs/fetch", () => ({
   fetchData: jest.fn(),
   fetchStream: jest.fn(),
-}));
-
-jest.mock("../libs/auth", () => ({
-  msAuth: jest.fn(),
 }));
 
 jest.mock("./bing", () => ({
@@ -53,6 +51,10 @@ const getNobatchApiSetting = (update = {}) => ({
   nobatchPrompt: "Translate {{text}}.",
   nobatchUserPrompt: "",
   ...update,
+});
+
+beforeEach(() => {
+  __resetFallbackCircuitBreakers();
 });
 
 async function collectAsyncGenerator(generator) {
@@ -112,20 +114,24 @@ describe("handleTranslate", () => {
     ]);
   });
 
-  test("falls back to google when microsoft auth endpoint fails", async () => {
-    msAuth.mockRejectedValueOnce(new Error("edge auth 404"));
-    apiBingTranslate.mockRejectedValueOnce(new Error("bing unavailable"));
-    fetchData.mockResolvedValueOnce({
-      sentences: [{ trans: "你好", orig: "hello" }],
-      src: "en",
-    });
+  test("uses edge public endpoint without auth for microsoft", async () => {
+    fetchData.mockResolvedValueOnce([
+      {
+        detectedLanguage: { language: "en", score: 0.99 },
+        translations: [{ text: "你好", to: "zh-Hans" }],
+      },
+      {
+        detectedLanguage: { language: "en", score: 0.99 },
+        translations: [{ text: "早上好", to: "zh-Hans" }],
+      },
+    ]);
 
     const result = await collectAsyncGenerator(
-      handleTranslate(["hello"], {
-        from: "en",
+      handleTranslate(["hello", "good morning"], {
+        from: "",
         to: "zh-Hans",
-        fromLang: "en",
-        toLang: "zh-CN",
+        fromLang: "auto",
+        toLang: "Chinese",
         langMap: () => "",
         glossary: "",
         apiSetting: getApiSetting(OPT_TRANS_MICROSOFT),
@@ -133,22 +139,24 @@ describe("handleTranslate", () => {
       })
     );
 
-    expect(msAuth).toHaveBeenCalledTimes(1);
-    expect(apiBingTranslate).toHaveBeenCalledTimes(1);
     expect(fetchData).toHaveBeenCalledTimes(1);
-    const requestUrl = fetchData.mock.calls[0][0];
-    expect(requestUrl).toContain("translate.googleapis.com/translate_a/single");
-    expect(requestUrl).toContain("tl=zh-CN");
+    const [url, init] = fetchData.mock.calls[0];
+    expect(
+      url.startsWith("https://edge.microsoft.com/translate/translatetext?")
+    ).toBe(true);
+    expect(new URL(url).searchParams.get("from")).toBe("");
+    expect(new URL(url).searchParams.get("to")).toBe("zh-Hans");
+    expect(new URL(url).searchParams.get("isEnterpriseClient")).toBe("false");
+    expect(init.headers.Authorization).toBeUndefined();
+    expect(JSON.parse(init.body)).toEqual(["hello", "good morning"]);
     expect(result).toEqual([
-      {
-        id: 0,
-        result: ["你好", "en"],
-      },
+      { id: 0, result: ["你好", "en"] },
+      { id: 1, result: ["早上好", "en"] },
     ]);
   });
 
-  test("uses bing fallback before google when microsoft auth fails", async () => {
-    msAuth.mockRejectedValueOnce(new Error("edge auth 404"));
+  test("falls back to bing when edge endpoint fails", async () => {
+    fetchData.mockRejectedValueOnce(new Error("edge endpoint 429"));
     apiBingTranslate.mockResolvedValueOnce([["你好", "en"]]);
 
     const result = await collectAsyncGenerator(
@@ -167,15 +175,57 @@ describe("handleTranslate", () => {
     expect(apiBingTranslate).toHaveBeenCalledWith(
       ["hello"],
       "en",
-      "zh-Hans"
+      "zh-Hans",
+      expect.objectContaining({ httpTimeout: expect.any(Number) })
     );
-    expect(fetchData).not.toHaveBeenCalled();
-    expect(result).toEqual([
-      {
-        id: 0,
-        result: ["你好", "en"],
-      },
-    ]);
+    expect(result).toEqual([{ id: 0, result: ["你好", "en"] }]);
+  });
+
+  test("throws when edge and bing both fail", async () => {
+    fetchData.mockRejectedValueOnce(new Error("edge endpoint 429"));
+    apiBingTranslate.mockRejectedValueOnce(new Error("bing unavailable"));
+
+    await expect(
+      collectAsyncGenerator(
+        handleTranslate(["hello"], {
+          from: "en",
+          to: "zh-Hans",
+          fromLang: "en",
+          toLang: "zh-CN",
+          langMap: () => "",
+          glossary: "",
+          apiSetting: getApiSetting(OPT_TRANS_MICROSOFT),
+          usePool: false,
+        })
+      )
+    ).rejects.toThrow("edge endpoint 429");
+  });
+
+  test("skips broken bing fallback on subsequent batches", async () => {
+    fetchData.mockRejectedValue(new Error("edge endpoint 429"));
+    apiBingTranslate.mockRejectedValueOnce(new Error("bing unavailable"));
+
+    const args = {
+      from: "en",
+      to: "zh-Hans",
+      fromLang: "en",
+      toLang: "zh-CN",
+      langMap: () => "",
+      glossary: "",
+      apiSetting: getApiSetting(OPT_TRANS_MICROSOFT),
+      usePool: false,
+    };
+
+    await expect(
+      collectAsyncGenerator(handleTranslate(["hello"], args))
+    ).rejects.toThrow("edge endpoint 429");
+    await expect(
+      collectAsyncGenerator(handleTranslate(["world"], args))
+    ).rejects.toThrow("edge endpoint 429");
+
+    // 第一批走完 Edge+Bing 失败链，第二批熔断后直接抛出 Edge 错误。
+    expect(fetchData).toHaveBeenCalledTimes(2);
+    expect(apiBingTranslate).toHaveBeenCalledTimes(1);
   });
 
   test("parses non-stream OpenAI XML content and ignores reasoning content", async () => {

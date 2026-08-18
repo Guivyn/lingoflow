@@ -285,6 +285,7 @@ export class Translator {
   #translationTagName = APP_LCNAME; // 翻译容器的标签名
   #eventName = ""; // 通信事件名称
   #docInfo = {}; // 网页信息
+  #pageLangPromise = null; // 整页翻译的页面级语言检测结果缓存（Promise）
   #glossary = {}; // AI词典
   #ruleMatcher = null; // 规则匹配器
   #renderer = null; // DOM 渲染器
@@ -610,6 +611,8 @@ export class Translator {
 
     try {
       const deLang = await tryDetectLang(sample, this.#setting.langDetector);
+      // 缓存检测结果，后续整页节点处理直接复用，避免重复检测。
+      this.#pageLangPromise = Promise.resolve(deLang || "");
       const toLang = this.#rule.toLang || "";
       if (deLang === "en" && toLang.slice(0, 2) !== "en") {
         this.enable();
@@ -626,6 +629,24 @@ export class Translator {
       document.documentElement?.textContent ||
       "";
     return text.replace(/\s+/g, " ").trim().slice(0, 500);
+  }
+
+  // 整页翻译只做一次页面级语言检测并缓存结果。
+  // 之前每个节点在入队前各自 await tryDetectLang：远程检测的网络耗时既拖慢
+  // 整体翻译，又让任务入队顺序变成“检测完成顺序”，导致页面中部的大段正文
+  // 比后方文本更晚开始翻译。页面级一次检测让所有节点共享同一源语言结果，
+  // 同时也符合批处理请求必须共用 fromLang 的语义。
+  #getPageDeLang(langDetector) {
+    if (!this.#pageLangPromise) {
+      const sample = this.#getPageLanguageSample();
+      this.#pageLangPromise = sample
+        ? Promise.resolve(tryDetectLang(sample, langDetector)).catch((err) => {
+            appLog("detect page lang", err);
+            return "";
+          })
+        : Promise.resolve("");
+    }
+    return this.#pageLangPromise;
   }
 
   // 初始化
@@ -724,8 +745,7 @@ export class Translator {
     } = this.#rule;
     const { langDetector, skipLangs = [] } = this.#setting;
     if (fromLang === "auto") {
-      // revert 529
-      deLang = await tryDetectLang(node.textContent, langDetector);
+      deLang = await this.#getPageDeLang(langDetector);
       if (
         deLang &&
         (toLang.slice(0, 2) === deLang.slice(0, 2) ||
@@ -1261,6 +1281,7 @@ export class Translator {
     this.#scanner.reset();
     this.#processedNodes = new WeakMap();
     this.#translationTextCache.clear();
+    this.#pageLangPromise = null;
   }
 
   // 注入JS/CSS
@@ -1364,6 +1385,7 @@ export class Translator {
     this.#enabled = false;
     this.#rule.transOpen = "false";
     this.#runId++;
+    this.#pageLangPromise = null;
 
     this.#cleanupAllNodes();
     clearFetchPool();
@@ -1424,6 +1446,8 @@ export class Translator {
   // 更新全局设置：合并到运行期设置并刷新已插入的译文布局
   applySetting(patch) {
     Object.assign(this.#setting, patch);
+    // 语言检测器或跳过语言变化后，页面级语言结果需要重新计算。
+    this.#pageLangPromise = null;
     if (patch?.autoTransEnglish === true) {
       this.#maybeAutoTranslateEnglish();
     }
@@ -1442,6 +1466,8 @@ export class Translator {
   updateRule(newRule) {
     let hasChanged = false;
     let needsRescan = false;
+    // 规则变化（fromLang/toLang 等）可能影响语言检测语义，丢弃缓存重新计算。
+    this.#pageLangPromise = null;
     const oldTransAllnow = this.#transAllnow;
     const oldRootMargin = this.#rootMargin;
     for (const key in newRule) {

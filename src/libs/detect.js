@@ -1,23 +1,21 @@
 /**
  * @file detect.js
- * @description 语言检测服务模块。整合了本地浏览器端检测与谷歌、微软的远程 API 检测服务，为划词和整页翻译提供基础语言代码匹配。
+ * @description 语言检测服务模块。整合了本地浏览器端检测与谷歌的远程 API 检测服务，为划词和整页翻译提供基础语言代码匹配。
  */
 
 import {
   OPT_TRANS_GOOGLE,
-  OPT_TRANS_MICROSOFT,
   OPT_LANGS_TO_CODE,
   OPT_LANGS_MAP,
   OPT_LANGDETECTOR_MAP,
 } from "../config";
 import { browser } from "./browser";
-import { apiGoogleLangdetect, apiMicrosoftLangdetect } from "../services";
+import { apiGoogleLangdetect } from "../services";
 import { appLog } from "./log";
 
 // 各个平台的语言检测函数映射表
 const langdetectFns = {
   [OPT_TRANS_GOOGLE]: apiGoogleLangdetect,
-  [OPT_TRANS_MICROSOFT]: apiMicrosoftLangdetect,
 };
 
 /**

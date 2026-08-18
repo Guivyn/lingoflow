@@ -16,18 +16,18 @@ export const microsoftProvider = {
     sponsor: false,
   },
   thinking: null,
-  buildRequest({ texts, from, to, token }) {
+  buildRequest({ texts, from, to }) {
+    // Edge 前端内部公开端点：免鉴权，Body 为纯字符串数组；from 留空表示自动检测。
     const params = stringifyParams({
-      from,
+      from: from || "",
       to,
-      "api-version": "3.0",
+      isEnterpriseClient: false,
     });
-    const url = `https://api-edge.cognitive.microsofttranslator.com/translate?${params}`;
+    const url = `https://edge.microsoft.com/translate/translatetext?${params}`;
     const headers = {
       "Content-type": "application/json",
-      Authorization: `Bearer ${token}`,
     };
-    const body = texts.map((text) => ({ Text: text }));
+    const body = texts;
 
     return { url, body, headers };
   },

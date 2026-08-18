@@ -6,7 +6,6 @@
 import { APP_NAME, APP_VERSION } from "./app";
 
 // --- 浏览器本地存储 (chrome.storage 或 localStorage) 的键名 ---
-export const STOKEY_MSAUTH = `${APP_NAME}_msauth`; // 微软翻译授权 Token 缓存键名
 export const STOKEY_SETTING = `${APP_NAME}_setting_v${APP_VERSION[0]}`; // 当前大版本全局配置缓存键名
 export const STOKEY_SETTING_BACKUP_V1_BEFORE_V2 = `${STOKEY_SETTING}_backup_v1_before_v2`; // settings v1 升级 v2 前的完整备份
 export const STOKEY_RULES = `${APP_NAME}_rules_v${APP_VERSION[0]}`; // 当前大版本网页规则缓存键名

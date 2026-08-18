@@ -1,8 +1,5 @@
 import {
-  OPT_TRANS_GOOGLE,
   OPT_TRANS_MICROSOFT,
-  OPT_LANGS_TO_SPEC,
-  OPT_LANGS_SPEC_DEFAULT,
   defaultSystemPrompt,
   defaultSubtitlePrompt,
   defaultNobatchPrompt,
@@ -19,7 +16,6 @@ import {
   buildUserPrompt,
 } from "../core/prompt/PromptBuilder";
 import { getPauseLevel, parseAIRes, parseSTRes } from "./shared";
-import { msAuth } from "../libs/auth";
 import { apiBingTranslate } from "./bing";
 import { createInterpreter } from "../libs/interpreter";
 import {
@@ -44,8 +40,26 @@ export { buildSubtitleSystemPrompt };
 
 const keyMap = new Map();
 const urlMap = new Map();
-const GOOGLE_TRANSLATE_URL =
-  "https://translate.googleapis.com/translate_a/single";
+
+// --- Microsoft Edge / Bing 降级通道的会话级熔断 ---
+// Edge 公开端点失败后走 Bing 网页版降级；Bing 在部分网络下会长时间无响应。
+// 若不熔断，每一批翻译都要先挂满超时再降级，整页翻译会被拖慢几十秒。
+// 熔断后冷却期内直接跳过失效通道。
+const BING_BROKEN_TTL = 2 * 60 * 1000; // Bing 失败可能是瞬时限流，冷却 2 分钟
+const BING_FALLBACK_TIMEOUT = 6; // Bing 降级通道最长等待（秒），避免挂满默认 30s
+
+let bingBrokenAt = 0;
+
+const isBroken = (brokenAt, ttl) =>
+  brokenAt > 0 && Date.now() - brokenAt < ttl;
+
+/**
+ * 仅测试用：重置 Microsoft/Bing 降级通道的熔断状态，
+ * 避免单测之间通过模块级状态互相污染。
+ */
+export const __resetFallbackCircuitBreakers = () => {
+  bingBrokenAt = 0;
+};
 
 const normalizeApiKey = (value = "") =>
   String(value)
@@ -584,43 +598,10 @@ export async function* handleTranslate(
 
   const enableStream = useStream && getProviderCapability(apiType, "stream");
 
-  let token = "";
-  let requestApiType = apiType;
-  if (apiType === OPT_TRANS_MICROSOFT) {
-    try {
-      token = await msAuth();
-      if (!token) {
-        throw new Error("got msauth error");
-      }
-    } catch (err) {
-      // Edge 免费鉴权接口在部分网络不可用，先走 Bing 网页版免费通道，再失败才降级 Google。
-      appLog("ms auth failed, try bing fallback", err);
-      try {
-        const bingResults = await apiBingTranslate(texts, from, to);
-        for (let i = 0; i < bingResults.length; i++) {
-          yield { id: i, result: bingResults[i] };
-        }
-        return;
-      } catch (bingErr) {
-        appLog("bing fallback failed, fallback to google", bingErr);
-        requestApiType = OPT_TRANS_GOOGLE;
-        token = "";
-        const googleLangMap =
-          OPT_LANGS_TO_SPEC[OPT_TRANS_GOOGLE] || OPT_LANGS_SPEC_DEFAULT;
-        from = googleLangMap.get(fromLang);
-        to = googleLangMap.get(toLang);
-        langMap = googleLangMap;
-      }
-    }
-  }
-
   const getRequest = (requestUseStream, requestTexts = texts) =>
     genTransReq({
       ...apiSetting,
-      apiType: requestApiType,
-      ...(requestApiType === OPT_TRANS_GOOGLE
-        ? { url: GOOGLE_TRANSLATE_URL }
-        : {}),
+      apiType,
       texts: requestTexts,
       from,
       to,
@@ -629,7 +610,6 @@ export async function* handleTranslate(
       langMap,
       glossary,
       hisMsgs,
-      token,
       useStream: requestUseStream,
       docInfo,
     });
@@ -662,7 +642,7 @@ export async function* handleTranslate(
       history,
       userMsg,
       ...apiSetting,
-      apiType: requestApiType,
+      apiType,
     });
     if (!result?.length) {
       throw new Error("translate got an unexpected result");
@@ -673,36 +653,36 @@ export async function* handleTranslate(
     }
   };
 
-  // Google 不支持批量打包，微软鉴权失败降级后逐条翻译，保持批次 id 对齐。
-  if (requestApiType === OPT_TRANS_GOOGLE && texts.length > 1) {
-    for (let i = 0; i < texts.length; i++) {
-      const [input, init, userMsg] = await getRequest(false, [texts[i]]);
-      const response = await fetchData(input, init, {
-        useCache: false,
-        usePool,
-        fetchInterval,
-        fetchLimit,
-        httpTimeout,
-        signal,
-      });
-      if (!response) {
-        throw new Error("translate got empty response");
+  // 微软：Edge 公开端点为主通道；失败时降级到 Bing 网页版。
+  // 不再有鉴权环节（上游 PR #992 已移除），熔断只针对 Bing 降级通道。
+  if (apiType === OPT_TRANS_MICROSOFT) {
+    try {
+      const [input, init, userMsg] = await getRequest(false);
+      yield* runNonStream(input, init, userMsg);
+      return;
+    } catch (edgeErr) {
+      if (edgeErr?.name === "AbortError") {
+        throw edgeErr;
       }
-      const result = await parseTransRes(response, {
-        texts: [texts[i]],
-        from,
-        to,
-        fromLang,
-        toLang,
-        langMap,
-        history,
-        userMsg,
-        ...apiSetting,
-        apiType: requestApiType,
-      });
-      yield { id: i, result: result?.[0] };
+      appLog("edge translate failed, try bing fallback", edgeErr);
+      if (isBroken(bingBrokenAt, BING_BROKEN_TTL)) {
+        throw edgeErr;
+      }
+
+      try {
+        const bingResults = await apiBingTranslate(texts, from, to, {
+          httpTimeout: BING_FALLBACK_TIMEOUT,
+        });
+        for (let i = 0; i < bingResults.length; i++) {
+          yield { id: i, result: bingResults[i] };
+        }
+        return;
+      } catch (bingErr) {
+        bingBrokenAt = Date.now();
+        appLog("bing fallback failed", bingErr);
+        throw edgeErr;
+      }
     }
-    return;
   }
 
   const [input, init, userMsg] = await getRequest(enableStream);
@@ -863,35 +843,6 @@ async function* handleTranslateStreamInternal(
     });
   }
 }
-
-/**
- * Microsoft语言识别聚合及解析
- * @param {*} texts
- * @returns
- */
-export const handleMicrosoftLangdetect = async (texts = []) => {
-  const token = await msAuth();
-  const input =
-    "https://api-edge.cognitive.microsofttranslator.com/detect?api-version=3.0";
-  const init = {
-    headers: {
-      "Content-type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    method: "POST",
-    body: JSON.stringify(texts.map((text) => ({ Text: text }))),
-  };
-
-  const res = await fetchData(input, init, {
-    useCache: false,
-  });
-
-  if (Array.isArray(res)) {
-    return res.map((r) => r.language);
-  }
-
-  return [];
-};
 
 /**
  * 执行字幕断句与字幕翻译请求。
