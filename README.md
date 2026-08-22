@@ -1,11 +1,9 @@
 # LingoFlow（灵语）
 
-<p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="LingoFlow 灵语：网页、划词、悬停与 YouTube 字幕的即时双语对照">
-</p>
+**当前版本：v1.3.0** · [Releases 下载](https://github.com/Guivyn/lingoflow/releases)
 
 <p align="center">
-  <b>当前版本：v1.3.0</b> · <a href="https://github.com/Guivyn/lingoflow/releases">Releases 下载</a>
+  <img src="./assets/readme/hero.svg" width="100%" alt="LingoFlow 灵语：网页、划词、悬停与 YouTube 字幕的即时双语对照">
 </p>
 
 LingoFlow 是一款轻量、开源的 Chrome 双语翻译扩展。它把网页、划词、悬停段落和 YouTube 字幕变成随时可对照的双语阅读体验，适合经常阅读外文网页、希望即时理解内容的用户。
@@ -87,7 +85,8 @@ pnpm build    # 构建 Chrome 扩展（自动同步版本号），产物输出�
 
 ## 致谢
 
-LingoFlow 的核心代码借鉴自 [fishjar/kiss-translator](https://github.com/fishjar/kiss-translator)（GPL-3.0）。我们保留了在此基础上重写了页面扫描、规则匹配、译文渲染、YouTube 字幕管线与全新 UI 设计系统。<br>
+LingoFlow 的核心代码借鉴自 [fishjar/kiss-translator](https://github.com/fishjar/kiss-translator)（GPL-3.0）。<br>
+我们保留了在此基础上重写了页面扫描、规则匹配、译文渲染、YouTube 字幕管线与全新 UI 设计系统。<br>
 感谢 fishjar 与 kiss-translator 社区的开源贡献。<br>
 如果你喜欢 KISS Translator，也请到上游仓库点一个 Star。
 
