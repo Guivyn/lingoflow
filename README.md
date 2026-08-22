@@ -4,6 +4,10 @@
   <img src="./assets/readme/hero.svg" width="100%" alt="LingoFlow 灵语：网页、划词、悬停与 YouTube 字幕的即时双语对照">
 </p>
 
+<p align="center">
+  <b>当前版本：v1.3.0</b> · <a href="https://github.com/Guivyn/lingoflow/releases">Releases 下载</a>
+</p>
+
 LingoFlow 是一款轻量、开源的 Chrome 双语翻译扩展。它把网页、划词、悬停段落和 YouTube 字幕变成随时可对照的双语阅读体验，适合经常阅读外文网页、希望即时理解内容的用户。
 
 ## 界面预览
@@ -36,6 +40,15 @@ LingoFlow 为阅读外文网页的常见场景提供一套连续的双语对照�
 自定义翻译接口的接入与 Hook 说明见 [docs/custom-api_v2.md](docs/custom-api_v2.md)。
 
 ## 安装
+
+### 方式一：直接安装 Release 包（推荐）
+
+1. 前往 [Releases](https://github.com/Guivyn/lingoflow/releases) 下载最新版（当前 **v1.3.0**）的 `chrome.zip`
+2. 解压到任意本地目录
+3. 打开 `chrome://extensions`，启用“开发者模式”
+4. 点击“加载已解压的扩展程序”，选择解压后的目录
+
+### 方式二：从源码构建
 
 需要 Node.js 18+ 与 pnpm 10+（仓库通过 `.pnpm-version` 固定版本）。
 

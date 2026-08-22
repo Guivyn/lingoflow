@@ -1,5 +1,7 @@
 # LingoFlow
 
+**v1.3.0** · [Releases](https://github.com/Guivyn/lingoflow/releases)
+
 LingoFlow is a lightweight Chrome extension that turns webpages, selected text, hovered paragraphs, and YouTube subtitles into clean bilingual reading experiences.
 
 ## Features
@@ -12,6 +14,15 @@ LingoFlow is a lightweight Chrome extension that turns webpages, selected text, 
 - Streaming output, batch aggregation, conversation context, custom prompts and hooks, glossary
 
 ## Install
+
+### Option 1: Download a release (recommended)
+
+1. Grab the latest `chrome.zip` from [Releases](https://github.com/Guivyn/lingoflow/releases) (current version: **v1.3.0**)
+2. Unzip it into any local folder
+3. Open `chrome://extensions` and enable Developer mode
+4. Click "Load unpacked" and select the unzipped folder
+
+### Option 2: Build from source
 
 1. Clone the repository and run `pnpm build` (output goes to `build/chrome/`)
 2. Open `chrome://extensions` and enable Developer mode
