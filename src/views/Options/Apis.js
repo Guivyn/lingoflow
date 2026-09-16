@@ -88,6 +88,41 @@ import { usePromptList } from "../../hooks/Prompt";
 const API_ICON_SIZE = 22;
 const API_LIST_CONTROL_SIZE = 24;
 const API_LIST_CONTROL_GAP = 0.5;
+const API_DRAFT_STORAGE_PREFIX = "lingoflow_api_draft:";
+const API_SELECTION_STORAGE_KEY = "lingoflow_api_selection";
+
+function getApiDraft(apiSlug) {
+  if (typeof window === "undefined" || !apiSlug) return null;
+  try {
+    const raw = window.sessionStorage.getItem(
+      `${API_DRAFT_STORAGE_PREFIX}${apiSlug}`
+    );
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function setApiDraft(apiSlug, value) {
+  if (typeof window === "undefined" || !apiSlug) return;
+  try {
+    window.sessionStorage.setItem(
+      `${API_DRAFT_STORAGE_PREFIX}${apiSlug}`,
+      JSON.stringify(value)
+    );
+  } catch (err) {
+    // sessionStorage 受限时仍保留正常的显式保存流程。
+  }
+}
+
+function clearApiDraft(apiSlug) {
+  if (typeof window === "undefined" || !apiSlug) return;
+  try {
+    window.sessionStorage.removeItem(`${API_DRAFT_STORAGE_PREFIX}${apiSlug}`);
+  } catch (err) {
+    // 忽略受限存储环境。
+  }
+}
 
 const apiListControlSx = {
   width: API_LIST_CONTROL_SIZE,
@@ -263,7 +298,9 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
   const { api, update, reset } = useApiItem(apiSlug);
   const { prompts } = usePromptList();
   const i18n = useI18n();
-  const [formData, setFormData] = useState(() => api || {});
+  const [formData, setFormData] = useState(
+    () => getApiDraft(apiSlug) || api || {}
+  );
   const [showMore, setShowMore] = useState(false);
   const [modelOptions, setModelOptions] = useState([]);
   const [modelListStatus, setModelListStatus] = useState("idle");
@@ -272,8 +309,8 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
   const confirm = useConfirm();
 
   useLayoutEffect(() => {
-    setFormData(api || {});
-  }, [api]);
+    setFormData(getApiDraft(apiSlug) || api || {});
+  }, [api, apiSlug]);
 
   useLayoutEffect(() => {
     setShowMore(false);
@@ -295,6 +332,13 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
 
     return JSON.stringify(api) !== JSON.stringify(activeFormData);
   }, [api, apiSlug, activeFormData]);
+
+  // 所有编辑入口统一写入会话草稿，避免提示词、置顶等特殊控件绕过草稿逻辑。
+  useEffect(() => {
+    if (isModified) {
+      setApiDraft(apiSlug, activeFormData);
+    }
+  }, [activeFormData, apiSlug, isModified]);
 
   const handleChange = (e) => {
     e?.preventDefault();
@@ -357,15 +401,20 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
     });
   };
 
-  const handleSave = () => {
-    update(activeFormData);
+  const handleSave = async () => {
+    const savedSetting = await update(activeFormData);
+    if (!savedSetting) return;
+    clearApiDraft(apiSlug);
     if (activeFormData.isDisabled || activeFormData.sortOrder === -1) {
       onCollapse?.();
     }
   };
 
-  const handleReset = () => {
-    reset();
+  const handleReset = async () => {
+    const savedSetting = await reset();
+    if (savedSetting) {
+      clearApiDraft(apiSlug);
+    }
   };
 
   const handleCopy = () => {
@@ -379,6 +428,7 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
     });
 
     if (isConfirmed) {
+      clearApiDraft(apiSlug);
       deleteApi(apiSlug);
     }
   };
@@ -1216,10 +1266,13 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
               size="small"
               checked={sortOrder === -1}
               onChange={(e) => {
-                setFormData((prev) => ({
-                  ...(prev?.apiSlug === apiSlug ? prev : api || {}),
-                  sortOrder: e.target.checked ? -1 : 0,
-                }));
+                setFormData((prev) => {
+                  const nextData = {
+                    ...(prev?.apiSlug === apiSlug ? prev : api || {}),
+                    sortOrder: e.target.checked ? -1 : 0,
+                  };
+                  return nextData;
+                });
               }}
               disabled={isDisabled}
             />
@@ -1360,7 +1413,14 @@ export default function Apis() {
 
   const [alphaSortDir, setAlphaSortDir] = useState("asc");
   const [detailKey, setDetailKey] = useState(0);
-  const [selectedApiSlug, setSelectedApiSlug] = useState("");
+  const [selectedApiSlug, setSelectedApiSlug] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return window.sessionStorage.getItem(API_SELECTION_STORAGE_KEY) || "";
+    } catch (err) {
+      return "";
+    }
+  });
   const [bulkMode, setBulkMode] = useState(false);
   const [checkedApiSlugs, setCheckedApiSlugs] = useState([]);
   const [draggingApiSlug, setDraggingApiSlug] = useState("");
@@ -1410,6 +1470,16 @@ export default function Apis() {
       setSelectedApiSlug(apiItems[0].api.apiSlug);
     }
   }, [apiItems, selectedApiSlug]);
+
+  // 保留 API 详情页当前选择，返回设置页或刷新选项页时恢复上次位置。
+  useEffect(() => {
+    if (typeof window === "undefined" || !selectedApiSlug) return;
+    try {
+      window.sessionStorage.setItem(API_SELECTION_STORAGE_KEY, selectedApiSlug);
+    } catch (err) {
+      // sessionStorage 受限时不影响 API 配置本身的保存。
+    }
+  }, [selectedApiSlug]);
 
   useEffect(() => {
     setCheckedApiSlugs((prev) => {

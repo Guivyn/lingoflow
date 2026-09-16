@@ -4,6 +4,8 @@ import {
   useContext,
   useMemo,
   useEffect,
+  useState,
+  useRef,
 } from "react";
 import Alert from "@mui/material/Alert";
 import {
@@ -22,12 +24,14 @@ import Loading from "./Loading";
 import { logger } from "../libs/log";
 import { sendBgMsg } from "../libs/msg";
 import { isExt } from "../libs/client";
+import { updateStoredSetting } from "../libs/storage";
 
 // 创建全局设置 Context，用于在子组件中访问配置数据和更新、重载方法
 const SettingContext = createContext({
   setting: DEFAULT_SETTING,
   updateSetting: () => {},
   reloadSetting: () => {},
+  saveStatus: "idle",
 });
 
 /**
@@ -43,7 +47,36 @@ export function SettingProvider({ children, context }) {
     isLoading,
     update,
     reload,
-  } = useStorage(STOKEY_SETTING, DEFAULT_SETTING);
+  } = useStorage(STOKEY_SETTING, DEFAULT_SETTING, { persist: false });
+  const [saveStatus, setSaveStatus] = useState("idle");
+  const saveSequenceRef = useRef(0);
+
+  // 先更新当前界面，随后基于最新存储快照串行合并写入。
+  const updateSetting = useCallback(
+    (objOrFn) => {
+      const sequence = ++saveSequenceRef.current;
+      update(objOrFn);
+      setSaveStatus("saving");
+      return updateStoredSetting(objOrFn)
+        .then((nextSetting) => {
+          // 旧请求完成时只更新状态提示，不能覆盖之后已经输入的新值。
+          if (sequence === saveSequenceRef.current) {
+            setSaveStatus("saved");
+          }
+          return nextSetting;
+        })
+        .catch(async (err) => {
+          if (sequence === saveSequenceRef.current) {
+            setSaveStatus("error");
+            // 回到最后一次成功持久化的快照，让失败的 API 保存重新显示为可保存状态。
+            await reload();
+          }
+          logger.error("Failed to save settings.", err);
+          return null;
+        });
+    },
+    [reload, update]
+  );
   const hasSetting = !!setting;
   const settingVersion = getSettingVersion(setting);
   const logLevel = setting?.logLevel;
@@ -68,7 +101,7 @@ export function SettingProvider({ children, context }) {
       return;
     }
 
-    update((currentSetting) => {
+    updateSetting((currentSetting) => {
       if (
         !currentSetting ||
         getSettingVersion(currentSetting) >= CURRENT_SETTINGS_VERSION
@@ -78,17 +111,17 @@ export function SettingProvider({ children, context }) {
 
       return runSettingMigrations(currentSetting);
     });
-  }, [hasSetting, settingVersion, update]);
+  }, [hasSetting, settingVersion, updateSetting]);
 
   // 对设置项中老版本可能存在的 boolean 类型 darkMode 进行自动平滑升级为三种模式类型 (dark, light, auto)
   useEffect(() => {
     if (typeof setting?.darkMode === "boolean") {
-      update((currentSetting) => ({
+      updateSetting((currentSetting) => ({
         ...currentSetting,
         darkMode: currentSetting.darkMode ? "dark" : "light",
       }));
     }
-  }, [setting?.darkMode, update]);
+  }, [setting?.darkMode, updateSetting]);
 
   // 副作用：当日志等级 (logLevel) 发生变化时，同步更新 logger 配置。
   // 若在浏览器扩展环境下，需额外发送消息通知 background 页面更改对应的 logLevel 保持一致。
@@ -121,9 +154,6 @@ export function SettingProvider({ children, context }) {
     return () => clearTimeout(timer);
   }, [isOptionsPage, isLoading, liveSyncSignature]);
 
-  // 包装后的更新设置项函数，更新状态的同时异步触发防抖的云端同步机制 (KV 同步)
-  const updateSetting = useCallback((objOrFn) => update(objOrFn), [update]);
-
   // 快捷更新特定子对象键的方法（如仅更新 customStyles 或是 shortcuts 字段）
   const updateChild = useCallback(
     (key) => (obj) =>
@@ -142,8 +172,9 @@ export function SettingProvider({ children, context }) {
       updateSetting,
       updateChild,
       reloadSetting: reload,
+      saveStatus,
     }),
-    [context, setting, updateSetting, updateChild, reload]
+    [context, setting, updateSetting, updateChild, reload, saveStatus]
   );
 
   // 如果仍处于 Storage 的初次异步加载状态，在配置页显示 Loading 组件，其他页面默认返回 null 防止白屏

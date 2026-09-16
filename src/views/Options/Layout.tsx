@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Box from "@mui/material/Box";
+import Alert from "@mui/material/Alert";
 import CssBaseline from "@mui/material/CssBaseline";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import Navigator from "./Navigator";
 import Header from "./Header";
 import { tokens } from "../../ui";
+import { useSetting } from "../../hooks/Setting";
 import "../../ui/theme/variables.css";
 
 /**
@@ -18,6 +20,7 @@ export default function Layout() {
   const location = useLocation();
   const theme = useTheme();
   const [open, setOpen] = useState(false);
+  const { saveStatus } = useSetting();
   const isSm = useMediaQuery(theme.breakpoints.up("sm"));
 
   const handleDrawerToggle = () => {
@@ -32,6 +35,11 @@ export default function Layout() {
     <Box sx={{ bgcolor: theme.palette.background.default, minHeight: "100vh" }}>
       <CssBaseline />
       <Header onDrawerToggle={handleDrawerToggle} />
+      {saveStatus === "error" && (
+        <Alert severity="error" sx={{ mx: 2, mt: 1 }}>
+          设置保存失败，请重试。 Settings could not be saved; please retry.
+        </Alert>
+      )}
 
       <Box sx={{ display: "flex" }}>
         <Box

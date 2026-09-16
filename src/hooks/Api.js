@@ -361,7 +361,7 @@ export function useApiItem(apiSlug) {
   // 更新当前 API 项的某些属性数据，并防止 Slug 被意外更改
   const update = useCallback(
     (updateData) => {
-      updateSetting((prev) => ({
+      return updateSetting((prev) => ({
         ...prev,
         transApis: (prev?.transApis || []).map((item) =>
           item.apiSlug === apiSlug ? { ...item, ...updateData, apiSlug } : item
@@ -373,7 +373,7 @@ export function useApiItem(apiSlug) {
 
   // 将当前 API 配置项重置回默认预设值，但保留 apiSlug, apiName, apiType 和已配置的密钥(key)
   const reset = useCallback(() => {
-    updateSetting((prev) => ({
+    return updateSetting((prev) => ({
       ...prev,
       transApis: (prev?.transApis || []).map((item) => {
         if (item.apiSlug === apiSlug) {

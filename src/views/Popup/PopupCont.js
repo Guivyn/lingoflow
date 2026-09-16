@@ -24,7 +24,7 @@ import {
   OPT_LANGS_TO_REVERSED as OPT_LANGS_TO,
 } from "../../config";
 import { appLog } from "../../libs/log";
-import { setSetting as persistSetting } from "../../libs/storage";
+import { updateStoredSetting } from "../../libs/storage";
 import { persistRule } from "../../libs/rules";
 import { useAllTextStyles } from "../../hooks/CustomStyles";
 import { tokens } from "../../ui/theme/tokens";
@@ -110,26 +110,14 @@ export default function PopupCont({
   const handleTransboxToggle = async (e) => {
     try {
       const checked = e.target.checked;
-      setSetting((pre) => ({
-        ...(pre || {}),
+      const nextSetting = await updateStoredSetting((current) => ({
+        ...current,
         tranboxSetting: {
-          ...(pre?.tranboxSetting || {}),
+          ...(current?.tranboxSetting || {}),
           transOpen: checked,
         },
       }));
-
-      const nextSetting = {
-        ...(setting || {}),
-        tranboxSetting: {
-          ...(setting?.tranboxSetting || {}),
-          transOpen: checked,
-        },
-      };
-      try {
-        await persistSetting(nextSetting);
-      } catch (err) {
-        appLog("persist tranbox toggle", err);
-      }
+      setSetting(nextSetting);
 
       const payload = { tranboxSetting: nextSetting.tranboxSetting };
       if (!processActions) {
@@ -145,11 +133,9 @@ export default function PopupCont({
   // 切换“英文自动翻译”：持久保存并让当前页面立即按新开关生效
   const handleAutoTransEnglishToggle = async (e) => {
     const autoTransEnglish = e.target.checked;
-    const nextSetting = { ...(setting || {}), autoTransEnglish };
-    setSetting(nextSetting);
-
     try {
-      await persistSetting(nextSetting);
+      const nextSetting = await updateStoredSetting({ autoTransEnglish });
+      setSetting(nextSetting);
     } catch (err) {
       appLog("persist autoTransEnglish", err);
     }

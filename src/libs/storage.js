@@ -24,6 +24,10 @@ import { normalizeSetting } from "../core/storage/schema";
 // 品牌更名前的应用名，用于一次性迁移旧 chrome.storage/localStorage 数据。
 const LEGACY_APP_NAME = "KISS-Translator";
 
+// 同一页面内的写入按 key 串行化，避免连续输入时后发的旧快照覆盖新值。
+const writeQueues = new Map();
+const updateQueues = new Map();
+
 /**
  * 跨平台存储底层写入操作。
  * 自动适配 Chrome Extension (browser.storage.local) 与普通网页环境 (localStorage)。
@@ -69,7 +73,62 @@ async function del(key) {
  * @param {Object|Array} obj 待存入 of JS 对象或数组
  */
 async function setObj(key, obj) {
-  await set(key, JSON.stringify(obj));
+  const serialized = JSON.stringify(obj);
+  const previous = writeQueues.get(key) || Promise.resolve();
+  const next = previous.catch(() => undefined).then(() => set(key, serialized));
+  writeQueues.set(key, next);
+  try {
+    await next;
+  } finally {
+    if (writeQueues.get(key) === next) {
+      writeQueues.delete(key);
+    }
+  }
+}
+
+/**
+ * 订阅其他页面对同一存储键的修改。
+ * Chrome 扩展使用 storage.onChanged，网页预览使用 window.storage 事件。
+ */
+function subscribe(key, listener) {
+  if (isExt && browser?.storage?.onChanged?.addListener) {
+    const handleChange = (changes, areaName) => {
+      if (areaName && areaName !== "local") return;
+      if (Object.prototype.hasOwnProperty.call(changes, key)) {
+        listener(changes[key]?.newValue);
+      }
+    };
+    browser.storage.onChanged.addListener(handleChange);
+    return () => browser.storage.onChanged.removeListener(handleChange);
+  }
+
+  if (typeof window === "undefined" || !window.addEventListener) {
+    return () => {};
+  }
+  const handleStorage = (event) => {
+    if (event.key === key) listener(event.newValue);
+  };
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+}
+
+function enqueueStorageOperation(key, operation) {
+  const previous = updateQueues.get(key) || Promise.resolve();
+  const next = previous.catch(() => undefined).then(operation);
+  updateQueues.set(key, next);
+  return next.finally(() => {
+    if (updateQueues.get(key) === next) {
+      updateQueues.delete(key);
+    }
+  });
+}
+
+function withStorageLock(key, operation) {
+  const locks = globalThis.navigator?.locks;
+  if (locks?.request) {
+    return locks.request(`lingoflow:${key}`, operation);
+  }
+  return operation();
 }
 
 /**
@@ -121,6 +180,7 @@ export const storage = {
   trySetObj,
   getObj,
   putObj,
+  subscribe,
 };
 
 // --- 应用设置 (Settings) 数据存取 ---
@@ -204,6 +264,21 @@ export const getSettingWithDefault = async () => {
   return mergeSettingWithDefault(setting);
 };
 export const setSetting = async (val) => setObj(STOKEY_SETTING, val);
+
+// 基于最新存储快照更新设置，供弹窗等短生命周期入口使用，避免整份旧配置覆盖选项页修改。
+export const updateStoredSetting = async (patchOrUpdater) => {
+  return enqueueStorageOperation(STOKEY_SETTING, () =>
+    withStorageLock(STOKEY_SETTING, async () => {
+      const current = (await getSettingWithDefault()) || {};
+      const next =
+        typeof patchOrUpdater === "function"
+          ? patchOrUpdater(current)
+          : { ...current, ...patchOrUpdater };
+      await setSetting(next);
+      return next;
+    })
+  );
+};
 
 // --- 用户翻译规则 (Rules) 数据存取 ---
 const getRules = () => getObj(STOKEY_RULES);

@@ -295,26 +295,6 @@ export default function SubtitleSetting() {
     [prompts]
   );
 
-  // 通用表单变动提交
-  const handleChange = (e) => {
-    e.preventDefault();
-    let { name, value } = e.target;
-    updateSubtitle({
-      [name]: value,
-    });
-    // 如果修改了自定义 CSS 源码，同步刷新本地的 CSS 临时解析缓存
-    if (name === "originStyle") {
-      setLocalOriginStyle(value);
-      originCssRef.current = parseCssToObject(value);
-    } else if (name === "translationStyle") {
-      setLocalTransStyle(value);
-      transCssRef.current = parseCssToObject(value);
-    } else if (name === "windowStyle") {
-      setLocalWindowStyle(value);
-      windowCssRef.current = parseCssToObject(value);
-    }
-  };
-
   const handleSegPromptChange = (e) => {
     e.preventDefault();
     const { value } = e.target;
@@ -393,15 +373,49 @@ export default function SubtitleSetting() {
 
   // 控制频繁 Slider 输入时的防抖定时器
   const debounceTimers = useRef({});
+  const pendingUpdates = useRef({});
   const rafIds = useRef({ origin: 0, trans: 0, window: 0 });
 
   const originCssRef = useRef(parseCssToObject(localOriginStyle));
   const transCssRef = useRef(parseCssToObject(localTransStyle));
   const windowCssRef = useRef(parseCssToObject(localWindowStyle));
 
-  // 组件卸载时销毁所有动画帧与防抖定时器
+  // 通用表单变动提交
+  const handleChange = (e) => {
+    e.preventDefault();
+    let { name, value } = e.target;
+    // 直接编辑 CSS 时取消滑块留下的旧值，避免延迟回调覆盖文本输入。
+    if (
+      ["originStyle", "translationStyle", "windowStyle"].includes(name) &&
+      debounceTimers.current[name]
+    ) {
+      clearTimeout(debounceTimers.current[name]);
+      delete debounceTimers.current[name];
+      delete pendingUpdates.current[name];
+    }
+    updateSubtitle({
+      [name]: value,
+    });
+    // 如果修改了自定义 CSS 源码，同步刷新本地的 CSS 临时解析缓存
+    if (name === "originStyle") {
+      setLocalOriginStyle(value);
+      originCssRef.current = parseCssToObject(value);
+    } else if (name === "translationStyle") {
+      setLocalTransStyle(value);
+      transCssRef.current = parseCssToObject(value);
+    } else if (name === "windowStyle") {
+      setLocalWindowStyle(value);
+      windowCssRef.current = parseCssToObject(value);
+    }
+  };
+
+  // 组件卸载时先提交尚未到期的防抖值，避免快速切换设置页丢失最后一次调整。
   useEffect(() => {
     return () => {
+      Object.entries(pendingUpdates.current).forEach(([name, value]) => {
+        updateSubtitle({ [name]: value });
+      });
+      pendingUpdates.current = {};
       Object.values(debounceTimers.current).forEach(clearTimeout);
       debounceTimers.current = {};
       Object.values(rafIds.current).forEach(
@@ -409,7 +423,7 @@ export default function SubtitleSetting() {
       );
       rafIds.current = { origin: 0, trans: 0, window: 0 };
     };
-  }, []);
+  }, [updateSubtitle]);
 
   // 防抖保存最终 CSS 样式至 Chrome 扩展的持久存储中，避免拖动滑块时高频读写造成卡顿
   const debouncedUpdate = useCallback(
@@ -417,7 +431,9 @@ export default function SubtitleSetting() {
       if (debounceTimers.current[name]) {
         clearTimeout(debounceTimers.current[name]);
       }
+      pendingUpdates.current[name] = value;
       debounceTimers.current[name] = setTimeout(() => {
+        delete pendingUpdates.current[name];
         updateSubtitle({ [name]: value });
       }, 200);
     },

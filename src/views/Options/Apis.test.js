@@ -161,6 +161,7 @@ describe("Apis model list", () => {
   afterEach(() => {
     jest.clearAllMocks();
     document.body.innerHTML = "";
+    window.sessionStorage.clear();
   });
 
   test("loads model list once when model input is focused", async () => {
@@ -286,6 +287,7 @@ describe("Apis batch concurrency", () => {
   afterEach(() => {
     jest.clearAllMocks();
     document.body.innerHTML = "";
+    window.sessionStorage.clear();
   });
 
   test("disables batch concurrency at one when context is enabled", async () => {

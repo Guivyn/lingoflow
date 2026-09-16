@@ -11,6 +11,7 @@ import {
   getRulesWithDefault,
   getSettingWithDefault,
   runDataMigration,
+  updateStoredSetting,
 } from "./storage";
 
 describe("storage adapter migration", () => {
@@ -101,5 +102,33 @@ describe("storage adapter migration", () => {
         (api) => slugs.includes(api.apiSlug) || api.apiSlug === "Google"
       )
     ).toBe(true);
+  });
+
+  test("updates the latest setting snapshot without dropping unrelated fields", async () => {
+    window.localStorage.setItem(
+      STOKEY_SETTING,
+      JSON.stringify({
+        version: CURRENT_SETTINGS_VERSION,
+        uiLang: "zh-CN",
+        autoTransEnglish: false,
+        tranboxSetting: { transOpen: false, toLang: "en" },
+      })
+    );
+
+    const updated = await updateStoredSetting((current) => ({
+      ...current,
+      tranboxSetting: { ...current.tranboxSetting, transOpen: true },
+    }));
+
+    expect(updated.uiLang).toBe("zh-CN");
+    expect(updated.autoTransEnglish).toBe(false);
+    expect(updated.tranboxSetting).toEqual({ transOpen: true, toLang: "en" });
+    expect(JSON.parse(window.localStorage.getItem(STOKEY_SETTING))).toEqual(
+      expect.objectContaining({
+        uiLang: "zh-CN",
+        autoTransEnglish: false,
+        tranboxSetting: { transOpen: true, toLang: "en" },
+      })
+    );
   });
 });

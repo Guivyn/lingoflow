@@ -27,17 +27,21 @@ function isSameStorageValue(a, b) {
  *
  * @param {string} key 用于在 Storage 中存取值的键
  * @param {*} defaultVal 默认值。建议在组件外定义为常量。
+ * @param {{persist?: boolean}} options 是否由该 Hook 自动写回存储。
  * @returns {{
  * data: *,
  * save: (valueOrFn: any | ((prevData: any) => any)) => void,
  * update: (partialDataOrFn: object | ((prevData: object) => object)) => void,
  * remove: () => Promise<void>,
  * reload: () => Promise<void>,
- * isLoading: boolean
+ * isLoading: boolean,
+ * saveStatus: 'idle' | 'saving' | 'saved' | 'error'
  * }}
  */
-export function useStorage(key, defaultVal = null) {
+export function useStorage(key, defaultVal = null, options = {}) {
+  const { persist = true } = options;
   const [isLoading, setIsLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState("idle");
   const [data, setData] = useState(defaultVal);
 
   // 首次挂载时从本地存储异步加载初始数据
@@ -49,7 +53,9 @@ export function useStorage(key, defaultVal = null) {
         const storedVal = await storage.getObj(key);
         if (storedVal === undefined || storedVal === null) {
           // 如果存储中没有该值，写入初始默认值
-          await storage.setObj(key, defaultVal);
+          if (persist) {
+            await storage.setObj(key, defaultVal);
+          }
         } else if (isMounted) {
           setData(storedVal);
         }
@@ -67,18 +73,49 @@ export function useStorage(key, defaultVal = null) {
     return () => {
       isMounted = false;
     };
+  }, [key, defaultVal, persist]);
+
+  // 选项页、弹窗和内容脚本可能同时运行；外部写入后立即刷新本地状态。
+  useEffect(() => {
+    const unsubscribe = storage.subscribe(key, (nextValue) => {
+      let nextData = nextValue;
+      if (typeof nextValue === "string") {
+        try {
+          nextData = JSON.parse(nextValue);
+        } catch (err) {
+          appLog(`storage change parse error for key: ${key}`, err);
+          return;
+        }
+      }
+      if (nextData === undefined || nextData === null) nextData = defaultVal;
+      setData((prevData) =>
+        isSameStorageValue(prevData, nextData) ? prevData : nextData
+      );
+    });
+    return unsubscribe;
   }, [key, defaultVal]);
 
   // 数据发生改变时写入本地 Storage
   useEffect(() => {
-    if (isLoading || data === null) {
+    if (!persist || isLoading || data === null) {
       return;
     }
 
-    storage.setObj(key, data).catch((err) => {
-      appLog(`storage save error for key: ${key}`, err);
-    });
-  }, [key, isLoading, data]);
+    let active = true;
+    setSaveStatus("saving");
+    storage
+      .setObj(key, data)
+      .then(() => {
+        if (active) setSaveStatus("saved");
+      })
+      .catch((err) => {
+        if (active) setSaveStatus("error");
+        appLog(`storage save error for key: ${key}`, err);
+      });
+    return () => {
+      active = false;
+    };
+  }, [key, isLoading, data, persist]);
 
   /**
    * 全量替换状态值并自动触发写盘副作用
@@ -125,13 +162,13 @@ export function useStorage(key, defaultVal = null) {
     try {
       const storedVal = await storage.getObj(key);
       const nextData = storedVal ?? defaultVal;
-      if (!isSameStorageValue(data, nextData)) {
-        setData(nextData);
-      }
+      setData((prevData) =>
+        isSameStorageValue(prevData, nextData) ? prevData : nextData
+      );
     } catch (err) {
       appLog(`storage reload error for key: ${key}`, err);
     }
-  }, [key, defaultVal, data]);
+  }, [key, defaultVal]);
 
-  return { data, save, update, remove, reload, isLoading };
+  return { data, save, update, remove, reload, isLoading, saveStatus };
 }
