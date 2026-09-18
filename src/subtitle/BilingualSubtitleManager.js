@@ -36,6 +36,7 @@ export class BilingualSubtitleManager {
   #wordTooltipController = null; // 划词查义气泡弹窗控制器
   #seekSyncRafId = null; // 控制进度 seek 完毕后强制同步的 requestAnimationFrame ID
   #translationSessionId = 0; // 当前翻译会话版本 ID，用于防竞态过滤过期异步请求
+  #translationRequestTokens = new WeakMap(); // 每条字幕的请求令牌，避免旧请求清理/写回新请求
   #abortController = null; // 用于在实例销毁时中止所有尚未返回的网络请求
   #wasPlayingBeforeHover = false; // 记录鼠标 hover 单词前视频是否原本处于播放状态，用于离开时恢复播放
   #hoverTarget = null;
@@ -423,6 +424,11 @@ export class BilingualSubtitleManager {
   onSeeking() {
     this.#throttledTriggerTranslations.cancel(); // 暂停预翻译，防止产生大量断续的无效预翻译网络请求
     this.#translationSessionId += 1; // 使 seek 前在途请求的回调全部失效
+    // 旧请求的 finally 可能因会话版本变化而提前返回，不能让 isTranslating 锁永久残留。
+    for (const subtitle of this.#formattedSubtitles) {
+      subtitle.isTranslating = false;
+      this.#translationRequestTokens.delete(subtitle);
+    }
     this.#abortController?.abort(); // 中止 seek 前尚未返回的网络请求
     this.#abortController = new AbortController();
     // 强制高亮展示对应处的字幕，且不在此触发翻译
@@ -644,14 +650,23 @@ export class BilingualSubtitleManager {
     for (let i = startIdx; i < subs.length; i++) {
       const sub = subs[i];
       if (sub.start > endTimeMs) break; // 超出了预翻译时间窗口，退出扫描
-      if ((!sub.translation || sub._isDraftTranslation) && !sub.isTranslating) {
+      if (
+        (!sub.translation ||
+          sub._isDraftTranslation ||
+          sub._translationError ||
+          sub.translation === "[Translation failed]") &&
+        !sub.isTranslating
+      ) {
         this.#translateAndStore(sub);
       }
     }
   }
 
   #needsRepairTranslation(subtitle) {
-    return subtitle?.translation === "[Translation failed]";
+    return Boolean(
+      subtitle?._translationError ||
+        subtitle?.translation === "[Translation failed]"
+    );
   }
 
   /**
@@ -663,16 +678,25 @@ export class BilingualSubtitleManager {
     const sessionId = this.#translationSessionId;
     const signal = this.#abortController?.signal;
     if (signal?.aborted) return;
+    const requestToken = Symbol("subtitle-translation");
+    this.#translationRequestTokens.set(subtitle, requestToken);
+    const isCurrentRequest = () =>
+      sessionId === this.#translationSessionId &&
+      this.#translationRequestTokens.get(subtitle) === requestToken;
 
     const normalizeStreamText = (text) =>
       Array.isArray(text) ? text[0] || "" : text || "";
 
-    const updateSubtitleTranslation = (translation) => {
-      if (!translation || sessionId !== this.#translationSessionId) return;
+    const updateSubtitleTranslation = (
+      translation,
+      { complete = true, clearError = complete, allowEmpty = false } = {}
+    ) => {
+      if ((!translation && !allowEmpty) || !isCurrentRequest()) return;
       if (signal?.aborted) return;
 
       subtitle.translation = decodeHTMLEntities(translation);
-      subtitle._isDraftTranslation = false;
+      subtitle._isDraftTranslation = !complete;
+      if (clearError) subtitle._translationError = null;
 
       const currentSubtitleIndexNow = this.#findSubtitleIndexForTime(
         this.#videoEl.currentTime * 1000
@@ -714,31 +738,48 @@ export class BilingualSubtitleManager {
         apiSetting,
         docInfo,
         signal,
-        onStreamChunk: ({ text }) => {
+        onStreamChunk: ({ text, isComplete = true }) => {
           // 字幕单句翻译的流式 chunk 只更新当前字幕对象，不改时间轴结构。
-          updateSubtitleTranslation(normalizeStreamText(text));
+          updateSubtitleTranslation(normalizeStreamText(text), {
+            complete: isComplete,
+          });
         },
       });
       // 竞态校验：如翻译异步返回时会话 ID 已过时，丢弃结果防止脏数据覆盖
-      if (sessionId !== this.#translationSessionId) return;
+      if (!isCurrentRequest()) return;
       updateSubtitleTranslation(trText);
     } catch (error) {
-      if (sessionId !== this.#translationSessionId) return;
+      if (!isCurrentRequest()) return;
       if (error?.name === "AbortError") return; // 属于 Abort 中止，静默退出
       logger.info("Translation failed for:", subtitle.text, error);
-      if (
-        !subtitle.translation ||
-        subtitle.translation === "[Translation failed]"
-      ) {
-        subtitle.translation = "[Translation failed]";
-      }
-      subtitle._isDraftTranslation = false;
+      // 失败提示不是译文，否则下一次播放扫描会把失败条目误判为已完成。
+      if (!subtitle._isDraftTranslation) subtitle.translation = "";
+      subtitle._translationError = {
+        message: error?.message || "translation failed",
+        at: Date.now(),
+      };
+      subtitle._isDraftTranslation = Boolean(subtitle.translation);
     } finally {
-      if (sessionId !== this.#translationSessionId) return;
+      if (this.#translationRequestTokens.get(subtitle) !== requestToken) {
+        return;
+      }
       subtitle.isTranslating = false;
 
       // 发布最终状态更新事件；流式阶段已经推送过部分译文，这里保证失败态或最终态也同步给侧栏。
-      updateSubtitleTranslation(subtitle.translation);
+      if (subtitle.translation) {
+        updateSubtitleTranslation(subtitle.translation, {
+          complete: !subtitle._translationError,
+          clearError: false,
+        });
+      } else if (subtitle._translationError) {
+        // 空译文也需要发布，清掉播放器/侧栏中可能残留的流式文本。
+        updateSubtitleTranslation("", {
+          complete: false,
+          clearError: false,
+          allowEmpty: true,
+        });
+      }
+      this.#translationRequestTokens.delete(subtitle);
     }
   }
 

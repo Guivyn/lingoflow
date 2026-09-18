@@ -37,6 +37,28 @@ const BatchQueue = (
   let activeBatchCount = 0; // 当前正在执行的批次数
   let timer = null; // 用于延迟处理任务的定时器
 
+  const createAbortError = () =>
+    new DOMException("The operation was aborted.", "AbortError");
+
+  const settleTask = (task, type, value) => {
+    if (task.resolved) return;
+    task.resolved = true;
+    task.args?.signal?.removeEventListener?.("abort", task.onAbort);
+    task[type](value);
+  };
+
+  const rejectCancelledTasks = () => {
+    const activeTasks = [];
+    for (const task of queue) {
+      if (task.args?.signal?.aborted || task.cancelled) {
+        settleTask(task, "reject", createAbortError());
+      } else {
+        activeTasks.push(task);
+      }
+    }
+    queue.splice(0, queue.length, ...activeTasks);
+  };
+
   /**
    * 处理当前队列中的任务
    */
@@ -46,6 +68,8 @@ const BatchQueue = (
       clearTimeout(timer);
       timer = null;
     }
+
+    rejectCancelledTasks();
 
     // 如果队列为空或已经达到批次并发上限，则直接返回
     if (queue.length === 0 || activeBatchCount >= concurrency) {
@@ -59,7 +83,11 @@ const BatchQueue = (
     let endIndex = 0;
 
     // 贪心策略：根据 batchSize 和字符长度 batchLength 计算本批次可以打包执行的任务范围
+    const batchSignal = queue[0]?.args?.signal;
     for (const task of queue) {
+      // 一批任务共享 taskFn 的参数；不同会话的 AbortSignal 不能混入同一批，
+      // 否则第一条旧字幕取消时会连带取消仍有效的新字幕。
+      if (task.args?.signal !== batchSignal) break;
       const textLength = task.payload?.length || 0;
       if (
         endIndex >= batchSize ||
@@ -88,6 +116,13 @@ const BatchQueue = (
       const payloads = tasksToProcess.map((item) => item.payload);
       const batchArgs = tasksToProcess[0].args;
 
+      if (batchArgs?.signal?.aborted) {
+        tasksToProcess.forEach((taskItem) =>
+          settleTask(taskItem, "reject", createAbortError())
+        );
+        return;
+      }
+
       // 调用具体的翻译函数（可能返回 AsyncGenerator 或 Promise）
       const generator = taskFn(payloads, batchArgs);
 
@@ -98,7 +133,7 @@ const BatchQueue = (
           const isComplete = item.isComplete !== false; // 默认完成状态为 true
           const taskItem = tasksToProcess.find((item) => item.id === id);
 
-          if (taskItem) {
+          if (taskItem && !taskItem.args?.signal?.aborted) {
             // 流式渲染的中间状态回调（当 isComplete 为 false 且有分块回调时）
             if (!isComplete && taskItem.args?.onStreamChunk) {
               taskItem.args.onStreamChunk({
@@ -117,8 +152,7 @@ const BatchQueue = (
                 });
               }
               if (!taskItem.resolved) {
-                taskItem.resolved = true;
-                taskItem.resolve(item.result);
+                settleTask(taskItem, "resolve", item.result);
               }
             }
           }
@@ -127,8 +161,12 @@ const BatchQueue = (
         // 兜底：处理生成器执行完毕后，仍未收到翻译结果的任务（标注异常）
         tasksToProcess.forEach((taskItem, index) => {
           if (!taskItem.resolved) {
-            taskItem.reject(
-              new Error(`No response for item at index ${index}`)
+            settleTask(
+              taskItem,
+              "reject",
+              taskItem.args?.signal?.aborted
+                ? createAbortError()
+                : new Error(`No response for item at index ${index}`)
             );
           }
         });
@@ -141,10 +179,12 @@ const BatchQueue = (
 
         tasksToProcess.forEach((taskItem, index) => {
           const response = responses[index];
-          if (response) {
-            taskItem.resolve(response);
+          if (response && !taskItem.args?.signal?.aborted) {
+            settleTask(taskItem, "resolve", response);
           } else {
-            taskItem.reject(
+            settleTask(
+              taskItem,
+              "reject",
               new Error(`No response for item at index ${index}`)
             );
           }
@@ -154,8 +194,7 @@ const BatchQueue = (
       // 捕获异常，确保把这一批次尚未 resolved 的任务全部以 reject 异常形式结束
       tasksToProcess.forEach((taskItem) => {
         if (!taskItem.resolved) {
-          taskItem.resolved = true;
-          taskItem.reject(error);
+          settleTask(taskItem, "reject", error);
         }
       });
     } finally {
@@ -189,7 +228,24 @@ const BatchQueue = (
   const addTask = (data, args) => {
     return new Promise((resolve, reject) => {
       const payload = data;
-      queue.push({ payload, resolve, reject, args });
+      const task = {
+        payload,
+        resolve,
+        reject,
+        args,
+        resolved: false,
+        cancelled: false,
+      };
+      task.onAbort = () => {
+        task.cancelled = true;
+        settleTask(task, "reject", createAbortError());
+      };
+      if (args?.signal?.aborted) {
+        task.onAbort();
+        return;
+      }
+      args?.signal?.addEventListener?.("abort", task.onAbort, { once: true });
+      queue.push(task);
 
       // 如果当前积压的任务量已达批处理阈值，则立即开始处理
       if (queue.length >= batchSize) {
@@ -209,7 +265,7 @@ const BatchQueue = (
       timer = null;
     }
     queue.forEach((task) =>
-      task.reject(new Error("Queue instance was destroyed."))
+      settleTask(task, "reject", new Error("Queue instance was destroyed."))
     );
     queue.length = 0;
   };

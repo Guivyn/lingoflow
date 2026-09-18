@@ -192,4 +192,26 @@ describe("BatchQueue batch concurrency", () => {
       ["D", ""],
     ]);
   });
+
+  test("does not mix tasks with different cancellation signals", async () => {
+    const oldController = new AbortController();
+    const liveController = new AbortController();
+    const taskFn = jest.fn().mockResolvedValue([["live", ""]]);
+    const queue = createBatchQueue(taskFn, {
+      batchSize: 2,
+      batchInterval: 1000,
+    });
+
+    const oldTask = queue.addTask("old", { signal: oldController.signal });
+    oldController.abort();
+    const liveTask = queue.addTask("live", {
+      signal: liveController.signal,
+    });
+
+    await expect(oldTask).rejects.toMatchObject({ name: "AbortError" });
+    await expect(liveTask).resolves.toEqual(["live", ""]);
+    expect(taskFn).toHaveBeenCalledTimes(1);
+    expect(taskFn.mock.calls[0][0]).toEqual(["live"]);
+    queue.destroy();
+  });
 });

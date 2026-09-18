@@ -742,9 +742,34 @@ export class YouTubeCaptionProvider {
       const key = `${subtitle.start}:${subtitle.end}`;
       const index = existed.get(key);
       if (index !== undefined) {
-        // 完整 chunk 回来时用最终结果覆盖同一时间轴句子，保留数组引用给 manager/list 使用。
-        this.#subtitles[index] = { ...this.#subtitles[index], ...subtitle };
-        changed.push(this.#subtitles[index]);
+        // 完整 chunk 回来时更新原对象，保留 Manager 正在使用的对象身份。
+        // 如果替换对象，会让在途翻译结果写入旧对象，并把新对象永久留在 isTranslating 状态。
+        const current = this.#subtitles[index];
+        const sameSource = current.text === subtitle.text;
+        const currentTranslationCompleted =
+          Boolean(current.translation) &&
+          !current._isDraftTranslation &&
+          !current._translationError;
+        const incomingTranslationIsDraft =
+          !subtitle.translation || subtitle._isDraftTranslation;
+
+        if (
+          sameSource &&
+          currentTranslationCompleted &&
+          incomingTranslationIsDraft
+        ) {
+          // 补翻已完成时，后到的 AI 草稿只能更新分段元数据，不能退回复翻草稿。
+          const {
+            translation: _ignoredTranslation,
+            _isDraftTranslation: _ignoredDraft,
+            _translationError: _ignoredError,
+            ...metadata
+          } = subtitle;
+          Object.assign(current, metadata);
+        } else {
+          Object.assign(current, subtitle);
+        }
+        changed.push(current);
       } else {
         existed.set(key, this.#subtitles.length);
         this.#subtitles.push(subtitle);

@@ -496,4 +496,81 @@ describe("BilingualSubtitleManager", () => {
 
     manager.destroy();
   });
+
+  test("releases the old translation lock after seeking and retries the cue", async () => {
+    const first = createDeferred();
+    const second = createDeferred();
+    apiTranslate
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const videoEl = createVideoElement();
+    const cue = { ...subtitle };
+    const manager = new BilingualSubtitleManager({
+      videoEl,
+      formattedSubtitles: [cue],
+      setting,
+    });
+
+    manager.start();
+    expect(apiTranslate).toHaveBeenCalledTimes(1);
+    manager.onSeeking();
+    expect(cue.isTranslating).toBe(false);
+    first.reject(new DOMException("cancelled", "AbortError"));
+    await Promise.resolve();
+    manager.onSeek();
+    expect(apiTranslate).toHaveBeenCalledTimes(2);
+
+    second.resolve({ trText: "重试成功" });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(cue.translation).toBe("重试成功");
+    expect(cue.isTranslating).toBe(false);
+    manager.destroy();
+  });
+
+  test("keeps failed translation retryable without storing an error as translation", async () => {
+    apiTranslate.mockRejectedValue(new Error("HTTP 429"));
+    const videoEl = createVideoElement();
+    const cue = { ...subtitle };
+    const manager = new BilingualSubtitleManager({
+      videoEl,
+      formattedSubtitles: [cue],
+      setting,
+    });
+
+    manager.start();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(cue.translation).toBe("");
+    expect(cue._translationError).toEqual(
+      expect.objectContaining({ message: "HTTP 429" })
+    );
+    expect(cue.isTranslating).toBe(false);
+    manager.onTimeUpdate();
+    expect(apiTranslate).toHaveBeenCalledTimes(2);
+    manager.destroy();
+  });
+
+  test("keeps a partial stream marked as draft when the stream fails", async () => {
+    apiTranslate.mockImplementation(({ onStreamChunk }) => {
+      onStreamChunk({ text: "半截译文", isComplete: false });
+      return Promise.reject(new Error("stream disconnected"));
+    });
+    const videoEl = createVideoElement();
+    const cue = { ...subtitle };
+    const manager = new BilingualSubtitleManager({
+      videoEl,
+      formattedSubtitles: [cue],
+      setting,
+    });
+
+    manager.start();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(cue.translation).toBe("半截译文");
+    expect(cue._isDraftTranslation).toBe(true);
+    expect(cue._translationError).toEqual(
+      expect.objectContaining({ message: "stream disconnected" })
+    );
+    manager.destroy();
+  });
 });
