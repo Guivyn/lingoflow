@@ -86,6 +86,10 @@ class TaskPool {
       resolve(res);
     } catch (err) {
       appLog("task pool", err);
+      if (err?.name === "AbortError") {
+        reject(err);
+        return;
+      }
       // 如果发生异常且重试次数未达到上限，则安排延迟重试
       if (retry < this.#maxRetry) {
         const retryTimer = setTimeout(() => {
@@ -120,22 +124,6 @@ class TaskPool {
   }
 
   /**
-   * 动态更新任务池的配置参数
-   * @param {number} interval - 新的最小任务间隔（毫秒）
-   * @param {number} limit - 新的最大并发数
-   */
-  update(interval, limit) {
-    if (interval >= 0) {
-      this.#interval = interval;
-    }
-    if (limit >= 1) {
-      this.#limit = limit;
-    }
-
-    this.#scheduleNext();
-  }
-
-  /**
    * 清空任务池
    */
   clear() {
@@ -160,40 +148,104 @@ class TaskPool {
 }
 
 /**
- * 全局共享的请求池实例
+ * 跨接口共享的并发闸门，防止多个独立请求池的并发上限叠加失控。
  */
-let fetchPool;
+class ConcurrencyGate {
+  #limit;
+  #active = 0;
+  #queue = [];
+
+  constructor(limit) {
+    this.#limit = limit;
+  }
+
+  run(fn, args) {
+    return new Promise((resolve, reject) => {
+      this.#queue.push({ fn, args, resolve, reject });
+      this.#drain();
+    });
+  }
+
+  #drain() {
+    while (this.#active < this.#limit && this.#queue.length > 0) {
+      const task = this.#queue.shift();
+      this.#active++;
+      Promise.resolve()
+        .then(() => task.fn(task.args))
+        .then(task.resolve, task.reject)
+        .finally(() => {
+          this.#active--;
+          this.#drain();
+        });
+    }
+  }
+
+  clear() {
+    const error = new DOMException(
+      "The global request queue was cleared.",
+      "AbortError"
+    );
+    for (const task of this.#queue) {
+      task.reject(error);
+    }
+    this.#queue.length = 0;
+  }
+}
+
+const MAX_GLOBAL_FETCH_CONCURRENCY = 100;
+const globalFetchGate = new ConcurrencyGate(MAX_GLOBAL_FETCH_CONCURRENCY);
+
+export const runWithGlobalFetchLimit = (fn, args) =>
+  globalFetchGate.run(fn, args);
 
 /**
- * 获取请求池实例（单例模式）
- * @param {number} [interval] - 任务最小启动间隔
- * @param {number} [limit] - 最大并发数
- * @returns {TaskPool}
+ * 请求池按接口标识和限流设置复用，避免不同接口互相覆盖并发参数。
  */
-export const getFetchPool = (interval, limit) => {
-  if (!fetchPool) {
-    fetchPool = new TaskPool(
-      interval ?? DEFAULT_FETCH_INTERVAL,
-      limit ?? DEFAULT_FETCH_LIMIT
-    );
-  } else if (interval && limit) {
-    updateFetchPool(interval, limit);
-  }
-  return fetchPool;
+const fetchPools = new Map();
+
+const normalizePoolSettings = (interval, limit) => {
+  const parsedInterval = Number(interval ?? DEFAULT_FETCH_INTERVAL);
+  const parsedLimit = Number(limit ?? DEFAULT_FETCH_LIMIT);
+
+  return {
+    interval:
+      Number.isFinite(parsedInterval) && parsedInterval >= 0
+        ? Math.min(5000, Math.floor(parsedInterval))
+        : DEFAULT_FETCH_INTERVAL,
+    limit:
+      Number.isFinite(parsedLimit) && parsedLimit >= 1
+        ? Math.min(100, Math.floor(parsedLimit))
+        : DEFAULT_FETCH_LIMIT,
+  };
 };
 
 /**
- * 更新全局请求池参数
- * @param {number} interval - 最小间隔（毫秒）
- * @param {number} limit - 并发限制数
+ * 获取当前接口配置对应的请求池实例
+ * @param {number} [interval] - 任务最小启动间隔
+ * @param {number} [limit] - 最大并发数
+ * @param {string} [poolKey] - 请求池隔离键，通常为翻译接口 slug
+ * @returns {TaskPool}
  */
-const updateFetchPool = (interval, limit) => {
-  fetchPool?.update(interval, limit);
+export const getFetchPool = (interval, limit, poolKey = "default") => {
+  const settings = normalizePoolSettings(interval, limit);
+  const key = JSON.stringify([
+    String(poolKey || "default"),
+    settings.interval,
+    settings.limit,
+  ]);
+  if (!fetchPools.has(key)) {
+    fetchPools.set(key, new TaskPool(settings.interval, settings.limit));
+  }
+  return fetchPools.get(key);
 };
 
 /**
  * 清空全局请求池中的所有任务
  */
 export const clearFetchPool = () => {
-  fetchPool?.clear();
+  globalFetchGate.clear();
+  for (const pool of fetchPools.values()) {
+    pool.clear();
+  }
+  fetchPools.clear();
 };

@@ -18,22 +18,48 @@ import {
  * @param {number} [options.batchConcurrency] - 同时执行的最大批次数
  * @returns {object} 返回具有 addTask 和 destroy 方法的实例对象
  */
-const BatchQueue = (
-  taskFn,
-  {
-    batchInterval = DEFAULT_BATCH_INTERVAL,
-    batchSize = DEFAULT_BATCH_SIZE,
-    batchLength = DEFAULT_BATCH_LENGTH,
-    batchConcurrency = DEFAULT_BATCH_CONCURRENCY,
-  } = {}
-) => {
+const normalizeInteger = (value, fallback, min, max) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed)
+    ? Math.min(max, Math.max(min, Math.floor(parsed)))
+    : fallback;
+};
+
+export const normalizeBatchOptions = (options = {}) => ({
+  batchInterval: normalizeInteger(
+    options.batchInterval ?? DEFAULT_BATCH_INTERVAL,
+    DEFAULT_BATCH_INTERVAL,
+    0,
+    10000
+  ),
+  batchSize: normalizeInteger(
+    options.batchSize ?? DEFAULT_BATCH_SIZE,
+    DEFAULT_BATCH_SIZE,
+    1,
+    100
+  ),
+  batchLength: normalizeInteger(
+    options.batchLength ?? DEFAULT_BATCH_LENGTH,
+    DEFAULT_BATCH_LENGTH,
+    1000,
+    100000
+  ),
+  batchConcurrency: normalizeInteger(
+    options.batchConcurrency ?? DEFAULT_BATCH_CONCURRENCY,
+    DEFAULT_BATCH_CONCURRENCY,
+    1,
+    100
+  ),
+});
+
+const BatchQueue = (taskFn, options = {}) => {
   const queue = []; // 存储待处理翻译任务的队列
-  const configuredBatchConcurrency = Number(batchConcurrency);
-  const concurrency =
-    Number.isFinite(configuredBatchConcurrency) &&
-    configuredBatchConcurrency >= 1
-      ? Math.floor(configuredBatchConcurrency)
-      : DEFAULT_BATCH_CONCURRENCY;
+  const {
+    batchInterval,
+    batchSize,
+    batchLength,
+    batchConcurrency: concurrency,
+  } = normalizeBatchOptions(options);
   let activeBatchCount = 0; // 当前正在执行的批次数
   let timer = null; // 用于延迟处理任务的定时器
 

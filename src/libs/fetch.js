@@ -4,7 +4,7 @@
  * 内部只负责组合缓存、并发池、普通请求适配和流式请求适配，避免调用方感知本次分层重构。
  */
 
-import { getFetchPool } from "./pool";
+import { getFetchPool, runWithGlobalFetchLimit } from "./pool";
 import { getHttpCachePolyfill } from "./cache";
 import { createAsyncQueue } from "./stream";
 import {
@@ -24,16 +24,17 @@ export { fetchPatcher, fetchHandle, fnPolyfill, fetchStreamNative };
  * @param {Object} init Fetch 初始化参数。
  * @param {Object} [options={}] 请求选项。
  * @param {boolean} [options.useCache] 是否读取本地 HTTP 缓存。
- * @param {boolean} [options.usePool] 是否进入全局请求池。
+ * @param {boolean} [options.usePool] 是否进入受限请求池。
  * @param {number} [options.fetchInterval] 请求池启动间隔。
  * @param {number} [options.fetchLimit] 请求池并发限制。
+ * @param {string} [options.poolKey] 请求池隔离键。
  * @param {AbortSignal} [options.signal] 外部取消信号，会传递到底层 fetch。
  * @returns {Promise<*>} 解析后的完整响应数据。
  */
 export const fetchData = async (
   input,
   init,
-  { useCache, usePool, fetchInterval, fetchLimit, ...opts } = {}
+  { useCache, usePool, fetchInterval, fetchLimit, poolKey, ...opts } = {}
 ) => {
   if (!input?.trim()) {
     throw new Error("URL is empty");
@@ -47,8 +48,13 @@ export const fetchData = async (
   }
 
   if (usePool) {
-    const fetchPool = getFetchPool(fetchInterval, fetchLimit);
-    return fetchPool.push(fnPolyfill, { fn: fetchHandle, input, init, opts });
+    const fetchPool = getFetchPool(fetchInterval, fetchLimit, poolKey);
+    return fetchPool.push((args) => runWithGlobalFetchLimit(fnPolyfill, args), {
+      fn: fetchHandle,
+      input,
+      init,
+      opts,
+    });
   }
 
   return fnPolyfill({ fn: fetchHandle, input, init, opts });
@@ -61,16 +67,17 @@ export const fetchData = async (
  * @param {Object} init Fetch 初始化参数。
  * @param {Object} [options={}] 请求选项。
  * @param {boolean} [options.useCache] 是否读取本地 HTTP 缓存。
- * @param {boolean} [options.usePool] 是否进入全局请求池。
+ * @param {boolean} [options.usePool] 是否进入受限请求池。
  * @param {number} [options.fetchInterval] 请求池启动间隔。
  * @param {number} [options.fetchLimit] 请求池并发限制。
+ * @param {string} [options.poolKey] 请求池隔离键。
  * @param {AbortSignal} [options.signal] 外部取消信号，会传递到流式读取链路。
  * @yields {string} SSE data 字段内容。
  */
 export async function* fetchStream(
   input,
   init,
-  { useCache, usePool, fetchInterval, fetchLimit, ...opts } = {}
+  { useCache, usePool, fetchInterval, fetchLimit, poolKey, ...opts } = {}
 ) {
   if (!input?.trim()) {
     throw new Error("URL is empty");
@@ -85,7 +92,7 @@ export async function* fetchStream(
   }
 
   if (usePool) {
-    const fetchPool = getFetchPool(fetchInterval, fetchLimit);
+    const fetchPool = getFetchPool(fetchInterval, fetchLimit, poolKey);
     const asyncQueue = createAsyncQueue();
     const streamController = new AbortController();
     const streamOpts = {
@@ -93,17 +100,19 @@ export async function* fetchStream(
       signal: mergeAbortSignals([opts.signal, streamController.signal]),
     };
 
-    const streamPromise = fetchPool.push(async () => {
-      try {
-        for await (const chunk of requestStream(input, init, streamOpts)) {
-          asyncQueue.push(chunk);
+    const streamPromise = fetchPool.push(() =>
+      runWithGlobalFetchLimit(async () => {
+        try {
+          for await (const chunk of requestStream(input, init, streamOpts)) {
+            asyncQueue.push(chunk);
+          }
+          asyncQueue.finish();
+        } catch (e) {
+          asyncQueue.error(e);
         }
-        asyncQueue.finish();
-      } catch (e) {
-        asyncQueue.error(e);
-      }
-      return null;
-    });
+        return null;
+      })
+    );
 
     try {
       yield* asyncQueue.iterate();

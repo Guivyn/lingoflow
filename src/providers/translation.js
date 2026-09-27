@@ -421,6 +421,7 @@ export const handleDict = async ({
 
   const {
     apiType,
+    apiSlug,
     fetchInterval,
     fetchLimit,
     httpTimeout,
@@ -470,6 +471,7 @@ export const handleDict = async ({
         fetchLimit,
         httpTimeout,
         signal,
+        poolKey: apiSlug,
       })) {
         try {
           const json = JSON.parse(rawData);
@@ -521,6 +523,7 @@ export const handleDict = async ({
       fetchLimit,
       httpTimeout,
       signal,
+      poolKey: apiSlug,
     });
     if (!fallbackRes) {
       throw new Error("dictionary got empty response");
@@ -541,6 +544,7 @@ export const handleDict = async ({
     fetchLimit,
     httpTimeout,
     signal,
+    poolKey: apiSlug,
   });
   if (!res) {
     throw new Error("dictionary got empty response");
@@ -627,6 +631,7 @@ export async function* handleTranslate(
       fetchLimit,
       httpTimeout,
       signal,
+      poolKey: apiSlug,
     });
     if (!response) {
       throw new Error("translate got empty response");
@@ -699,6 +704,7 @@ export async function* handleTranslate(
         fetchLimit,
         httpTimeout,
         signal,
+        poolKey: apiSlug,
         streamRenderMode: apiSetting.streamRenderMode || "disabled",
       });
       return;
@@ -735,6 +741,7 @@ async function* handleTranslateStreamInternal(
     fetchLimit,
     httpTimeout,
     signal,
+    poolKey,
     streamRenderMode,
   }
 ) {
@@ -756,6 +763,7 @@ async function* handleTranslateStreamInternal(
       fetchLimit,
       httpTimeout,
       signal,
+      poolKey,
     })) {
       try {
         const json = JSON.parse(rawData);
@@ -866,8 +874,14 @@ export const handleSubtitle = async ({
   onSubtitleChunk,
   signal,
 }) => {
-  const { apiType, fetchInterval, fetchLimit, httpTimeout, useStream } =
-    apiSetting;
+  const {
+    apiType,
+    apiSlug,
+    fetchInterval,
+    fetchLimit,
+    httpTimeout,
+    useStream,
+  } = apiSetting;
   const enableStream =
     Boolean(onSubtitleChunk) &&
     useStream &&
@@ -893,6 +907,7 @@ export const handleSubtitle = async ({
         fetchInterval,
         fetchLimit,
         httpTimeout,
+        poolKey: apiSlug,
         fromLang: from,
         onSubtitleChunk,
         signal,
@@ -924,6 +939,7 @@ export const handleSubtitle = async ({
     fetchLimit,
     httpTimeout,
     signal,
+    poolKey: apiSlug,
   });
   if (!res) {
     appLog("subtitle got empty response");
@@ -961,6 +977,7 @@ async function handleSubtitleStreamInternal(
     fromLang,
     onSubtitleChunk,
     signal,
+    poolKey,
   }
 ) {
   const parser = createStreamingSubtitleParser(events, { fromLang });
@@ -991,6 +1008,7 @@ async function handleSubtitleStreamInternal(
     fetchLimit,
     httpTimeout,
     signal,
+    poolKey,
   })) {
     if (signal?.aborted) {
       throw new DOMException("The operation was aborted.", "AbortError");
@@ -1040,7 +1058,8 @@ export const handleSummarize = async ({
   transcript,
   apiSetting,
 }) => {
-  const { apiType, fetchInterval, fetchLimit, httpTimeout } = apiSetting;
+  const { apiType, apiSlug, fetchInterval, fetchLimit, httpTimeout } =
+    apiSetting;
 
   const userPrompt = [
     title && `Title: ${title}`,
@@ -1070,6 +1089,7 @@ export const handleSummarize = async ({
     fetchInterval,
     fetchLimit,
     httpTimeout,
+    poolKey: apiSlug,
   });
 
   if (!res) return "";

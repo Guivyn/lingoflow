@@ -2,7 +2,7 @@
 
 [中文](README.md) · [English](README.en.md)
 
-**v1.3.0** · [Download the latest release](https://github.com/Guivyn/lingoflow/releases/latest) · [CI](https://github.com/Guivyn/lingoflow/actions/workflows/ci.yml)
+**v1.3.3** · [Download the latest release](https://github.com/Guivyn/lingoflow/releases/latest) · [CI](https://github.com/Guivyn/lingoflow/actions/workflows/ci.yml)
 
 <p align="center">
   <img src="./assets/readme/hero.svg" width="100%" alt="LingoFlow: a bilingual reading extension for webpages, selected text, hover translation, and YouTube subtitles">

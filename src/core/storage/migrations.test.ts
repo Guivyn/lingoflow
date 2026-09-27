@@ -17,7 +17,7 @@ describe("settings migrations", () => {
     expect(SETTINGS_MIGRATIONS[CURRENT_SETTINGS_VERSION]).toBeDefined();
   });
 
-  test("upgrades legacy batch defaults while preserving custom values", () => {
+  test("preserves batch values when default and user choices are indistinguishable", () => {
     const migrated = runSettingMigrations({
       version: SETTINGS_VERSION_V3,
       transApis: [
@@ -39,8 +39,8 @@ describe("settings migrations", () => {
     expect(migrated.version).toBe(CURRENT_SETTINGS_VERSION);
     const transApis = migrated.transApis as Array<Record<string, unknown>>;
     expect(transApis[0]).toMatchObject({
-      batchInterval: 150,
-      batchConcurrency: 2,
+      batchInterval: 400,
+      batchConcurrency: 1,
     });
     expect(transApis[1]).toMatchObject({
       batchInterval: 500,

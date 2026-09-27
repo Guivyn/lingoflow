@@ -30,41 +30,14 @@ export const SETTINGS_MIGRATIONS: Partial<Record<number, SettingMigration>> = {
 
 export { CURRENT_SETTINGS_VERSION, SETTINGS_SCHEMA_VERSION };
 
-// v1.2.x 之前的批处理出厂默认值；只替换与出厂默认完全一致的值，保留用户自定义参数。
-const LEGACY_BATCH_INTERVAL = 400;
-const BATCH_INTERVAL_V4 = 150;
-const LEGACY_BATCH_CONCURRENCY = 1;
-const BATCH_CONCURRENCY_V4 = 2;
-
 /**
- * 把仍使用旧出厂默认值的批处理参数升级到 v4 的更快速默认值：
- * batchInterval 400ms -> 150ms，batchConcurrency 1 -> 2。
- * 仅当字段与旧出厂默认完全相等时才覆盖，用户显式配置的自定义值保持不变。
+ * 旧存储没有记录批处理参数是默认值还是用户主动选择的值，因此无法
+ * 安全地区分旧默认与用户偏好。升级配置版本时保留现有参数，避免覆盖
+ * 用户选择的串行处理或较长等待时间。
  */
 function migrateBatchDefaultsToV4(setting: SettingRecord): SettingRecord {
-  const transApis = Array.isArray(setting.transApis) ? setting.transApis : [];
-  const nextApis = transApis.map((api) => {
-    if (!api || typeof api !== "object" || Array.isArray(api)) {
-      return api;
-    }
-
-    const next = { ...(api as Record<string, unknown>) };
-    let changed = false;
-    if (next.batchInterval === LEGACY_BATCH_INTERVAL) {
-      next.batchInterval = BATCH_INTERVAL_V4;
-      changed = true;
-    }
-    if (next.batchConcurrency === LEGACY_BATCH_CONCURRENCY) {
-      next.batchConcurrency = BATCH_CONCURRENCY_V4;
-      changed = true;
-    }
-    return changed ? next : api;
-  });
-
-  const hasChanges = nextApis.some((next, index) => next !== transApis[index]);
   return {
     ...setting,
-    ...(hasChanges ? { transApis: nextApis } : {}),
     version: SETTINGS_VERSION_V4,
   };
 }

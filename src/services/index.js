@@ -27,7 +27,7 @@ import {
   handleSummarize,
 } from "../providers/translation";
 import { getHttpCachePolyfill, putHttpCachePolyfill } from "../libs/cache";
-import { getBatchQueue } from "../libs/batchQueue";
+import { getBatchQueue, normalizeBatchOptions } from "../libs/batchQueue";
 import { getDocInfo } from "../libs/docInfo";
 
 const PROMPT_CACHE_SALT = "prompt-cache";
@@ -167,21 +167,16 @@ export const apiTranslate = async ({
       useContext,
     } = apiSetting;
     const enableStream = useStream && getProviderCapability(apiType, "stream");
-    const configuredBatchConcurrency = Number(batchConcurrency);
-    const effectiveBatchConcurrency =
-      useContext && getProviderCapability(apiType, "context")
-        ? 1
-        : Number.isFinite(configuredBatchConcurrency) &&
-            configuredBatchConcurrency >= 1
-          ? Math.floor(configuredBatchConcurrency)
-          : 1;
-    const key = `${apiSlug}_${fromLang}_${toLang}_${enableStream ? "stream" : "batch"}_${promptSig}_${effectiveBatchConcurrency}`;
-    const queue = getBatchQueue(key, handleTranslate, {
+    const useSerialBatch =
+      useContext && getProviderCapability(apiType, "context");
+    const batchOptions = normalizeBatchOptions({
       batchInterval,
       batchSize,
       batchLength,
-      batchConcurrency: effectiveBatchConcurrency,
+      batchConcurrency: useSerialBatch ? 1 : batchConcurrency,
     });
+    const key = `${apiSlug}_${fromLang}_${toLang}_${enableStream ? "stream" : "batch"}_${promptSig}_${batchOptions.batchConcurrency}_${batchOptions.batchInterval}_${batchOptions.batchSize}_${batchOptions.batchLength}`;
+    const queue = getBatchQueue(key, handleTranslate, batchOptions);
 
     translation = await queue.addTask(text, {
       from,
