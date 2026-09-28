@@ -23,6 +23,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Prepare app environment
+        run: |
+          cp .env.example .env
+          pnpm sync-version
+
       - run: pnpm lint
 
       - run: pnpm test:ci
