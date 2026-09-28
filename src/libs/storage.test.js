@@ -71,6 +71,7 @@ describe("storage adapter migration", () => {
       version: CURRENT_SETTINGS_VERSION,
       transApis: [
         { apiSlug: "openai", apiType: "OpenAI" },
+        { apiSlug: "Google2", apiType: "Google2" },
         { apiType: "DeepSeek" },
         null,
         "bad",

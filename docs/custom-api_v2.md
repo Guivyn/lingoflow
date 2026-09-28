@@ -157,7 +157,6 @@ async (args) => {
           segments: args.texts.map((text, id) => ({ id, text })),
           title: "", // 可省略
           description: "", // 可省略
-          glossary: {}, // 可省略
           tone: "", // 可省略
         }),
       },

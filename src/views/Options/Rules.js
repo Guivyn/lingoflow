@@ -90,9 +90,6 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
     blockSelector = "", // 自定义块级元素 CSS 选择器
     rootsSelector = "", // 翻译的根容器 CSS 选择器
     ignoreSelector = "", // 忽略不翻译的 CSS 选择器
-    terms, // 专有名词对照表（普通）
-    aiTerms, // AI 专有名词对照表
-    termsStyle = "", // 专有名词样式
     textExtStyle = "", // 译文额外 CSS 样式
     selectStyle = "", // 针对特定选择器的样式
     parentStyle = "", // 针对选择器父元素的样式
@@ -620,41 +617,6 @@ function RuleFields({ rule, rules, setShow, setKeyword }) {
         {/* 高级选项面板 */}
         {showMore && (
           <>
-            {/* 专有名词对照翻译设置 */}
-            <Input
-              size="small"
-              label={i18n("terms")}
-              helperText={i18n("terms_helper")}
-              name="terms"
-              value={terms}
-              disabled={disabled}
-              onChange={handleChange}
-              multiline
-              maxRows={10}
-            />
-            {/* AI 翻译专有名词对照翻译设置 */}
-            <Input
-              size="small"
-              label={i18n("ai_terms")}
-              helperText={i18n("ai_terms_helper")}
-              name="aiTerms"
-              value={aiTerms}
-              disabled={disabled}
-              onChange={handleChange}
-              multiline
-              maxRows={10}
-            />
-
-            {/* 术语高亮 CSS 样式定义 */}
-            <CodeField
-              size="small"
-              label={i18n("terms_style")}
-              name="termsStyle"
-              value={termsStyle}
-              disabled={disabled}
-              onChange={handleChange}
-              maxRows={10}
-            />
             {/* 译文额外 CSS 样式定义 */}
             <CodeField
               size="small"

@@ -440,29 +440,6 @@ export function downloadBlobFile(str, filename = "lingoflow-file.txt") {
 }
 
 /**
- * 解析用户输入的 AI 专业术语库字符串（格式：原文,译文 每行或以分号分隔一个词）
- * @param {string} termsString
- * @returns {Record<string, string>} 键值对字典对象
- */
-export function parseAITerms(termsString) {
-  if (typeof termsString !== "string" || termsString.trim() === "") return {};
-
-  try {
-    return Object.fromEntries(
-      termsString
-        .split(/\n|;/)
-        .map((line) => {
-          const [k = "", v = ""] = line.split(",").map((s) => s.trim());
-          return [k, v];
-        })
-        .filter(([k]) => k)
-    );
-  } catch (err) {
-    return {};
-  }
-}
-
-/**
  * 检查当前文本是否仅为单个中文汉字字符
  * @param {string} str
  * @returns {boolean}

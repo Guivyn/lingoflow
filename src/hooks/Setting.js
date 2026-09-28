@@ -95,6 +95,19 @@ export function SettingProvider({ children, context }) {
     [setting]
   );
 
+  // 旧设置可能仍保留已移除的 Google2 接口；选项页直接读取原始存储，
+  // 因此在加载后同步清理，避免它继续显示在接口列表中。
+  useEffect(() => {
+    if (!Array.isArray(setting?.transApis)) return;
+    if (!setting.transApis.some((api) => api?.apiType === "Google2")) return;
+    updateSetting((currentSetting) => ({
+      ...currentSetting,
+      transApis: (currentSetting?.transApis || []).filter(
+        (api) => api?.apiType !== "Google2"
+      ),
+    }));
+  }, [setting?.transApis, updateSetting]);
+
   // 兼容直接从 Storage 或云同步回填进来的旧版设置，确保进入界面的配置已经升级到 V2。
   useEffect(() => {
     if (!hasSetting || settingVersion >= CURRENT_SETTINGS_VERSION) {

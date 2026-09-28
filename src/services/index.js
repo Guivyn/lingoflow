@@ -86,7 +86,6 @@ async function getPromptCacheSig(apiSetting = {}, promptScope) {
  * @param {string} params.fromLang 源语言，默认为 "auto"
  * @param {string} params.toLang 目标翻译语言
  * @param {Object} params.apiSetting 翻译接口的配置参数项
- * @param {string} params.glossary 自定义词汇术语替换表
  * @param {Function} params.onStreamChunk 流式响应增量回调函数 (用于 SSE/LLM 翻译)
  * @param {Object} params.docInfo 视频/文档摘要等额外上下文环境数据
  * @param {boolean} params.useCache 是否应用本地请求缓存 (默认 true)
@@ -99,7 +98,6 @@ export const apiTranslate = async ({
   fromLang = "auto",
   toLang,
   apiSetting = DEFAULT_API_SETTING,
-  glossary,
   onStreamChunk,
   docInfo,
   useCache = true,
@@ -184,7 +182,6 @@ export const apiTranslate = async ({
       fromLang,
       toLang,
       langMap,
-      glossary,
       apiSetting,
       usePool,
       onStreamChunk,
@@ -199,7 +196,6 @@ export const apiTranslate = async ({
       fromLang,
       toLang,
       langMap,
-      glossary,
       apiSetting,
       usePool,
       docInfo,
@@ -414,7 +410,6 @@ export const apiSubtitle = async ({
     fromLang,
     toLang,
     docInfo,
-    aiTerms: apiSetting.aiTerms,
   });
   const cacheOpts = {
     apiSlug: apiSetting.apiSlug,

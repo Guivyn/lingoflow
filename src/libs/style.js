@@ -32,6 +32,7 @@ const PAPER_BG = tokens.translation.accentSoft;
 const translationBaseStyles = `
   .lingoflow-wrapper {
     display: inline;
+    white-space: nowrap;
     unicode-bidi: isolate;
     align-self: flex-start;
     justify-self: start;
@@ -44,6 +45,7 @@ const translationBaseStyles = `
   }
   .lingoflow-wrapper.lingoflow-long {
     display: block;
+    white-space: normal;
     text-align: start;
   }
   .lingoflow-wrapper.lingoflow-long > .lingoflow-inner {

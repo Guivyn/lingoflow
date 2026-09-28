@@ -7,11 +7,9 @@ import {
   INPUT_PLACE_DESCRIPTION,
   INPUT_PLACE_TO_LANG,
   INPUT_PLACE_FROM_LANG,
-  INPUT_PLACE_GLOSSARY,
   INPUT_PLACE_SUMMARY,
   INPUT_PLACE_CONTEXT,
 } from "../../config";
-import { parseAITerms } from "../../libs/utils";
 import { buildDocContext } from "../context/ContextBuilder";
 
 /**
@@ -35,6 +33,7 @@ export const buildSystemPrompt = ({
     .replaceAll(INPUT_PLACE_SUMMARY, summary)
     .replaceAll(INPUT_PLACE_CONTEXT, context)
     .replaceAll(INPUT_PLACE_TONE, tone)
+    .replaceAll("{{glossary}}", "")
     .replaceAll(INPUT_PLACE_FROM, from)
     .replaceAll(INPUT_PLACE_TO, to)
     .replaceAll(INPUT_PLACE_FROM_LANG, fromLang)
@@ -46,8 +45,6 @@ export const buildUserPrompt = ({
   nobatchUserPrompt,
   useBatchFetch,
   tone,
-  glossary = {},
-  aiTerms = "",
   from,
   to,
   fromLang,
@@ -58,11 +55,6 @@ export const buildUserPrompt = ({
   const { title, description, summary, context } =
     buildDocContext(docInfo);
 
-  if (aiTerms) {
-    const aiGlossary = parseAITerms(aiTerms);
-    glossary = { ...glossary, ...aiGlossary };
-  }
-
   if (useBatchFetch) {
     const promptObj = {
       targetLanguage: toLang,
@@ -72,15 +64,10 @@ export const buildUserPrompt = ({
     title && (promptObj.title = title);
     description && (promptObj.description = description);
 
-    Object.keys(glossary).length !== 0 && (promptObj.glossary = glossary);
     tone && (promptObj.tone = tone);
 
     return JSON.stringify(promptObj);
   }
-
-  const glossaryStr = Object.entries(glossary)
-    .map(([term, definition]) => `- ${term}: ${definition}`)
-    .join("\n");
 
   return String(nobatchUserPrompt || "")
     .replaceAll(INPUT_PLACE_TITLE, title)
@@ -88,7 +75,7 @@ export const buildUserPrompt = ({
     .replaceAll(INPUT_PLACE_SUMMARY, summary)
     .replaceAll(INPUT_PLACE_CONTEXT, context)
     .replaceAll(INPUT_PLACE_TONE, tone)
-    .replaceAll(INPUT_PLACE_GLOSSARY, glossaryStr)
+    .replaceAll("{{glossary}}", "")
     .replaceAll(INPUT_PLACE_FROM, from)
     .replaceAll(INPUT_PLACE_TO, to)
     .replaceAll(INPUT_PLACE_FROM_LANG, fromLang)
@@ -105,19 +92,14 @@ export const buildSubtitleSystemPrompt = ({
   fromLang,
   toLang,
   docInfo,
-  aiTerms = "",
 }) => {
   const { title, description, summary } = buildDocContext(docInfo);
-  const aiGlossary = parseAITerms(aiTerms);
-  const glossaryStr = Object.entries(aiGlossary)
-    .map(([term, definition]) => `- ${term}: ${definition}`)
-    .join("\n");
   return String(subtitlePrompt || "")
     .replaceAll(INPUT_PLACE_TITLE, title)
     .replaceAll(INPUT_PLACE_DESCRIPTION, description)
     .replaceAll(INPUT_PLACE_SUMMARY, summary)
     .replaceAll(INPUT_PLACE_TONE, tone)
-    .replaceAll(INPUT_PLACE_GLOSSARY, glossaryStr)
+    .replaceAll("{{glossary}}", "")
     .replaceAll(INPUT_PLACE_FROM, from)
     .replaceAll(INPUT_PLACE_TO, to)
     .replaceAll(INPUT_PLACE_FROM_LANG, fromLang)

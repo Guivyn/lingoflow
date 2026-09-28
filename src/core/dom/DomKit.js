@@ -149,7 +149,7 @@ export const DomKit = {
     /^[^\s\\/:]+?\.[a-zA-Z0-9]{2,5}$/,
     /^[a-zA-Z0-9][\w.-]*\/[\w.-]+$/,
     /^[a-zA-Z][\w .-]*\s\d+(?:[.,]\d+)?\s?[kKmMgGtT]?$/,
-    /^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)+$/,
+    /^[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*-\d+(?:\.[a-z0-9]+)?$/,
     /^[a-zA-Z][a-zA-Z0-9]*\+{1,2}$/,
     /^[a-zA-Z][a-zA-Z0-9]*#$/,
   ],
@@ -169,7 +169,7 @@ export const DomKit = {
   .tag, .tags, .post-tag, .s-tag, .badge, .badges, .chip, .chips,
   [class*="badge"], [class*="chip"],
   .breadcrumb, .breadcrumbs, [class*="breadcrumb"],
-  [role="tab"], [role="button"], .tabs, [class*="tabs"],
+  .tabs, [class*="tabs"],
   a[href*="/tags/"], a[href*="tagged"]`,
 
   isElement(el) {

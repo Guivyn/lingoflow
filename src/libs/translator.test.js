@@ -72,7 +72,7 @@ test("skips compact counts like 30k from translation", () => {
   expect(skipRegex.test("30k users")).toBe(false);
   expect(skipRegex.test("bashalarmistalt/decimen-optical-transfer")).toBe(true);
   expect(skipRegex.test("TypeScript 3.4k")).toBe(true);
-  expect(skipRegex.test("boost-process")).toBe(true);
+  expect(skipRegex.test("boost-process")).toBe(false);
   expect(skipRegex.test("python-3.x")).toBe(true);
   expect(skipRegex.test("c++")).toBe(true);
   expect(skipRegex.test("c#")).toBe(true);
@@ -124,6 +124,101 @@ describe("Translator rule styles", () => {
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
     jest.clearAllMocks();
+  });
+
+  test("routes ordinary technical labels to the provider even with legacy term settings", async () => {
+    apiTranslate.mockImplementation(({ text }) =>
+      Promise.resolve({ trText: `译文:${text}`, isSame: false })
+    );
+    document.body.innerHTML = `
+      <main id="root">
+        <p id="product">Codespaces</p>
+        <p id="review">Code review</p>
+        <p id="sentence">Open your Codespaces here</p>
+      </main>
+    `;
+
+    createTranslator(
+      {
+        terms: "Codespaces,固定译名",
+        aiTerms: "Code review,固定译名",
+      },
+      { minLength: 0 }
+    );
+    await flushAsync();
+
+    const requestedTexts = apiTranslate.mock.calls.map(([args]) => args.text);
+    expect(requestedTexts).toEqual(
+      expect.arrayContaining([
+        "Codespaces",
+        "Code review",
+        "Open your Codespaces here",
+      ])
+    );
+    expect(document.querySelector("#product .lingoflow-inner")?.textContent).toBe(
+      "译文:Codespaces"
+    );
+    expect(document.querySelector("#review .lingoflow-inner")?.textContent).toBe(
+      "译文:Code review"
+    );
+    expect(requestedTexts.join(" ")).not.toContain("固定译名");
+  });
+
+  test("skips structured tokens but translates nearby words in the same view", async () => {
+    apiTranslate.mockImplementation(({ text }) =>
+      Promise.resolve({ trText: `译文:${text}`, isSame: false })
+    );
+    document.body.innerHTML = `
+      <main id="root">
+        <p id="url">https://example.org/settings</p>
+        <p id="email">team@example.org</p>
+        <p id="handle">@octocat</p>
+        <p id="navigation">Settings</p>
+        <p id="explanation">Contact the team at team@example.org</p>
+      </main>
+    `;
+
+    createTranslator({}, { minLength: 0 });
+    await flushAsync();
+
+    const requestedTexts = apiTranslate.mock.calls.map(([args]) => args.text);
+    expect(requestedTexts).toContain("Settings");
+    expect(requestedTexts).toContain("Contact the team at team@example.org");
+    expect(requestedTexts).not.toContain("https://example.org/settings");
+    expect(requestedTexts).not.toContain("team@example.org");
+    expect(requestedTexts).not.toContain("@octocat");
+    expect(document.querySelector("#navigation .lingoflow-inner")?.textContent).toBe(
+      "译文:Settings"
+    );
+  });
+
+  test("does not treat a hyphenated English phrase as an identifier", async () => {
+    apiTranslate.mockResolvedValue({ trText: "开源", isSame: false });
+    document.body.innerHTML =
+      '<main id="root"><p id="phrase">open-source</p></main>';
+
+    createTranslator({}, { minLength: 0 });
+    await flushAsync();
+
+    expect(apiTranslate).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "open-source" })
+    );
+    expect(document.querySelector("#phrase .lingoflow-inner")?.textContent).toBe(
+      "开源"
+    );
+  });
+
+  test("does not insert an unchanged provider response as a second label", async () => {
+    apiTranslate.mockResolvedValue({ trText: "Webhooks", isSame: false });
+    document.body.innerHTML = '<main id="root"><p>Webhooks</p></main>';
+
+    createTranslator({}, { minLength: 0 });
+    await flushAsync();
+
+    expect(apiTranslate).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "Webhooks" })
+    );
+    expect(document.querySelector(".lingoflow-wrapper")).toBeNull();
   });
 
   test("keeps translated text when host style is not a CSSStyleDeclaration", async () => {
@@ -365,6 +460,18 @@ describe("Translator rule styles", () => {
     await flushAsync();
 
     expect(apiTranslate).not.toHaveBeenCalled();
+  });
+
+  test("translates visible labels in accessible navigation controls", async () => {
+    document.body.innerHTML =
+      '<main id="root"><div role="button">Webhooks</div><div role="tab">Planning</div></main>';
+
+    createTranslator({}, { minLength: 0 });
+    await flushAsync();
+
+    const requestedTexts = apiTranslate.mock.calls.map(([args]) => args.text);
+    expect(requestedTexts).toContain("Webhooks");
+    expect(requestedTexts).toContain("Planning");
   });
 
   test("continues scanning block children after processing mixed parent nodes", async () => {

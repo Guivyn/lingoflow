@@ -72,7 +72,8 @@ const sanitizeTransApis = (transApis) => {
         typeof api === "object" &&
         !Array.isArray(api) &&
         typeof api.apiSlug === "string" &&
-        api.apiSlug.trim() !== ""
+        api.apiSlug.trim() !== "" &&
+        api.apiType !== "Google2"
     )
     .map((api) => {
       const normalizedApi = { ...api };

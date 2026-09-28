@@ -12,7 +12,6 @@ export class TranslationRenderer {
   #setting;
   #tags;
   #getPlaceholderConfig;
-  #getTerms;
   #isIgnoredElement;
   #isVisibleElement;
   #shouldBreak;
@@ -36,7 +35,6 @@ export class TranslationRenderer {
     setting,
     tags,
     getPlaceholderConfig,
-    getTerms,
     isIgnoredElement,
     isVisibleElement,
     shouldBreak,
@@ -46,7 +44,6 @@ export class TranslationRenderer {
     this.#setting = setting;
     this.#tags = tags;
     this.#getPlaceholderConfig = getPlaceholderConfig;
-    this.#getTerms = getTerms;
     this.#isIgnoredElement = isIgnoredElement;
     this.#isVisibleElement = isVisibleElement;
     this.#shouldBreak = shouldBreak;
@@ -55,12 +52,11 @@ export class TranslationRenderer {
   }
 
   // 处理节点转为翻译字符串
-  serializeForTranslation(nodes, termsStyle) {
+  serializeForTranslation(nodes) {
     let replaceCounter = 0;
     let wrapCounter = 0;
     const placeholderMap = new Map();
     const { startDelimiter, endDelimiter } = this.#getPlaceholderConfig();
-    const { values: termValues, regex: combinedTermsRegex } = this.#getTerms();
 
     const pushReplace = (html) => {
       replaceCounter++;
@@ -80,24 +76,6 @@ export class TranslationRenderer {
       if (node.nodeType === Node.TEXT_NODE) {
         let text = node.textContent;
         if (!text.trim()) return /\s/.test(text) ? " " : "";
-
-        if (combinedTermsRegex) {
-          combinedTermsRegex.lastIndex = 0;
-          text = text.replace(combinedTermsRegex, (...args) => {
-            const groups = args.slice(1, -2);
-            const matchedIndex = groups.findIndex(
-              (group) => group !== undefined
-            );
-            const fullMatch = args[0];
-            const termValue = termValues[matchedIndex];
-
-            return pushReplace(
-              `<i class="lingoflow-term" style="${termsStyle}">${
-                termValue || fullMatch
-              }</i>`
-            );
-          });
-        }
 
         text = text.replace(/\r?\n/g, () => pushReplace(`&#10;`));
 

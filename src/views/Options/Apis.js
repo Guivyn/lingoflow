@@ -53,7 +53,6 @@ import {
   OPT_TRANS_DEEPLX,
   OPT_TRANS_CUSTOMIZE,
   OPT_TRANS_GOOGLE,
-  OPT_TRANS_GOOGLE_2,
   OPT_TRANS_MICROSOFT,
   OPT_TRANS_DEEPSEEK,
   OPT_TRANS_DEEPL,
@@ -133,7 +132,6 @@ const apiListControlSx = {
 // Keep icon paths tied to apiType because apiName is user editable.
 const API_ICON_FILES = {
   [OPT_TRANS_GOOGLE]: "Google.svg",
-  [OPT_TRANS_GOOGLE_2]: "Google.svg",
   [OPT_TRANS_MICROSOFT]: "Microsoft.svg",
   [OPT_TRANS_DEEPSEEK]: "DeepSeek.svg",
   [OPT_TRANS_DEEPL]: "DeepL.svg",
@@ -467,7 +465,6 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
     placetag = BUILTIN_PLACETAGS[0],
     placetagFormat = "compact",
     sortOrder = 0,
-    aiTerms = "",
     thinkingMode = "auto",
     thinkingEffort = "_default",
     batchPromptSlug = "",
@@ -1142,19 +1139,6 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
               </Grid>
             </Grid>
           </Box>
-
-          {API_SPE_TYPES.ai.has(apiType) && (
-            <Input
-              size="small"
-              label={i18n("ai_terms")}
-              helperText={i18n("ai_terms_helper")}
-              name="aiTerms"
-              value={aiTerms}
-              onChange={handleChange}
-              multiline
-              maxRows={10}
-            />
-          )}
 
           <>
             {" "}

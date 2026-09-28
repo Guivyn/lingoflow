@@ -434,15 +434,14 @@ describe("buildSubtitleSystemPrompt", () => {
     expect(
       buildSubtitleSystemPrompt({
         subtitlePrompt:
-          "{{title}}|{{description}}|{{summary}}|{{tone}}|{{glossary}}",
+          "{{title}}|{{description}}|{{summary}}|{{tone}}",
         tone: "formal",
         docInfo: {
           title: "Video title",
           description: "Video description",
           summary: "Video summary",
         },
-        aiTerms: "Flow: 工作流",
       })
-    ).toContain("Video title|Video description|Video summary|formal|-");
+    ).toBe("Video title|Video description|Video summary|formal");
   });
 });

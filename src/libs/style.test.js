@@ -16,6 +16,12 @@ describe("style", () => {
     expect(textStyles).toContain("var(--lf-tr-color");
     expect(textStyles).toContain(".lingoflow-inner {");
     expect(textStyles).toContain("white-space: normal");
+    expect(textStyles).toMatch(
+      /\.lingoflow-wrapper \{[^}]*white-space: nowrap/s
+    );
+    expect(textStyles).toMatch(
+      /\.lingoflow-wrapper\.lingoflow-long \{[^}]*white-space: normal/s
+    );
     expect(textStyles).not.toContain("lf-blink");
     expect(textStyles).not.toContain("blur(0.2em)");
     expect(textStyles).not.toContain("-webkit-opacity");

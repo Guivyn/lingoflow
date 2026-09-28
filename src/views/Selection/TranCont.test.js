@@ -15,7 +15,6 @@ jest.mock("../../config", () => ({
     stream: new Set(["OpenAI"]),
   },
   OPT_TRANS_GOOGLE: "Google",
-  OPT_TRANS_GOOGLE_2: "Google2",
 }));
 
 jest.mock("../../hooks/I18n", () => ({
@@ -67,14 +66,6 @@ const baseApiSetting = {
   useStream: true,
   useBatchFetch: true,
   streamRenderMode: "realtime",
-};
-
-const google2ApiSetting = {
-  ...baseApiSetting,
-  apiSlug: "google2",
-  apiName: "Google2",
-  apiType: "Google2",
-  useStream: false,
 };
 
 const googleApiSetting = {
@@ -152,34 +143,6 @@ describe("TranCont", () => {
       await deferred.promise;
     });
     expect(outputText(container)).toBe("最终译文");
-
-    act(() => {
-      root.unmount();
-    });
-  });
-
-  test("preserves line breaks and decodes HTML entities for Google2", async () => {
-    apiTranslate.mockResolvedValueOnce({
-      trText:
-        "First isn&#39;t &quot;plain&quot; &amp; simple<br><br> Second<br/>\tThird<br /> Fourth",
-    });
-
-    const { container, root } = renderTranCont({
-      text: "First\n\nSecond\r\nThird\rFourth",
-      apiSlug: "google2",
-      transApis: [google2ApiSetting],
-    });
-    await flushEffects();
-
-    expect(apiTranslate.mock.calls[0][0].text).toBe(
-      "First<br><br>Second<br>Third<br>Fourth"
-    );
-    const expectedText =
-      'First isn\'t "plain" & simple\n\nSecond\nThird\nFourth';
-    expect(outputText(container)).toBe(expectedText);
-    expect(container.querySelector("[data-copy-text]").dataset.copyText).toBe(
-      expectedText
-    );
 
     act(() => {
       root.unmount();

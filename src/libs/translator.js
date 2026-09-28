@@ -18,14 +18,13 @@ import {
   getPlainTextChunkLimit,
   readNextPlainTextChunk,
 } from "../core/scanner/plainTextChunking";
-import { parseTerms } from "../core/rules/TermParser";
 import { RuleMatcher } from "../core/rules/RuleMatcher";
 import { TranslationRenderer } from "../core/renderer/TranslationRenderer";
 import { DomScanner } from "../core/scanner/DomScanner";
 import { DomKit } from "../core/dom/DomKit";
 import { createInterpreter } from "./interpreter";
 import { clearFetchPool } from "./pool";
-import { scheduleIdle, genEventName, parseAITerms } from "./utils";
+import { scheduleIdle, genEventName } from "./utils";
 import { apiTranslate } from "../services";
 import { appLog } from "./log";
 import { clearAllBatchQueue } from "./batchQueue";
@@ -266,7 +265,7 @@ export class Translator {
   .tag, .tags, .post-tag, .s-tag, .badge, .badges, .chip, .chips,
   [class*="badge"], [class*="chip"],
   .breadcrumb, .breadcrumbs, [class*="breadcrumb"],
-  [role="tab"], [role="button"], .tabs, [class*="tabs"],
+  .tabs, [class*="tabs"],
   a[href*="/tags/"], a[href*="tagged"]`;
 
   #setting; // 设置选项
@@ -277,8 +276,6 @@ export class Translator {
   #enabled = false; // 全局默认状态
   #runId = 0; // 用于中止过期的异步请求
 
-  #termValues = []; // 按顺序存储术语的替换值
-  #combinedTermsRegex; // 专业术语正则表达式
   #combinedSkipsRegex; // 跳过文本正则表达式
 
   #placeholderCache = null; // 缓存正则对象
@@ -286,7 +283,6 @@ export class Translator {
   #eventName = ""; // 通信事件名称
   #docInfo = {}; // 网页信息
   #pageLangPromise = null; // 整页翻译的页面级语言检测结果缓存（Promise）
-  #glossary = {}; // AI词典
   #ruleMatcher = null; // 规则匹配器
   #renderer = null; // DOM 渲染器
   #scanner = null; // DOM 扫描器
@@ -528,10 +524,6 @@ export class Translator {
       setting: this.#setting,
       tags: Translator.TAGS,
       getPlaceholderConfig: () => this.#placeholderConfig,
-      getTerms: () => ({
-        values: this.#termValues,
-        regex: this.#combinedTermsRegex,
-      }),
       isIgnoredElement: this.#ruleMatcher.isIgnoredElement.bind(
         this.#ruleMatcher
       ),
@@ -569,11 +561,6 @@ export class Translator {
       shouldBreak: this.#ruleMatcher.shouldBreak.bind(this.#ruleMatcher),
     });
 
-    const parsedTerms = parseTerms(this.#rule.terms);
-    this.#termValues = parsedTerms.values;
-    this.#combinedTermsRegex = parsedTerms.combinedRegex;
-    // this.#parseAITerms(this.#rule.aiTerms);
-    this.#glossary = parseAITerms(this.#rule.aiTerms);
 
     // 仅显示译文模式下悬浮恢复原文
     if (
@@ -665,24 +652,6 @@ export class Translator {
 
     this.#scanner.init();
   }
-
-  // #parseAITerms(termsString) {
-  //   if (!termsString || typeof termsString !== "string") return;
-
-  //   try {
-  //     this.#glossary = Object.fromEntries(
-  //       termsString
-  //         .split(/\n|;/)
-  //         .map((line) => {
-  //           const [k = "", v = ""] = line.split(",").map((s) => s.trim());
-  //           return [k, v];
-  //         })
-  //         .filter(([k]) => k)
-  //     );
-  //   } catch (err) {
-  //     appLog("parse aiterms", err);
-  //   }
-  // }
 
   // // todo: 利用AI总结
   // #getDocDescription() {
@@ -879,7 +848,6 @@ export class Translator {
       textStyle,
       transEndHook,
       transOnly,
-      termsStyle,
       textExtStyle,
       selectStyle,
       parentStyle,
@@ -893,7 +861,7 @@ export class Translator {
 
     try {
       const [processedString, placeholderMap] =
-        this.#renderer.serializeForTranslation(nodes, termsStyle);
+        this.#renderer.serializeForTranslation(nodes);
       if (this.#ruleMatcher.isInvalidText(processedString)) return;
 
       const cachedHtml = this.#translationTextCache.get(processedString);
@@ -1133,7 +1101,6 @@ export class Translator {
       this.#setting.subtitleSetting
     );
 
-    const glossary = { ...this.#glossary };
     const apisMap = this.#apisMap;
 
     const args = {
@@ -1141,7 +1108,6 @@ export class Translator {
       fromLang,
       toLang,
       apiSetting,
-      glossary,
       onStreamChunk,
     };
 
@@ -1312,7 +1278,6 @@ export class Translator {
 
       if (injectJs?.trim() && this.#rule.enableScripts === true) {
         const apiSetting = { ...this.#apiSetting };
-        const glossary = { ...this.#glossary };
         const apisMap = this.#apisMap;
         const apiDectect = tryDetectLang;
         const hookSandbox = createInterpreter();
@@ -1323,7 +1288,6 @@ export class Translator {
             apiSetting,
             apisMap,
             toLang,
-            glossary,
           },
         });
         hookSandbox.run(injectJs);

@@ -198,8 +198,6 @@ const genTransReq = async ({ reqHook, ...args }) => {
     fromLang,
     toLang,
     texts,
-    glossary,
-    aiTerms,
     customHeader,
     customBody,
     events,
@@ -229,7 +227,6 @@ const genTransReq = async ({ reqHook, ...args }) => {
           texts,
           docInfo,
           tone,
-          aiTerms,
         })
       : buildSystemPrompt({
           systemPrompt: useBatchFetch ? systemPrompt : nobatchPrompt,
@@ -259,8 +256,6 @@ const genTransReq = async ({ reqHook, ...args }) => {
           texts,
           docInfo,
           tone,
-          glossary,
-          aiTerms,
         });
   }
 
@@ -574,7 +569,6 @@ export async function* handleTranslate(
     fromLang,
     toLang,
     langMap,
-    glossary,
     apiSetting,
     usePool,
     docInfo,
@@ -612,7 +606,6 @@ export async function* handleTranslate(
       fromLang,
       toLang,
       langMap,
-      glossary,
       hisMsgs,
       useStream: requestUseStream,
       docInfo,

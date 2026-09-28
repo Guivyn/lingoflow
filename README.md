@@ -2,7 +2,7 @@
 
 [中文](README.md) · [English](README.en.md)
 
-**v1.3.3** · [下载最新版](https://github.com/Guivyn/lingoflow/releases/latest) · [查看 CI](https://github.com/Guivyn/lingoflow/actions/workflows/ci.yml)
+**v1.4.0** · [下载最新版](https://github.com/Guivyn/lingoflow/releases/latest) · [查看 CI](https://github.com/Guivyn/lingoflow/actions/workflows/ci.yml)
 
 <p align="center">
   <img src="./assets/readme/hero.svg" width="100%" alt="LingoFlow 灵语：面向网页的双语阅读扩展，支持整页、划词、悬停和 YouTube 字幕">
@@ -66,8 +66,8 @@ pnpm build
 
 ## 翻译引擎与配置
 
-- **机器翻译**：Google、Google2、Microsoft、DeepL、DeepLX。
-- **AI 翻译**：DeepSeek、OpenAI、Custom，可按接口能力使用流式输出、批处理聚合、上下文记忆、Prompt、Hook 和术语表。
+- **机器翻译**：Google、Microsoft、DeepL、DeepLX。
+- **AI 翻译**：DeepSeek、OpenAI、Custom，可按接口能力使用流式输出、批处理聚合、上下文记忆、Prompt 和 Hook。
 
 自定义翻译接口的接入与 Hook 说明见 [docs/custom-api_v2.md](docs/custom-api_v2.md)。界面设计规范见 [docs/DESIGN.md](docs/DESIGN.md)。
 

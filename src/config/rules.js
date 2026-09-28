@@ -42,8 +42,6 @@ export const DEFAULT_RULE = {
   selector: "", // 核心待翻译元素 CSS 选择器
   keepSelector: "", // 保留原文的行内元素 CSS 选择器
   blockSelector: "", // 自定义块级元素 CSS 选择器
-  terms: "", // 本地化专有名词/术语表字典 (格式：原文=译文)
-  aiTerms: "", // 发送给大模型的专有名词/术语表
   apiSlug: GLOBAL_KEY, // 本网页指定的翻译 API 标识名 (继承/覆盖全局)
   fromLang: GLOBAL_KEY, // 网页源语言代码 (继承/覆盖全局)
   toLang: GLOBAL_KEY, // 目标语言代码 (继承/覆盖全局)
@@ -52,7 +50,6 @@ export const DEFAULT_RULE = {
   // bgColor: "", // 译文颜色 (作废)
   // textDiyStyle: "", // 自定义译文样式 (作废)
   textExtStyle: "", // 附加到译文元素上的 CSS 样式字符串
-  termsStyle: "", // 匹配到专有名词时的自定义高亮样式
   selectStyle: "", // 改变翻译目标节点本身的 CSS 样式 (如清除行高限制等)
   parentStyle: "", // 改变翻译目标节点父级的 CSS 样式
   grandStyle: "", // 改变翻译目标节点祖父级的 CSS 样式
@@ -92,8 +89,6 @@ export const GLOBAL_RULE = {
   selector: DEFAULT_SELECTOR, // 默认的翻译元素
   keepSelector: DEFAULT_KEEP_SELECTOR, // 保留不动的行内元素
   blockSelector: "",
-  terms: "",
-  aiTerms: "",
   apiSlug: OPT_TRANS_MICROSOFT, // 默认采用微软翻译
   fromLang: "auto", // 默认自动识别原文语言
   toLang: "zh-CN", // 默认翻译为简体中文
@@ -101,7 +96,6 @@ export const GLOBAL_RULE = {
   transOpen: "false", // 默认不自动开始翻译网页 (需要手动点击或快捷键)
   // textDiyStyle: DEFAULT_DIY_STYLE, // 自定义译文样式 (作废)
   textExtStyle: "",
-  termsStyle: "font-weight: bold;", // 专业术语默认加粗
   selectStyle: DEFAULT_SELECT_STYLE,
   parentStyle: "",
   grandStyle: "",

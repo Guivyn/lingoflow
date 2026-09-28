@@ -123,11 +123,8 @@ const mergeRules = (baseRule, overrideRule) => {
     merged[key] = mergeSelectors(baseRule[key] || "", overrideRule[key] || "");
   });
 
-  // 2. 合并非空字符串类型的属性 (如自定义 JS/CSS/术语表样式)
+  // 2. 合并非空字符串类型的属性 (如自定义 JS/CSS)
   [
-    "terms",
-    "aiTerms",
-    "termsStyle",
     "textExtStyle",
     "selectStyle",
     "parentStyle",
@@ -263,9 +260,6 @@ export const checkRules = (rules) => {
         blockSelector,
         rootsSelector,
         ignoreSelector,
-        terms,
-        aiTerms,
-        termsStyle,
         textExtStyle,
         selectStyle,
         parentStyle,
@@ -303,9 +297,6 @@ export const checkRules = (rules) => {
         blockSelector: type(blockSelector) === "string" ? blockSelector : "",
         rootsSelector: type(rootsSelector) === "string" ? rootsSelector : "",
         ignoreSelector: type(ignoreSelector) === "string" ? ignoreSelector : "",
-        terms: type(terms) === "string" ? terms : "",
-        aiTerms: type(aiTerms) === "string" ? aiTerms : "",
-        termsStyle: type(termsStyle) === "string" ? termsStyle : "",
         textExtStyle: type(textExtStyle) === "string" ? textExtStyle : "",
         selectStyle: type(selectStyle) === "string" ? selectStyle : "",
         parentStyle: type(parentStyle) === "string" ? parentStyle : "",

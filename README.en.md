@@ -2,7 +2,7 @@
 
 [中文](README.md) · [English](README.en.md)
 
-**v1.3.3** · [Download the latest release](https://github.com/Guivyn/lingoflow/releases/latest) · [CI](https://github.com/Guivyn/lingoflow/actions/workflows/ci.yml)
+**v1.4.0** · [Download the latest release](https://github.com/Guivyn/lingoflow/releases/latest) · [CI](https://github.com/Guivyn/lingoflow/actions/workflows/ci.yml)
 
 <p align="center">
   <img src="./assets/readme/hero.svg" width="100%" alt="LingoFlow: a bilingual reading extension for webpages, selected text, hover translation, and YouTube subtitles">
@@ -66,8 +66,8 @@ The build output is written to `build/chrome/`; load that directory from `chrome
 
 ## Engines and configuration
 
-- **Machine translation**: Google, Google2, Microsoft, DeepL, and DeepLX.
-- **AI translation**: DeepSeek, OpenAI, and Custom, with streaming, batch aggregation, context, prompts, hooks, and glossary support where supported by the selected interface.
+- **Machine translation**: Google, Microsoft, DeepL, and DeepLX.
+- **AI translation**: DeepSeek, OpenAI, and Custom, with streaming, batch aggregation, context, prompts, and hooks where supported by the selected interface.
 
 See [docs/custom-api_v2.md](docs/custom-api_v2.md) for custom endpoints and hooks, and [docs/DESIGN.md](docs/DESIGN.md) for the interface design system.
 

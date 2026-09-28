@@ -24,7 +24,6 @@ export const INPUT_PLACE_TITLE = "{{title}}"; // 页面标题占位符
 export const INPUT_PLACE_DESCRIPTION = "{{description}}"; // 页面描述(Description)占位符
 export const INPUT_PLACE_SUMMARY = "{{summary}}"; // 页面摘要(Summary)占位符
 export const INPUT_PLACE_CONTEXT = "{{context}}"; // 当前选中文本所在上下文占位符
-export const INPUT_PLACE_GLOSSARY = "{{glossary}}"; // 专业术语表占位符
 
 // --- 划词翻译词典服务商 ---
 export const OPT_DICT_BING = "Bing"; // 必应词典
@@ -40,7 +39,6 @@ export const OPT_SUG_MAP = new Set(OPT_SUG_ALL);
 
 // --- 翻译服务提供商标识常量 ---
 export const OPT_TRANS_GOOGLE = "Google"; // 谷歌翻译服务
-export const OPT_TRANS_GOOGLE_2 = "Google2"; // 谷歌翻译 pa 网页 API (支持大批量 HTML)
 export const OPT_TRANS_MICROSOFT = "Microsoft"; // 微软翻译服务
 export const OPT_TRANS_DEEPL = "DeepL"; // DeepL 官方专业翻译 API
 export const OPT_TRANS_DEEPLX = "DeepLX"; // DeepLX 开源/自定义中转端
@@ -51,7 +49,6 @@ export const OPT_TRANS_CUSTOMIZE = "Custom"; // 自定义翻译 API
 // 内置支持的翻译引擎（精简版）
 export const OPT_ALL_TRANS_TYPES = [
   OPT_TRANS_GOOGLE,
-  OPT_TRANS_GOOGLE_2,
   OPT_TRANS_MICROSOFT,
   OPT_TRANS_DEEPL,
   OPT_TRANS_DEEPLX,
@@ -71,7 +68,6 @@ export const API_SPE_TYPES = {
   // 机器翻译引擎（传统查表/神经网络翻译，不需要大型语言模型）
   machine: new Set([
     OPT_TRANS_GOOGLE,
-    OPT_TRANS_GOOGLE_2,
     OPT_TRANS_MICROSOFT,
     OPT_TRANS_DEEPL,
     OPT_TRANS_DEEPLX,
@@ -89,7 +85,6 @@ export const API_SPE_TYPES = {
   // 支持段落聚合（批处理合并）翻译的引擎
   batch: new Set([
     OPT_TRANS_DEEPSEEK,
-    OPT_TRANS_GOOGLE_2,
     OPT_TRANS_MICROSOFT,
     OPT_TRANS_DEEPL,
     OPT_TRANS_OPENAI,
@@ -213,7 +208,6 @@ const OPT_LANGS_SPEC_DEFAULT_UC = new Map(
 );
 export const OPT_LANGS_TO_SPEC = {
   [OPT_TRANS_GOOGLE]: OPT_LANGS_SPEC_DEFAULT,
-  [OPT_TRANS_GOOGLE_2]: OPT_LANGS_SPEC_DEFAULT,
   [OPT_TRANS_MICROSOFT]: new Map([
     ...OPT_LANGS_SPEC_DEFAULT,
     ["auto", ""],
@@ -263,9 +257,6 @@ Description: ${INPUT_PLACE_DESCRIPTION}
 Summary: ${INPUT_PLACE_SUMMARY}
 Tone: ${INPUT_PLACE_TONE}
 
-# Glossary:
-${INPUT_PLACE_GLOSSARY}
-
 # Task
 Translate the Source Text below to ${INPUT_PLACE_TO}.
 1. Use the Context to ensure accuracy.
@@ -279,7 +270,7 @@ Translated Text:`;
 export const defaultSystemPrompt = `Act as a translation API. Output a single raw JSON object only. No extra text or fences.
 
 Input:
-{"targetLanguage":"<lang>","title":"<context>","description":"<context>","summary":"<context>","segments":[{"id":1,"text":"..."}],"glossary":{"sourceTerm":"targetTerm"},"tone":"<formal|casual>"}
+{"targetLanguage":"<lang>","title":"<context>","description":"<context>","summary":"<context>","segments":[{"id":1,"text":"..."}],"tone":"<formal|casual>"}
 
 Output:
 {"translations":[{"id":1,"text":"...","sourceLanguage":"<detected>"}]}
@@ -288,14 +279,13 @@ Rules:
 1.  Use title/description for context only; do not output them.
 2.  Keep id, order, and count of segments.
 3.  Preserve whitespace, HTML entities, and all HTML-like tags (e.g., <i1>, <a1>). Translate inner text only.
-4.  Highest priority: Follow 'glossary'. Use value for translation; if value is "", keep the key.
 5.  Do not translate: content in <code>, <pre>, text enclosed in backticks, or placeholders like {1}, {{1}}, [1], [[1]].
 6.  Apply the specified tone to the translation.
 7.  Detect sourceLanguage for each segment.
 8.  Return empty or unchanged inputs as is.
 
 Example:
-Input: {"targetLanguage":"zh-CN","segments":[{"id":1,"text":"A <b>React</b> component."}],"glossary":{"component":"组件","React":""}}
+Input: {"targetLanguage":"zh-CN","segments":[{"id":1,"text":"A <b>React</b> component."}]}
 Output: {"translations":[{"id":1,"text":"一个<b>React</b>组件","sourceLanguage":"en"}]}
 
 Fail-safe: On any error, return {"translations":[]}.`;
@@ -303,7 +293,7 @@ Fail-safe: On any error, return {"translations":[]}.`;
 export const defaultSystemPromptXml = `Act as a translation API. Output raw XML-like format only. No Markdown fences (xml). No conversational filler.
 
 Input:
-{"targetLanguage":"<lang>","title":"<context>","description":"<context>","summary":"<context>","segments":[{"id":1,"text":"..."}],"glossary":{"sourceTerm":"targetTerm"},"tone":"<formal|casual>"}
+{"targetLanguage":"<lang>","title":"<context>","description":"<context>","summary":"<context>","segments":[{"id":1,"text":"..."}],"tone":"<formal|casual>"}
 
 Output Format:
 <root>
@@ -315,14 +305,13 @@ Rules:
 1.  **Strict Format**: Output ONLY the <root> element and its children. Do not include "xml" version declarations or markdown code blocks.
 2.  **Structure**: Maintain the exact "id" from the input in the "id" attribute. Detect the source language for the "sourceLanguage" attribute.
 3.  **HTML & Whitespace**: Preserve all HTML tags (e.g., <b>, <span>, <br>) and whitespace exactly as they appear in the structure. Only translate the text content inside them.
-4.  **Glossary**: Highest priority. Use the glossary value for translation. If the value is "", keep the source term as is.
 5.  **Do Not Translate**: Content inside <code>, <pre>, text in backticks ("code"), and placeholders like {1}, {{1}}, [1], [[1]].
 6.  **Context**: Use the "title" and "description" fields to understand the context for better translation accuracy, but do not output them.
 7.  **Tone**: Apply the specified "tone" (formal/casual).
 
 Example:
 Input:
-{"targetLanguage":"zh-CN","segments":[{"id":0,"text":"Hello <b>World</b>!"}],"glossary":{"World":"世界"},"tone":"formal"}
+{"targetLanguage":"zh-CN","segments":[{"id":0,"text":"Hello <b>World</b>!"}],"tone":"formal"}
 
 Output:
 <root>
@@ -332,7 +321,7 @@ Output:
 export const defaultSystemPromptLines = `Act as a translation API. Output raw text lines in "ID | Text" format. No Markdown. No conversational filler.
 
 Input:
-{"targetLanguage":"<lang>","title":"<context>","description":"<context>","summary":"<context>","segments":[{"id":1,"text":"..."}],"glossary":{"sourceTerm":"targetTerm"},"tone":"<formal|casual>"}
+{"targetLanguage":"<lang>","title":"<context>","description":"<context>","summary":"<context>","segments":[{"id":1,"text":"..."}],"tone":"<formal|casual>"}
 
 Output Format:
 <id> | <Translation for Segment>
@@ -346,12 +335,11 @@ Rules:
 4.  **Separator**: Use the pipe symbol " | " strictly to separate the ID and the text.
 5.  **Context**: Use title/description for context only; do not output them.
 6.  **HTML/Tags**: Preserve whitespace, HTML entities, and all HTML-like tags (e.g., <i1>, <b>). Translate inner text only.
-7.  **Glossary**: Highest priority. Follow 'glossary'. Use value for translation; if value is "", keep the key.
 8.  **Do Not Translate**: content in <code>, <pre>, text enclosed in backticks, or placeholders like {1}, {{1}}, [1].
 9.  **Tone**: Apply the specified tone.
 
 Example:
-Input: {"targetLanguage":"zh-CN","segments":[{"id":0,"text":"Hello."},{"id":1,"text":"Line 1\nLine 2"}],"glossary":{}}
+Input: {"targetLanguage":"zh-CN","segments":[{"id":0,"text":"Hello."},{"id":1,"text":"Line 1\nLine 2"}]}
 Output:
 0 | 你好。
 1 | 第一行<br>第二行
@@ -440,9 +428,6 @@ Description: ${INPUT_PLACE_DESCRIPTION}
 Summary: ${INPUT_PLACE_SUMMARY}
 Tone: ${INPUT_PLACE_TONE}
 
-# Glossary (Terminology):
-${INPUT_PLACE_GLOSSARY}
-
 # Task
 Group the input word-level JSON array into readable, well-paced bilingual subtitle segments. Target Language: ${INPUT_PLACE_TO}.
 
@@ -463,7 +448,7 @@ Group the input word-level JSON array into readable, well-paced bilingual subtit
 3. Pause Indicators: An optional "pauseMs" field is the timeline gap in milliseconds after the current input item. If "pauseMs" is missing, treat it as 0 milliseconds and do not infer a pause. Larger positive values indicate stronger sentence boundaries, but grammatical correctness and semantic coherence always take priority.
 4. Exact Translation Alignment: Build "o" first from the exact source span covered by the current "e", starting after the previous "e". Then translate only the current "o" into "t". The "t" field MUST NOT omit that span, translate future input items, or carry text from adjacent segments.
 5. Silent Self-Check: Before returning, silently verify that every "e", "o", and "t" correspond one-to-one, every "o" matches its exact input range, all source-length limits are satisfied, and all input items are covered exactly once. Do not output the self-check or any reasoning.
-6. Translation Quality: Keep "t" concise, accurate, and natural while strictly adhering to the provided Context, Tone, and Glossary.
+6. Translation Quality: Keep "t" concise, accurate, and natural while using the provided context and tone.
 
 # Example
 Input: [{"id":0,"text":"Once"},{"id":1,"text":"the"},{"id":2,"text":"assets"},{"id":3,"text":"are"},{"id":4,"text":"ready,"},{"id":5,"text":"open"},{"id":6,"text":"the"},{"id":7,"text":"storyboard"},{"id":8,"text":"tab.","pauseMs":850},{"id":9,"text":"This"},{"id":10,"text":"is"},{"id":11,"text":"where"},{"id":12,"text":"everything"},{"id":13,"text":"comes"},{"id":14,"text":"together."},{"id":15,"text":"If"},{"id":16,"text":"a"},{"id":17,"text":"scene"},{"id":18,"text":"does"},{"id":19,"text":"not"},{"id":20,"text":"match"},{"id":21,"text":"your"},{"id":22,"text":"idea,"},{"id":23,"text":"regenerate"},{"id":24,"text":"it"},{"id":25,"text":"or"},{"id":26,"text":"adjust"},{"id":27,"text":"the"},{"id":28,"text":"prompt"},{"id":29,"text":"carefully"},{"id":30,"text":"until"},{"id":31,"text":"it"},{"id":32,"text":"feels"},{"id":33,"text":"right."}]
@@ -502,7 +487,6 @@ const defaultApi = {
   tone: BUILTIN_STONES[0], // 翻译风格
   placeholder: BUILTIN_PLACEHOLDERS[0], // 占位符
   placetag: BUILTIN_PLACETAGS[0], // 占位标签
-  aiTerms: "", // AI智能专业术语 （todo: 备用）
   customHeader: "",
   customBody: "",
   reqHook: "", // request 钩子函数
@@ -543,14 +527,6 @@ const defaultApiOpts = {
   [OPT_TRANS_GOOGLE]: {
     ...defaultApi,
     url: "https://translate.googleapis.com/translate_a/single",
-  },
-  [OPT_TRANS_GOOGLE_2]: {
-    ...defaultApi,
-    url: "https://translate-pa.googleapis.com/v1/translateHtml",
-    key: "",
-    useBatchFetch: true,
-    placetag: "a",
-    placetagFormat: "attribute",
   },
   [OPT_TRANS_MICROSOFT]: {
     ...defaultApi,
