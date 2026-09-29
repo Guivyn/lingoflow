@@ -46,7 +46,8 @@ const SETTINGS_VERSION_V1 = 1;
 export const SETTINGS_VERSION_V2 = 2;
 export const SETTINGS_VERSION_V3 = 3;
 export const SETTINGS_VERSION_V4 = 4;
-export const CURRENT_SETTINGS_VERSION = SETTINGS_VERSION_V4;
+export const SETTINGS_VERSION_V5 = 5;
+export const CURRENT_SETTINGS_VERSION = SETTINGS_VERSION_V5;
 
 /**
  * 预设的提示词列表。包含了系统出厂自带的各种场景提示词模板。

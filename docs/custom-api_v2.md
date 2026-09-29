@@ -96,30 +96,33 @@ Hook 中 `Prompt` 类型说明：
 
 ## 谷歌翻译接口
 
-> 此接口不支持聚合
+> 当前 LingoFlow 中名为 Google 的内置接口使用上游 Google2 的批量 HTML 协议。
 
 URL
 
 ```
-https://translate.googleapis.com/translate_a/single?client=gtx&dj=1&dt=t&ie=UTF-8&q={{text}}&sl=en&tl=zh-CN
+https://translate-pa.googleapis.com/v1/translateHtml
 ```
 
-Request Hook
+Request Body
 
-```js
-async (args) => {
-  const url = args.url.replace("{{text}}", args.texts[0]);
-  const method = "GET";
-  return { url, method };
-};
+```json
+[[["{{text}}"], "en", "zh-CN"], "wt_lib"]
 ```
 
-Response Hook
+Request Headers
 
-```js
-async ({ res }) => {
-  return { translations: [[res?.sentences?.[0]?.trans || "", res?.src]] };
-};
+```json
+{
+  "Content-Type": "application/json+protobuf",
+  "X-Goog-API-Key": "YOUR_GOOGLE2_KEY"
+}
+```
+
+Response format
+
+```json
+[["译文1", "译文2"], ["en", "en"]]
 ```
 
 

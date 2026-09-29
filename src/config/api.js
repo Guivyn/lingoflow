@@ -84,6 +84,7 @@ export const API_SPE_TYPES = {
   ]),
   // 支持段落聚合（批处理合并）翻译的引擎
   batch: new Set([
+    OPT_TRANS_GOOGLE,
     OPT_TRANS_DEEPSEEK,
     OPT_TRANS_MICROSOFT,
     OPT_TRANS_DEEPL,
@@ -526,7 +527,14 @@ const defaultAiApiOpts = {
 const defaultApiOpts = {
   [OPT_TRANS_GOOGLE]: {
     ...defaultApi,
-    url: "https://translate.googleapis.com/translate_a/single",
+    // 保留 Google 这个 UI 名称，但底层使用上游 Google2 的批量 HTML 接口。
+    url: "https://translate-pa.googleapis.com/v1/translateHtml",
+    // 上游 KISS Translator 当前使用的公开客户端 Key；用户仍可在设置页覆盖。
+    key: "AIzaSyATBXajvzQLTDHEQbcpq0Ihe0vWDHmO520",
+    useBatchFetch: true,
+    // Google2 要求使用 <a i=0>...</a> 形式的标签占位符。
+    placetag: "a",
+    placetagFormat: "attribute",
   },
   [OPT_TRANS_MICROSOFT]: {
     ...defaultApi,

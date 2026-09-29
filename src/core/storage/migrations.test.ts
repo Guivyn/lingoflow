@@ -8,12 +8,13 @@ import {
   SETTINGS_VERSION_V2,
   SETTINGS_VERSION_V3,
   SETTINGS_VERSION_V4,
+  SETTINGS_VERSION_V5,
 } from "../../config/prompt";
 
 describe("settings migrations", () => {
   test("keeps version constants in sync", () => {
     expect(CURRENT_SETTINGS_VERSION).toBe(SETTINGS_SCHEMA_VERSION);
-    expect(CURRENT_SETTINGS_VERSION).toBe(SETTINGS_VERSION_V4);
+    expect(CURRENT_SETTINGS_VERSION).toBe(SETTINGS_VERSION_V5);
     expect(SETTINGS_MIGRATIONS[CURRENT_SETTINGS_VERSION]).toBeDefined();
   });
 
@@ -97,9 +98,7 @@ display: inline-block`,
     expect(subtitle.windowStyle).toContain(
       "background: rgba(27, 25, 21, 0.72)"
     );
-    expect(subtitle.originStyle).toContain(
-      "color: rgba(255, 255, 255, 0.72)"
-    );
+    expect(subtitle.originStyle).toContain("color: rgba(255, 255, 255, 0.72)");
     expect(subtitle.translationStyle).toContain("font-weight: 500");
   });
 
@@ -119,6 +118,36 @@ display: inline-block`,
       originStyle: "font-size: 20px;",
       translationStyle: "color: lime;",
     });
+  });
+
+  test("migrates the existing Google entry to the Google2 protocol", () => {
+    const migrated = runSettingMigrations({
+      version: SETTINGS_VERSION_V4,
+      transApis: [
+        {
+          apiSlug: "Google",
+          apiName: "Google",
+          apiType: "Google",
+          url: "https://translate.googleapis.com/translate_a/single",
+          key: "",
+          useBatchFetch: false,
+          placetag: "i",
+          placetagFormat: "compact",
+        },
+      ],
+    });
+
+    expect(migrated.version).toBe(SETTINGS_VERSION_V5);
+    expect(migrated.transApis).toEqual([
+      expect.objectContaining({
+        apiSlug: "Google",
+        apiType: "Google",
+        url: "https://translate-pa.googleapis.com/v1/translateHtml",
+        useBatchFetch: true,
+        placetag: "a",
+        placetagFormat: "attribute",
+      }),
+    ]);
   });
 
   test("returns an empty object for invalid input", () => {

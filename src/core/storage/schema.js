@@ -9,7 +9,7 @@ import {
   DEFAULT_HTTP_TIMEOUT,
 } from "../../config/api";
 
-export const SETTINGS_SCHEMA_VERSION = 4;
+export const SETTINGS_SCHEMA_VERSION = 5;
 export { CURRENT_SETTINGS_VERSION };
 
 export const SETTINGS_SCHEMA = {
@@ -43,7 +43,9 @@ const validateSettingField = (field, value) => {
     case "array":
       return Array.isArray(value);
     case "object":
-      return typeof value === "object" && value !== null && !Array.isArray(value);
+      return (
+        typeof value === "object" && value !== null && !Array.isArray(value)
+      );
     default:
       return true;
   }

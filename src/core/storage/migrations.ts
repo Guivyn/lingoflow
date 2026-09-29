@@ -4,6 +4,7 @@ import {
   SETTINGS_VERSION_V2,
   SETTINGS_VERSION_V3,
   SETTINGS_VERSION_V4,
+  SETTINGS_VERSION_V5,
 } from "../../config/prompt";
 import { CURRENT_SETTINGS_VERSION, SETTINGS_SCHEMA_VERSION } from "./schema";
 import {
@@ -14,6 +15,7 @@ import {
   SUBTITLE_TRANSLATION_STYLE,
   SUBTITLE_WINDOW_STYLE,
 } from "../../config/setting";
+import { DEFAULT_API_LIST, OPT_TRANS_GOOGLE } from "../../config/api";
 
 export type SettingRecord = Record<string, unknown>;
 export type SettingMigration = (setting: SettingRecord) => SettingRecord;
@@ -23,9 +25,11 @@ export type SettingMigration = (setting: SettingRecord) => SettingRecord;
  * 新版本只需追加条目，调用方统一走 `runSettingMigrations` 链式执行。
  */
 export const SETTINGS_MIGRATIONS: Partial<Record<number, SettingMigration>> = {
-  [SETTINGS_VERSION_V2]: migrateSettingPromptsToV2 as unknown as SettingMigration,
+  [SETTINGS_VERSION_V2]:
+    migrateSettingPromptsToV2 as unknown as SettingMigration,
   [SETTINGS_VERSION_V3]: migrateSubtitleStyleToV3,
   [SETTINGS_VERSION_V4]: migrateBatchDefaultsToV4,
+  [SETTINGS_VERSION_V5]: migrateGoogleToGoogle2,
 };
 
 export { CURRENT_SETTINGS_VERSION, SETTINGS_SCHEMA_VERSION };
@@ -39,6 +43,35 @@ function migrateBatchDefaultsToV4(setting: SettingRecord): SettingRecord {
   return {
     ...setting,
     version: SETTINGS_VERSION_V4,
+  };
+}
+
+/**
+ * v5 将原先名为 Google 的 gtx 单条接口升级为上游 Google2 批量接口。
+ * 保留 apiSlug/apiName 和用户自定义 Key，但统一替换已失效的协议字段。
+ */
+function migrateGoogleToGoogle2(setting: SettingRecord): SettingRecord {
+  const googleDefault = DEFAULT_API_LIST.find(
+    (api) => api.apiType === OPT_TRANS_GOOGLE
+  );
+  const transApis = Array.isArray(setting.transApis)
+    ? setting.transApis.map((api) => {
+        if (api?.apiType !== OPT_TRANS_GOOGLE || !googleDefault) return api;
+        return {
+          ...api,
+          url: googleDefault.url,
+          key: api.key || googleDefault.key,
+          useBatchFetch: true,
+          placetag: "a",
+          placetagFormat: "attribute",
+        };
+      })
+    : setting.transApis;
+
+  return {
+    ...setting,
+    transApis,
+    version: SETTINGS_VERSION_V5,
   };
 }
 

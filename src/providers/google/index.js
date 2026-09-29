@@ -1,5 +1,4 @@
 import { OPT_TRANS_GOOGLE } from "../../config";
-import { stringifyParams } from "../shared";
 
 export const googleProvider = {
   apiType: OPT_TRANS_GOOGLE,
@@ -9,7 +8,7 @@ export const googleProvider = {
     machine: true,
     ai: false,
     mulkeys: false,
-    batch: false,
+    batch: true,
     context: false,
     stream: false,
     darkIcon: false,
@@ -17,26 +16,20 @@ export const googleProvider = {
   },
   thinking: null,
   buildRequest({ texts, from, to, url, key }) {
-    const params = stringifyParams({
-      client: "gtx",
-      dt: "t",
-      dj: 1,
-      ie: "UTF-8",
-      sl: from,
-      tl: to,
-      q: texts.join(" "),
-    });
-    url = `${url}?${params}`;
+    // Google2 的 translateHtml 接口使用 protobuf 风格的 JSON 数组，
+    // 第一项是 [文本数组, 源语言, 目标语言]，第二项固定为 wt_lib。
+    const body = [[texts, from || "auto", to], "wt_lib"];
     const headers = {
-      "Content-type": "application/json",
+      "Content-Type": "application/json+protobuf",
     };
     if (key) {
-      headers.Authorization = `Bearer ${key}`;
+      headers["X-Goog-API-Key"] = key;
     }
 
-    return { url, headers, method: "GET" };
+    return { url, body, headers, method: "POST" };
   },
   parseTranslate(res) {
-    return [[res?.sentences?.map((item) => item.trans).join(" "), res?.src]];
+    if (!Array.isArray(res?.[0])) return [];
+    return res[0].map((text, index) => [text || "", res?.[1]?.[index] || ""]);
   },
 };
