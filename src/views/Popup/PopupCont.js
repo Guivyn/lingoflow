@@ -162,21 +162,43 @@ export default function PopupCont({
   };
 
   // 统一处理翻译规则通用设置项的更新（如自动扫描、扫描全部节点、保留排版、仅显示译文等）
-  const handleChange = async (e) => {
+  const updateRuleFields = async (fields) => {
     try {
-      let { name, value } = e.target;
-      const nextRule = { ...rule, [name]: value };
+      const nextRule = { ...rule, ...fields };
       setRule(nextRule);
       await persistRule(nextRule);
 
       if (!processActions) {
-        await sendTabMsg(MSG_TRANS_PUTRULE, { [name]: value });
+        await sendTabMsg(MSG_TRANS_PUTRULE, fields);
       } else {
-        processActions({ action: MSG_TRANS_PUTRULE, args: { [name]: value } });
+        await processActions({ action: MSG_TRANS_PUTRULE, args: fields });
       }
     } catch (err) {
       appLog("update rule", err);
     }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    return updateRuleFields({ [name]: value });
+  };
+
+  const handleSwapLanguages = () => {
+    const { fromLang, toLang } = rule;
+    const backupLang = setting?.tranboxSetting?.toLang2;
+    // Auto 只能用于源语言；反向翻译优先使用已配置的备用目标语言。
+    const reverseTarget = OPT_LANGS_TO.some(
+      ([value]) => value === backupLang && value !== toLang
+    )
+      ? backupLang
+      : toLang === "en"
+        ? "zh-CN"
+        : "en";
+    closeLangMenu();
+    return updateRuleFields({
+      fromLang: toLang,
+      toLang: fromLang === "auto" ? reverseTarget : fromLang,
+    });
   };
 
   // 监听全局快捷键配置变更，将其转为前端显示的文本字符串形式（如 "Alt+T"）
@@ -274,16 +296,20 @@ export default function PopupCont({
         >
           {fromLang === "auto" ? "Auto" : langShortName(fromLangLabel)}
         </Box>
-        <Typography
-          component="span"
+        <IconButton
+          type="button"
+          onClick={handleSwapLanguages}
+          title={i18n("swap_languages", "交换语言")}
+          aria-label={i18n("swap_languages", "交换语言")}
+          size="small"
           sx={{
             fontFamily: tokens.font.mono,
             fontSize: tokens.font.sizeSm,
-            color: "text.disabled",
+            color: "text.secondary",
           }}
         >
           ⇄
-        </Typography>
+        </IconButton>
         <Box
           component="button"
           type="button"
@@ -492,7 +518,8 @@ export default function PopupCont({
               value={value}
               selected={(langMenuFor === "from" ? fromLang : toLang) === value}
               onClick={() => {
-                handleChange({ target: { name: langMenuFor, value } });
+                const ruleField = langMenuFor === "from" ? "fromLang" : "toLang";
+                handleChange({ target: { name: ruleField, value } });
                 closeLangMenu();
               }}
             >

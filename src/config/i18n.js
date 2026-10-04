@@ -341,6 +341,14 @@ export const I18N = {
     ko: `대상 언어`,
     tr: `Hedef Dil`,
   },
+  swap_languages: {
+    zh: `交换语言`,
+    en: `Swap languages`,
+    zh_TW: `交換語言`,
+    ja: `言語を入れ替える`,
+    ko: `언어 바꾸기`,
+    tr: `Dilleri değiştir`,
+  },
   to_lang2: {
     zh: `第二目标语言`,
     en: `Target Language 2`,
