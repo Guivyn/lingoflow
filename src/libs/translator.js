@@ -30,6 +30,7 @@ import { apiTranslate } from "../services";
 import { appLog } from "./log";
 import { clearAllBatchQueue } from "./batchQueue";
 import { tryDetectLang } from "./detect";
+import { isChineseTargetText } from "./targetLanguage";
 import { injectInternalCss } from "./injector";
 import { isExt } from "./client";
 import { sendBgMsg } from "./msg";
@@ -879,6 +880,11 @@ export class Translator {
       const [processedString, placeholderMap] =
         this.#renderer.serializeForTranslation(nodes);
       if (this.#ruleMatcher.isInvalidText(processedString)) return;
+
+      // Check each group's visible text even when the source language is fixed.
+      // Serialized placeholders/markup must not count as foreign-language text.
+      const visibleText = nodes.map((node) => node.textContent || "").join("");
+      if (isChineseTargetText(visibleText, toLang)) return;
 
       const cachedHtml = this.#translationTextCache.get(processedString);
       if (cachedHtml !== undefined) {

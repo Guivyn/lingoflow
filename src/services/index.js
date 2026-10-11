@@ -29,6 +29,7 @@ import {
 import { getHttpCachePolyfill, putHttpCachePolyfill } from "../libs/cache";
 import { getBatchQueue, normalizeBatchOptions } from "../libs/batchQueue";
 import { getDocInfo } from "../libs/docInfo";
+import { isChineseTargetText } from "../libs/targetLanguage";
 
 const PROMPT_CACHE_SALT = "prompt-cache";
 const PROMPT_CACHE_SCOPE_BATCH = "batch";
@@ -117,6 +118,12 @@ export const apiTranslate = async ({
   const to = langMap.get(toLang);
   if (!to) {
     throw new Error(`The target lang: ${toLang} not support`);
+  }
+
+  // Enforce this before cache lookup and provider/batch dispatch, including
+  // callers outside the webpage scanner and requests with a fixed source.
+  if (isChineseTargetText(text, toLang)) {
+    return { trText: text, srLang: to, srCode: toLang, isSame: true };
   }
 
   // 缓存 Key (cacheOpts) 构造。
@@ -249,7 +256,7 @@ export const apiTranslate = async ({
   }
 
   // 判断是否发生了“源语言与目标语言相同”的无效翻译情况 (如英文网页翻译为英文)
-  const isSame = fromLang === "auto" && srLang === to;
+  const isSame = srLang === to;
 
   // 4. 将成功的结果写入本地网络缓存中
   if (useCache) {

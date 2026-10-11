@@ -126,6 +126,21 @@ describe("Translator rule styles", () => {
     jest.clearAllMocks();
   });
 
+  test("fixed English source skips Chinese groups on a mixed-language page", async () => {
+    document.body.innerHTML = `<main id="root">
+      <p id="chinese">醒来看见这一幕 感觉身体暖暖的...</p>
+      <p id="name">是脆脆不是treetree</p>
+      <p id="english">A warm and cozy room</p>
+    </main>`;
+    createTranslator({}, { minLength: 0 });
+    await flushAsync();
+    expect(apiTranslate.mock.calls.map(([args]) => args.text)).toEqual([
+      "A warm and cozy room",
+    ]);
+    expect(document.querySelector("#chinese .lingoflow-inner")).toBeNull();
+    expect(document.querySelector("#name .lingoflow-inner")).toBeNull();
+  });
+
   test("routes ordinary technical labels to the provider even with legacy term settings", async () => {
     apiTranslate.mockImplementation(({ text }) =>
       Promise.resolve({ trText: `译文:${text}`, isSame: false })
