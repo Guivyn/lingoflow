@@ -1,11 +1,8 @@
 import type { SelectChangeEvent } from "@mui/material/Select";
 import { useI18n } from "../../hooks/I18n";
 import { useSetting } from "../../hooks/Setting";
-import {
-  UI_LANGS,
-  OPT_LANGS_TO_REVERSED as OPT_LANGS_TO,
-} from "../../config";
-import { Select, SettingRow, SettingSection } from "../../ui";
+import { UI_LANGS, OPT_LANGS_TO_REVERSED as OPT_LANGS_TO } from "../../config";
+import { Select, SettingRow, SettingSection, Switch } from "../../ui";
 
 const SKIP_LANG_OPTIONS = OPT_LANGS_TO.map(([value, label]) => ({
   value,
@@ -17,14 +14,16 @@ const SKIP_LANG_OPTIONS = OPT_LANGS_TO.map(([value, label]) => ({
  */
 export default function LanguageSettings() {
   const { setting, updateSetting } = useSetting() as unknown as {
-    setting: { uiLang?: string; skipLangs?: string[] };
+    setting: {
+      uiLang?: string;
+      skipLangs?: string[];
+      autoTransTarget?: boolean;
+    };
     updateSetting: (patch: Record<string, unknown>) => void;
   };
   const i18n = useI18n() as (key: string, fallback?: string) => string;
   const uiLang = setting?.uiLang ?? "zh";
-  const skipLangs = Array.isArray(setting?.skipLangs)
-    ? setting.skipLangs
-    : [];
+  const skipLangs = Array.isArray(setting?.skipLangs) ? setting.skipLangs : [];
 
   const uiLangOptions = UI_LANGS.map(([value, label]) => ({
     value,
@@ -42,8 +41,17 @@ export default function LanguageSettings() {
           options={uiLangOptions}
           variant="standard"
           sx={{ width: "100%" }}
+          onChange={(event) => updateSetting({ uiLang: event.target.value })}
+        />
+      </SettingRow>
+      <SettingRow
+        title={i18n("auto_trans_target")}
+        description={i18n("auto_trans_target_helper")}
+      >
+        <Switch
+          checked={setting?.autoTransTarget !== false}
           onChange={(event) =>
-            updateSetting({ uiLang: event.target.value })
+            updateSetting({ autoTransTarget: event.target.checked })
           }
         />
       </SettingRow>

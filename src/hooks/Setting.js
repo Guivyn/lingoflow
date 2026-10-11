@@ -25,6 +25,7 @@ import { logger } from "../libs/log";
 import { sendBgMsg } from "../libs/msg";
 import { isExt } from "../libs/client";
 import { updateStoredSetting } from "../libs/storage";
+import { migrateAutoTranslateSetting } from "../core/storage/schema";
 
 // 创建全局设置 Context，用于在子组件中访问配置数据和更新、重载方法
 const SettingContext = createContext({
@@ -43,11 +44,15 @@ export function SettingProvider({ children, context }) {
 
   // 从本地 Storage 中持久化加载/读写全局设置项
   const {
-    data: setting,
+    data: storedSetting,
     isLoading,
     update,
     reload,
   } = useStorage(STOKEY_SETTING, DEFAULT_SETTING, { persist: false });
+  const setting = useMemo(
+    () => storedSetting && migrateAutoTranslateSetting(storedSetting),
+    [storedSetting]
+  );
   const [saveStatus, setSaveStatus] = useState("idle");
   const saveSequenceRef = useRef(0);
 
@@ -89,6 +94,9 @@ export function SettingProvider({ children, context }) {
         "prompts",
         "shortcuts",
         "customStyles",
+        "autoTransTarget",
+        "skipLangs",
+        "langDetector",
       ]
         .map((key) => JSON.stringify(setting?.[key] ?? null))
         .join("|"),

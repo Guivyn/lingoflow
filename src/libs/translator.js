@@ -12,6 +12,7 @@ import {
   API_SPE_TYPES,
   MSG_INJECT_CSS,
   MSG_UPDATE_ICON,
+  OPT_LANGS_MAP,
 } from "../config";
 import { resolveApiPromptSettings } from "../config/prompt";
 import {
@@ -561,7 +562,6 @@ export class Translator {
       shouldBreak: this.#ruleMatcher.shouldBreak.bind(this.#ruleMatcher),
     });
 
-
     // 仅显示译文模式下悬浮恢复原文
     if (
       this.#rule.transOnly === "true" &&
@@ -583,29 +583,45 @@ export class Translator {
       this.enable();
     } else if (this.#setting.preInit) {
       this.#init();
-      this.#maybeAutoTranslateEnglish();
     }
+    this.#maybeAutoTranslateTarget();
   }
 
-  // 开启“英文自动翻译”时，检测页面语言并自动启用翻译
-  async #maybeAutoTranslateEnglish() {
-    if (this.#enabled || this.#setting.autoTransEnglish !== true) return;
-    const fromLang = this.#rule.fromLang;
-    if (fromLang !== "auto" && fromLang !== "en") return;
+  // 将非目标语言页面自动译为当前网页规则的目标语言。
+  async #maybeAutoTranslateTarget() {
+    if (this.#enabled || this.#setting.autoTransTarget !== true) return;
+    const { fromLang, toLang } = this.#rule;
+    if (!OPT_LANGS_MAP.has(toLang) || fromLang === toLang) return;
+    const { langDetector, skipLangs = [] } = this.#setting;
+    const runId = this.#runId;
 
     const sample = this.#getPageLanguageSample();
     if (!sample) return;
 
     try {
-      const deLang = await tryDetectLang(sample, this.#setting.langDetector);
-      // 缓存检测结果，后续整页节点处理直接复用，避免重复检测。
-      this.#pageLangPromise = Promise.resolve(deLang || "");
-      const toLang = this.#rule.toLang || "";
-      if (deLang === "en" && toLang.slice(0, 2) !== "en") {
-        this.enable();
-      }
+      // 复用页面级检测，所有段落共享同一结果。
+      const deLang = await this.#getPageDeLang(langDetector);
+      // 检测期间关闭开关、停止模块或修改语言后，不再应用过期结果。
+      if (
+        this.#enabled ||
+        runId !== this.#runId ||
+        this.#setting.autoTransTarget !== true ||
+        this.#setting.langDetector !== langDetector ||
+        this.#setting.skipLangs !== skipLangs ||
+        this.#rule.fromLang !== fromLang ||
+        this.#rule.toLang !== toLang
+      )
+        return;
+      if (
+        !OPT_LANGS_MAP.has(deLang) ||
+        toLang.slice(0, 2) === deLang.slice(0, 2) ||
+        skipLangs.includes(deLang) ||
+        (fromLang !== "auto" && fromLang.slice(0, 2) !== deLang.slice(0, 2))
+      )
+        return;
+      this.enable();
     } catch (err) {
-      appLog("auto translate english", err);
+      appLog("auto translate target language", err);
     }
   }
 
@@ -1412,13 +1428,13 @@ export class Translator {
     Object.assign(this.#setting, patch);
     // 语言检测器或跳过语言变化后，页面级语言结果需要重新计算。
     this.#pageLangPromise = null;
-    if (patch?.autoTransEnglish === true) {
-      this.#maybeAutoTranslateEnglish();
-    }
+    this.#maybeAutoTranslateTarget();
   }
 
   // 停止运行
   stop() {
+    // 尚未启用时 disable 会直接返回，也要取消正在等待的自动语言检测。
+    this.#runId++;
     this.disable();
     this.#resetOptions();
     this.#renderer.disableTransOnlyRevert();
@@ -1457,6 +1473,7 @@ export class Translator {
     // 配置变更时清空正则缓存
     this.#placeholderCache = null;
     this.#ruleMatcher.resetBlockSelectorInvalid();
+    this.#maybeAutoTranslateTarget();
 
     const needsTriggerRescan =
       this.#enabled &&

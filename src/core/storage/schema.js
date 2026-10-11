@@ -21,7 +21,7 @@ export const SETTINGS_SCHEMA = {
   transApis: { type: "array" },
   customStyles: { type: "array" },
   prompts: { type: "array" },
-  autoTransEnglish: { type: "boolean" },
+  autoTransTarget: { type: "boolean" },
   logLevel: { type: "string" },
   version: { type: "number" },
 };
@@ -97,8 +97,21 @@ const sanitizeTransApis = (transApis) => {
     });
 };
 
-export const normalizeSetting = (setting = {}) => {
+// 旧开关改名时保留用户偏好；新字段优先，写回时只保留一个配置来源。
+export const migrateAutoTranslateSetting = (setting = {}) => {
   const normalized = { ...setting };
+  if (
+    typeof normalized.autoTransTarget !== "boolean" &&
+    typeof normalized.autoTransEnglish === "boolean"
+  ) {
+    normalized.autoTransTarget = normalized.autoTransEnglish;
+  }
+  delete normalized.autoTransEnglish;
+  return normalized;
+};
+
+export const normalizeSetting = (setting = {}) => {
+  const normalized = migrateAutoTranslateSetting(setting);
   for (const field of Object.keys(SETTINGS_SCHEMA)) {
     if (!validateSettingField(field, normalized[field])) {
       delete normalized[field];

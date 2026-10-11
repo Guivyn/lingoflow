@@ -3,11 +3,26 @@ import { createRoot } from "react-dom/client";
 import PopupCont from "./PopupCont";
 import { persistRule } from "../../libs/rules";
 import { sendBgMsg, sendTabMsg } from "../../libs/msg";
-import { MSG_TRANS_PUTRULE } from "../../config";
+import {
+  MSG_RELOAD_SETTING,
+  MSG_TRANS_PUTRULE,
+  MSG_TRANS_PUTSETTING,
+} from "../../config";
+import {
+  getSettingWithDefault,
+  storage,
+  updateStoredSetting,
+} from "../../libs/storage";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 jest.mock("../../libs/rules", () => ({ persistRule: jest.fn() }));
+jest.mock("../../libs/client", () => ({ isExt: true }));
+jest.mock("../../libs/storage", () => ({
+  updateStoredSetting: jest.fn(),
+  getSettingWithDefault: jest.fn(),
+  storage: { subscribe: jest.fn(() => jest.fn()) },
+}));
 jest.mock("../../libs/msg", () => ({
   sendTabMsg: jest.fn(),
   sendBgMsg: jest.fn().mockResolvedValue([]),
@@ -26,6 +41,12 @@ describe("Popup language swap button", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     sendBgMsg.mockResolvedValue([]);
+    storage.subscribe.mockImplementation(() => jest.fn());
+    updateStoredSetting.mockImplementation(async (patch) => ({
+      transApis: [{ apiSlug: "google" }],
+      tranboxSetting: { transOpen: false },
+      ...patch,
+    }));
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -46,15 +67,17 @@ describe("Popup language swap button", () => {
         textStyle: "",
         transOpen: "false",
       });
+      const [setting, setSetting] = useState({
+        transApis: [{ apiSlug: "google" }],
+        tranboxSetting: { transOpen: false, toLang2 },
+        autoTransTarget: true,
+      });
       return (
         <PopupCont
           rule={rule}
           setRule={setRule}
-          setting={{
-            transApis: [{ apiSlug: "google" }],
-            tranboxSetting: { transOpen: false, toLang2 },
-          }}
-          setSetting={() => {}}
+          setting={setting}
+          setSetting={setSetting}
           handleOpenSetting={() => {}}
           processActions={processActions}
         />
@@ -108,12 +131,73 @@ describe("Popup language swap button", () => {
   test.each([
     ["zh-CN", "-", "en"],
     ["en", "en", "zh-CN"],
-  ])("Auto with target %s and backup %s uses a valid reverse target", async (toLang, backup, expected) => {
-    renderLanguages("auto", toLang, backup);
-    await clickSwap();
-    expect(sendTabMsg).toHaveBeenLastCalledWith(MSG_TRANS_PUTRULE, {
-      fromLang: toLang,
-      toLang: expected,
+  ])(
+    "Auto with target %s and backup %s uses a valid reverse target",
+    async (toLang, backup, expected) => {
+      renderLanguages("auto", toLang, backup);
+      await clickSwap();
+      expect(sendTabMsg).toHaveBeenLastCalledWith(MSG_TRANS_PUTRULE, {
+        fromLang: toLang,
+        toLang: expected,
+      });
+    }
+  );
+
+  test.each([false, true])(
+    "persists and synchronizes the auto-translate switch through in-page handler %s",
+    async (inPage) => {
+      const processActions = inPage ? jest.fn() : undefined;
+      renderLanguages("auto", "ja", "en", processActions);
+      const input = container.querySelector('input[name="autoTransTarget"]');
+      expect(input.checked).toBe(true);
+      expect(input.closest("label").textContent).toBe("auto_trans_target");
+      await act(async () => {
+        input.click();
+      });
+      expect(updateStoredSetting).toHaveBeenCalledWith({
+        autoTransTarget: false,
+      });
+      expect(input.checked).toBe(false);
+      expect(sendBgMsg).toHaveBeenCalledWith(MSG_RELOAD_SETTING);
+      const appliedAction = inPage
+        ? processActions.mock.calls[0][0]
+        : {
+            action: sendTabMsg.mock.calls[0][0],
+            args: sendTabMsg.mock.calls[0][1],
+          };
+      expect(appliedAction).toEqual({
+        action: MSG_TRANS_PUTSETTING,
+        args: { autoTransTarget: false },
+      });
+    }
+  );
+
+  test("updates the switch when another component changes storage", async () => {
+    renderLanguages("auto", "ja");
+    const onStorageChange = storage.subscribe.mock.calls.at(-1)[1];
+    getSettingWithDefault.mockResolvedValue({
+      transApis: [],
+      tranboxSetting: {},
+      autoTransTarget: false,
     });
+    await act(async () => {
+      await onStorageChange();
+    });
+    expect(
+      container.querySelector('input[name="autoTransTarget"]').checked
+    ).toBe(false);
+  });
+
+  test("does not apply an unsaved preference when persistence fails", async () => {
+    updateStoredSetting.mockRejectedValueOnce(new Error("storage unavailable"));
+    renderLanguages("auto", "ja");
+    await act(async () => {
+      container.querySelector('input[name="autoTransTarget"]').click();
+    });
+    expect(sendBgMsg).not.toHaveBeenCalledWith(MSG_RELOAD_SETTING);
+    expect(sendTabMsg).not.toHaveBeenCalled();
+    expect(
+      container.querySelector('input[name="autoTransTarget"]').checked
+    ).toBe(true);
   });
 });

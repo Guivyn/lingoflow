@@ -54,6 +54,7 @@ The build output is written to `build/chrome/`; load that directory from `chrome
 ## Use cases
 
 - **Whole-page translation**: automatic scanning, rule matching, and SPA mutation observation for bilingual article reading.
+- **Auto-translate to target language**: translate pages in other languages into the current page rule's target language, with one shared switch across the popup, in-page panel, and settings. [Behavior guide (Chinese)](docs/auto-translation.md)
 - **Selection and hover translation**: translate a word, phrase, or paragraph inline, in a translation box, or in a hover bubble.
 - **YouTube subtitles**: bilingual display, sentence splitting, subtitle styles, and optional AI-assisted segmentation.
 - **Dictionary and suggestions**: English dictionary lookup, input suggestions, and comparison across translation engines.

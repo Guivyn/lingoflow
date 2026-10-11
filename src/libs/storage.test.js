@@ -122,14 +122,43 @@ describe("storage adapter migration", () => {
     }));
 
     expect(updated.uiLang).toBe("zh-CN");
-    expect(updated.autoTransEnglish).toBe(false);
+    expect(updated.autoTransTarget).toBe(false);
+    expect(updated).not.toHaveProperty("autoTransEnglish");
     expect(updated.tranboxSetting).toEqual({ transOpen: true, toLang: "en" });
     expect(JSON.parse(window.localStorage.getItem(STOKEY_SETTING))).toEqual(
       expect.objectContaining({
         uiLang: "zh-CN",
-        autoTransEnglish: false,
+        autoTransTarget: false,
         tranboxSetting: { transOpen: true, toLang: "en" },
       })
     );
+  });
+
+  test.each([true, false])(
+    "preserves the legacy auto-translation preference %s",
+    async (enabled) => {
+      window.localStorage.setItem(
+        STOKEY_SETTING,
+        JSON.stringify({
+          version: CURRENT_SETTINGS_VERSION,
+          autoTransEnglish: enabled,
+        })
+      );
+      expect(await getSettingWithDefault()).toEqual(
+        expect.objectContaining({
+          autoTransTarget: enabled,
+        })
+      );
+      await runDataMigration();
+      const stored = JSON.parse(window.localStorage.getItem(STOKEY_SETTING));
+      expect(stored.autoTransTarget).toBe(enabled);
+      expect(stored).not.toHaveProperty("autoTransEnglish");
+    }
+  );
+
+  test("prefers the new setting when both names are present", () => {
+    expect(
+      normalizeSetting({ autoTransTarget: false, autoTransEnglish: true })
+    ).toEqual({ autoTransTarget: false });
   });
 });

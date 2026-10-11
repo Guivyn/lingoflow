@@ -19,7 +19,10 @@ import { isExt } from "./client";
 import { browser } from "./browser";
 import { appLog } from "./log";
 import { debounce } from "./utils";
-import { normalizeSetting } from "../core/storage/schema";
+import {
+  migrateAutoTranslateSetting,
+  normalizeSetting,
+} from "../core/storage/schema";
 
 // 品牌更名前的应用名，用于一次性迁移旧 chrome.storage/localStorage 数据。
 const LEGACY_APP_NAME = "KISS-Translator";
@@ -248,6 +251,13 @@ export const runDataMigration = async () => {
       appLog("Data migration failed:", err);
     }
   }
+  const currentSetting = await getSetting();
+  if (
+    currentSetting &&
+    Object.prototype.hasOwnProperty.call(currentSetting, "autoTransEnglish")
+  ) {
+    await setSetting(currentSetting);
+  }
 };
 
 export const getSettingWithDefault = async () => {
@@ -263,7 +273,8 @@ export const getSettingWithDefault = async () => {
 
   return mergeSettingWithDefault(setting);
 };
-export const setSetting = async (val) => setObj(STOKEY_SETTING, val);
+export const setSetting = async (val) =>
+  setObj(STOKEY_SETTING, migrateAutoTranslateSetting(val));
 
 // 基于最新存储快照更新设置，供弹窗等短生命周期入口使用，避免整份旧配置覆盖选项页修改。
 export const updateStoredSetting = async (patchOrUpdater) => {

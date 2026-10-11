@@ -39,7 +39,7 @@ export type Setting = {
   tranboxSetting?: Record<string, unknown>;
   subtitleSetting?: Record<string, unknown>;
   customStyles?: unknown[];
-  autoTransEnglish?: boolean;
+  autoTransTarget?: boolean;
   skipLangs?: string[];
   blacklist?: string;
   csplist?: string;

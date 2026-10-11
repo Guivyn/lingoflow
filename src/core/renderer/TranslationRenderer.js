@@ -7,6 +7,65 @@ import { createRetrySVG } from "../../libs/svg";
 import { DomKit } from "../dom/DomKit";
 import { tokens } from "../../ui/theme/tokens";
 
+const PRESENTATION_ONLY_TAGS = new Set([
+  "B",
+  "BIG",
+  "CITE",
+  "DEL",
+  "EM",
+  "FONT",
+  "I",
+  "INS",
+  "MARK",
+  "Q",
+  "S",
+  "SMALL",
+  "STRONG",
+  "U",
+]);
+
+const RESTORED_TAG_ATTRIBUTES = {
+  A: new Set(["href", "target", "rel", "title", "download"]),
+  BDI: new Set(["dir", "lang"]),
+  BDO: new Set(["dir", "lang"]),
+  RUBY: new Set(["dir", "lang"]),
+  SPAN: new Set(["dir", "lang"]),
+};
+
+// Restored inline elements keep the page's layout typography, but not its per-tag formatting.
+const RESTORED_TAG_STYLE =
+  "all: revert !important; color: inherit !important; font: inherit !important; " +
+  "background: transparent !important; text-decoration: none !important; " +
+  "text-shadow: none !important; filter: none !important; opacity: 1 !important; " +
+  "box-shadow: none !important; border: 0 !important;";
+
+function getRestoredTagName(node) {
+  return PRESENTATION_ONLY_TAGS.has(node.tagName?.toUpperCase())
+    ? "span"
+    : node.localName;
+}
+
+function buildRestoredOpeningTag(node, tagName) {
+  const escapeAttr = (value) =>
+    String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  const allowedAttributes = RESTORED_TAG_ATTRIBUTES[tagName.toUpperCase()];
+  let tag = `<${tagName}`;
+
+  if (allowedAttributes) {
+    for (const attr of node.attributes) {
+      if (allowedAttributes.has(attr.name.toLowerCase())) {
+        tag += ` ${attr.name.toLowerCase()}="${escapeAttr(attr.value)}"`;
+      }
+    }
+  }
+
+  return `${tag} style="${RESTORED_TAG_STYLE}">`;
+}
+
 export class TranslationRenderer {
   #rule;
   #setting;
@@ -129,9 +188,10 @@ export class TranslationRenderer {
           wrapCounter++;
           const { tagName, format } = this.#getPlaceholderConfig();
 
+          const restoredTagName = getRestoredTagName(node);
           placeholderMap.set(`TAG_${wrapCounter}`, {
-            openTag: buildOpeningTag(node),
-            closeTag: `</${node.localName}>`,
+            openTag: buildRestoredOpeningTag(node, restoredTagName),
+            closeTag: `</${restoredTagName}>`,
           });
 
           let startPlaceholder, endPlaceholder;
@@ -151,16 +211,6 @@ export class TranslationRenderer {
 
       return "";
     };
-
-    function buildOpeningTag(node) {
-      const escapeAttr = (str) => str.replace(/"/g, "&quot;");
-      let tag = `<${node.tagName.toLowerCase()}`;
-      for (const attr of node.attributes) {
-        tag += ` ${attr.name}="${escapeAttr(attr.value)}"`;
-      }
-      tag += ">";
-      return tag;
-    }
 
     const processedString = nodes.map(traverse).join("").trim();
 

@@ -19,12 +19,17 @@ import {
   MSG_TRANS_PUTRULE,
   MSG_TRANS_PUTSETTING,
   MSG_RELOAD_SETTING,
+  STOKEY_SETTING,
   MSG_COMMAND_SHORTCUTS,
   OPT_LANGS_FROM_REVERSED as OPT_LANGS_FROM,
   OPT_LANGS_TO_REVERSED as OPT_LANGS_TO,
 } from "../../config";
 import { appLog } from "../../libs/log";
-import { updateStoredSetting } from "../../libs/storage";
+import {
+  getSettingWithDefault,
+  storage,
+  updateStoredSetting,
+} from "../../libs/storage";
 import { persistRule } from "../../libs/rules";
 import { useAllTextStyles } from "../../hooks/CustomStyles";
 import { tokens } from "../../ui/theme/tokens";
@@ -79,6 +84,23 @@ export default function PopupCont({
   // 可用的译文显示样式列表
   const { allTextStyles } = useAllTextStyles();
 
+  // 浏览器弹窗与页面内面板都订阅同一设置，外部入口修改后同步开关。
+  useEffect(() => {
+    let active = true;
+    const unsubscribe = storage.subscribe(STOKEY_SETTING, async () => {
+      try {
+        const nextSetting = await getSettingWithDefault();
+        if (active) setSetting(nextSetting);
+      } catch (err) {
+        appLog("sync popup setting", err);
+      }
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [setSetting]);
+
   const openLangMenu = (which) => (event) => {
     setLangMenuFor(which);
     setLangAnchor(event.currentTarget);
@@ -130,34 +152,35 @@ export default function PopupCont({
     }
   };
 
-  // 切换“英文自动翻译”：持久保存并让当前页面立即按新开关生效
-  const handleAutoTransEnglishToggle = async (e) => {
-    const autoTransEnglish = e.target.checked;
+  // 切换“目标语言自动翻译”：持久保存并让当前页面立即按新开关生效
+  const handleAutoTransTargetToggle = async (e) => {
+    const autoTransTarget = e.target.checked;
     try {
-      const nextSetting = await updateStoredSetting({ autoTransEnglish });
+      const nextSetting = await updateStoredSetting({ autoTransTarget });
       setSetting(nextSetting);
     } catch (err) {
-      appLog("persist autoTransEnglish", err);
+      appLog("persist autoTransTarget", err);
+      return;
     }
 
     // 让所有已打开标签页从存储重读配置，避免旧标签页继续使用过期状态。
     if (isExt) {
       sendBgMsg(MSG_RELOAD_SETTING).catch((err) => {
-        appLog("broadcast autoTransEnglish reload", err);
+        appLog("broadcast autoTransTarget reload", err);
       });
     }
 
     try {
       if (!processActions) {
-        await sendTabMsg(MSG_TRANS_PUTSETTING, { autoTransEnglish });
+        await sendTabMsg(MSG_TRANS_PUTSETTING, { autoTransTarget });
       } else {
-        processActions({
+        await processActions({
           action: MSG_TRANS_PUTSETTING,
-          args: { autoTransEnglish },
+          args: { autoTransTarget },
         });
       }
     } catch (err) {
-      appLog("apply autoTransEnglish", err);
+      appLog("apply autoTransTarget", err);
     }
   };
 
@@ -327,11 +350,7 @@ export default function PopupCont({
       </Stack>
 
       {/* 主开关：整行状态 */}
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-      >
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Box>
           <Typography
             component="div"
@@ -409,12 +428,13 @@ export default function PopupCont({
             control={
               <Switch
                 size="small"
-                name="autoTransEnglish"
-                checked={setting?.autoTransEnglish !== false}
-                onChange={handleAutoTransEnglishToggle}
+                name="autoTransTarget"
+                checked={setting?.autoTransTarget !== false}
+                onChange={handleAutoTransTargetToggle}
               />
             }
-            label={i18n("auto_trans_english")}
+            label={i18n("auto_trans_target")}
+            title={i18n("auto_trans_target_helper")}
             sx={compactLabelSx}
           />
         </Grid>
@@ -479,11 +499,7 @@ export default function PopupCont({
       </Box>
 
       {/* 底部操作：赞赏支持与设置 */}
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-      >
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Button
           variant="text"
           onClick={() => {
@@ -518,7 +534,8 @@ export default function PopupCont({
               value={value}
               selected={(langMenuFor === "from" ? fromLang : toLang) === value}
               onClick={() => {
-                const ruleField = langMenuFor === "from" ? "fromLang" : "toLang";
+                const ruleField =
+                  langMenuFor === "from" ? "fromLang" : "toLang";
                 handleChange({ target: { name: ruleField, value } });
                 closeLangMenu();
               }}

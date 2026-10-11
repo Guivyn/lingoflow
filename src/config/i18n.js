@@ -2149,13 +2149,21 @@ export const I18N = {
     ko: `원문 숨기기`,
     tr: `Orijinali Gizle`,
   },
-  auto_trans_english: {
-    zh: `英文自动翻译`,
-    en: `Auto-Translate English`,
-    zh_TW: `英文自動翻譯`,
-    ja: `英語を自動翻訳`,
-    ko: `영어 자동 번역`,
-    tr: `İngilizceyi Otomatik Çevir`,
+  auto_trans_target: {
+    zh: `目标语言自动翻译`,
+    en: `Auto-Translate to Target Language`,
+    zh_TW: `目標語言自動翻譯`,
+    ja: `対象言語へ自動翻訳`,
+    ko: `대상 언어로 자동 번역`,
+    tr: `Hedef Dile Otomatik Çevir`,
+  },
+  auto_trans_target_helper: {
+    zh: `将与当前网页规则目标语言不同的页面自动翻译；目标语言相同或属于忽略语言时跳过。`,
+    en: `Automatically translate pages into the current page rule's target language. Skip pages already in that language or in the ignored languages.`,
+    zh_TW: `自動將頁面翻譯成目前網頁規則的目標語言；相同語言或忽略語言的頁面會跳過。`,
+    ja: `現在のページルールの対象言語へ自動翻訳します。同じ言語や除外言語のページはスキップします。`,
+    ko: `현재 페이지 규칙의 대상 언어로 자동 번역합니다. 같은 언어 또는 제외된 언어의 페이지는 건너뜁니다.`,
+    tr: `Sayfaları geçerli sayfa kuralının hedef diline otomatik çevirir. Aynı dildeki veya yok sayılan dillerdeki sayfalar atlanır.`,
   },
   confirm_title: {
     zh: `确认`,

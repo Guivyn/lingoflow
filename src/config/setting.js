@@ -154,7 +154,6 @@ export const DEFAULT_SUBTITLE_SETTING = {
   segPromptSlug: DEFAULT_SUBTITLE_PROMPT_SLUG, // 指定的 subtitle prompt slug，仅在指定提示词模式下生效
 };
 
-
 // --- 全局默认设置对象，存储于 local storage ---
 export const DEFAULT_SETTING = {
   version: CURRENT_SETTINGS_VERSION,
@@ -165,7 +164,7 @@ export const DEFAULT_SETTING = {
   minLength: TRANS_MIN_LENGTH, // 整页翻译的段落最小有效长度限制
   maxLength: TRANS_MAX_LENGTH, // 整页翻译的段落最大有效长度限制
   newlineLength: TRANS_NEWLINE_LENGTH,
-  autoTransEnglish: true, // 检测到英文页面时自动开启翻译 (可在弹窗中切换，选择后持久保存)
+  autoTransTarget: true, // 将非目标语言页面自动译为当前规则的目标语言，开关持久保存
   httpTimeout: DEFAULT_HTTP_TIMEOUT, // 接口请求超时时间
   clearCache: false, // 每次浏览器重启时，是否自动清空翻译结果的本地网络缓存
   fabClickAction: 0, // 工具栏悬浮球按钮双击或单击的默认响应行为 (如开启/关闭翻译)

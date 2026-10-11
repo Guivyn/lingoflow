@@ -155,12 +155,12 @@ describe("Translator rule styles", () => {
         "Open your Codespaces here",
       ])
     );
-    expect(document.querySelector("#product .lingoflow-inner")?.textContent).toBe(
-      "译文:Codespaces"
-    );
-    expect(document.querySelector("#review .lingoflow-inner")?.textContent).toBe(
-      "译文:Code review"
-    );
+    expect(
+      document.querySelector("#product .lingoflow-inner")?.textContent
+    ).toBe("译文:Codespaces");
+    expect(
+      document.querySelector("#review .lingoflow-inner")?.textContent
+    ).toBe("译文:Code review");
     expect(requestedTexts.join(" ")).not.toContain("固定译名");
   });
 
@@ -187,9 +187,9 @@ describe("Translator rule styles", () => {
     expect(requestedTexts).not.toContain("https://example.org/settings");
     expect(requestedTexts).not.toContain("team@example.org");
     expect(requestedTexts).not.toContain("@octocat");
-    expect(document.querySelector("#navigation .lingoflow-inner")?.textContent).toBe(
-      "译文:Settings"
-    );
+    expect(
+      document.querySelector("#navigation .lingoflow-inner")?.textContent
+    ).toBe("译文:Settings");
   });
 
   test("does not treat a hyphenated English phrase as an identifier", async () => {
@@ -203,9 +203,9 @@ describe("Translator rule styles", () => {
     expect(apiTranslate).toHaveBeenCalledWith(
       expect.objectContaining({ text: "open-source" })
     );
-    expect(document.querySelector("#phrase .lingoflow-inner")?.textContent).toBe(
-      "开源"
-    );
+    expect(
+      document.querySelector("#phrase .lingoflow-inner")?.textContent
+    ).toBe("开源");
   });
 
   test("does not insert an unchanged provider response as a second label", async () => {
@@ -413,13 +413,14 @@ describe("Translator rule styles", () => {
       },
       {
         preInit: true,
-        autoTransEnglish: true,
+        autoTransTarget: true,
         minLength: 0,
       }
     );
     await flushAsync();
 
     expect(tryDetectLang).toHaveBeenCalled();
+    await flushAsync();
     expect(translator.rule.transOpen).toBe("true");
   });
 
@@ -436,7 +437,7 @@ describe("Translator rule styles", () => {
       },
       {
         preInit: true,
-        autoTransEnglish: false,
+        autoTransTarget: false,
         minLength: 0,
       }
     );
@@ -445,6 +446,101 @@ describe("Translator rule styles", () => {
     expect(tryDetectLang).not.toHaveBeenCalled();
     expect(translator.rule.transOpen).toBe("false");
   });
+
+  test.each([
+    ["ja", "zh-CN", "auto"],
+    ["fr", "en", "auto"],
+    ["zh-CN", "ja", "auto"],
+    ["ja", "en", "ja"],
+  ])(
+    "auto-translates %s into %s with source %s",
+    async (detected, toLang, fromLang) => {
+      tryDetectLang.mockResolvedValue(detected);
+      document.body.innerHTML =
+        '<main id="root"><p id="target">A full page of sample text</p></main>';
+      const translator = createTranslator(
+        { transOpen: "false", fromLang, toLang, selector: "#target" },
+        { autoTransTarget: true, preInit: false, minLength: 0 }
+      );
+      await flushAsync();
+      await flushAsync();
+      expect(translator.rule.transOpen).toBe("true");
+      await flushAsync();
+      await flushAsync();
+      expect(apiTranslate).toHaveBeenCalledWith(
+        expect.objectContaining({ fromLang: detected, toLang })
+      );
+      expect(tryDetectLang).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  test.each([
+    ["ja", "ja", "auto", []],
+    ["zh-CN", "zh-TW", "auto", []],
+    ["fr", "en", "auto", ["fr"]],
+    ["ja", "en", "fr", []],
+    ["", "en", "auto", []],
+    ["und", "en", "auto", []],
+    ["ja", "-", "auto", []],
+  ])(
+    "skips auto-translation for detected %s, target %s, source %s, skipped %j",
+    async (detected, toLang, fromLang, skipLangs) => {
+      tryDetectLang.mockResolvedValue(detected);
+      document.body.innerHTML =
+        '<main id="root"><p>Sample page content</p></main>';
+      const translator = createTranslator(
+        { transOpen: "false", fromLang, toLang },
+        { autoTransTarget: true, skipLangs }
+      );
+      await flushAsync();
+      expect(translator.rule.transOpen).toBe("false");
+      expect(apiTranslate).not.toHaveBeenCalled();
+    }
+  );
+
+  test("rechecks auto-translation when the target language changes", async () => {
+    tryDetectLang.mockResolvedValue("ja");
+    document.body.innerHTML =
+      '<main id="root"><p>Sample page content</p></main>';
+    const translator = createTranslator(
+      { transOpen: "false", fromLang: "auto", toLang: "ja" },
+      { autoTransTarget: true }
+    );
+    await flushAsync();
+    expect(translator.rule.transOpen).toBe("false");
+    translator.updateRule({ toLang: "en" });
+    await flushAsync();
+    await flushAsync();
+    expect(translator.rule.transOpen).toBe("true");
+  });
+
+  test.each(["disable preference", "stop translator"])(
+    "does not enable after pending detection and %s",
+    async (action) => {
+      let resolveDetection;
+      tryDetectLang.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveDetection = resolve;
+          })
+      );
+      document.body.innerHTML =
+        '<main id="root"><p>Sample page content</p></main>';
+      const translator = createTranslator(
+        { transOpen: "false", fromLang: "auto" },
+        { autoTransTarget: true }
+      );
+      if (action === "disable preference") {
+        translator.applySetting({ autoTransTarget: false });
+      } else {
+        translator.stop();
+      }
+      resolveDetection("ja");
+      await flushAsync();
+      expect(translator.rule.transOpen).toBe("false");
+      expect(apiTranslate).not.toHaveBeenCalled();
+    }
+  );
 
   test("skips universal tag-like elements during auto scan", async () => {
     document.body.innerHTML =

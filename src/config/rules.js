@@ -117,7 +117,7 @@ export const GLOBAL_RULE = {
   transEndHook: "",
   // transRemoveHook: "", // 钩子函数 (暂时作废)
   autoScan: "true", // 默认自动扫描文本节点，确保漏网之鱼也被翻译
-  hasRichText: "true", // 默认进行富文本标签翻译，以保证链接等样式不会在翻译后破损
+  hasRichText: "true", // 默认处理富文本标签以保留链接和文字方向，不沿用源页面展示样式
   hasShadowroot: "false", // 默认不主动穿透 Shadow DOM (因性能开销，仅在特定页面开启)
   scanAll: "false",
   isPlainText: "false", // 默认关闭 <pre> 纯文本翻译模式
