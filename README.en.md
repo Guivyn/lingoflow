@@ -1,83 +1,53 @@
-# LingoFlow
+# LingoFlow · 灵语
 
 [中文](README.md) · [English](README.en.md)
 
-<!-- release-standard:start -->
-**v2.0.0** · Node.js **22** · pnpm **11.18.0**
-<!-- release-standard:end -->
-
-[Download the latest release](https://github.com/Guivyn/lingoflow/releases/latest) · [CI](https://github.com/Guivyn/lingoflow/actions/workflows/ci.yml)
-
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="LingoFlow: a bilingual reading extension for webpages, selected text, hover translation, and YouTube subtitles">
+  <img src="./assets/readme/hero-en.svg" width="100%" alt="LingoFlow: keep the original text and read the translation alongside it.">
 </p>
 
-LingoFlow is a lightweight, open-source Chrome extension for reading foreign-language content with the original text and translation side by side.
+**An open-source Chrome extension for bilingual reading.** Read webpages with the original text and translation together, translate selected text or hovered paragraphs, and follow YouTube with bilingual subtitles.
 
-## Version 2.0.0
+[**Download for Chrome →**](https://github.com/Guivyn/lingoflow/releases/latest) · [Installation](#install-and-start-reading) · [Report an issue](https://github.com/Guivyn/lingoflow/issues)
 
-- Refined popup and settings navigation, expandable advanced controls, reduced-motion support, and complete new interface copy in six supported languages.
-- Streaming requests prioritize visible content and reading order, with an early first batch, bounded concurrency, background cancellation, and error-aware retries.
-- Cache identities account for effective configuration and full context; expiry and entry limits are enforced on reads.
-- Settings, website rules, and floating-button preferences share save-failure feedback. Existing local settings and rules retain their storage namespace across the major-version upgrade.
-- YouTube caption capture, segmentation, and menus include compatible upstream improvements. See the [YouTube pipeline](docs/youtube-translation.md) and [upstream compatibility](docs/upstream-integration.md).
+## Make it fit your reading
 
-Performance figures in the [baseline report](docs/performance/README.md) describe a repeatable simulated service, not measured gains from a real provider. Local AI, audio transcription, PDF/EPUB/image translation, and plugin runtimes are not included.
-
-## Interface preview
-
-The settings center groups language, translation services, website rules, subtitles, and data management. Advanced controls expand on demand; light and dark themes share the same layout.
+Choose your languages and provider, then switch between bilingual and translation-only display. Advanced controls expand when you need them.
 
 <p align="center">
-  <img src="./assets/readme/screenshots/settings-light.png" width="100%" alt="LingoFlow light Options page showing language and whole-page translation settings">
+  <img src="./assets/readme/screenshots/settings-light.png" width="100%" alt="LingoFlow settings: language, provider, display mode, and floating-button controls. Interface shown in Chinese.">
 </p>
 
 <details>
   <summary>View the dark theme</summary>
 
   <p align="center">
-    <img src="./assets/readme/screenshots/settings-dark.png" width="100%" alt="LingoFlow dark Options page showing language and whole-page translation settings">
+    <img src="./assets/readme/screenshots/settings-dark.png" width="100%" alt="LingoFlow settings in dark mode. Interface shown in Chinese.">
   </p>
 </details>
 
-## Get started in 30 seconds
+## Start with a page in another language
 
-### Download a release (recommended)
+- **Read whole pages.** Visible content takes priority; streaming providers display translations progressively while keeping the original text available.
+- **Look up text as you go.** Translate selections or hovered paragraphs without leaving the page, with dictionary lookup and input suggestions.
+- **Follow videos.** YouTube bilingual subtitles support sentence splitting and custom styles; AI-assisted segmentation is optional. [How subtitles work](docs/youtube-translation.md)
+- **Set your defaults.** Website rules, dynamic-page observation, and optional automatic translation adapt the behavior to each site. [Automatic translation](docs/auto-translation.md)
 
-1. Download `chrome.zip` from the [latest release](https://github.com/Guivyn/lingoflow/releases/latest).
-2. Unzip it, open `chrome://extensions`, and enable Developer mode.
-3. Click **Load unpacked** and select the extracted folder.
-4. Open any foreign-language webpage, click the LingoFlow toolbar icon, or press `Alt+S` to toggle whole-page translation.
-5. Select text to use the translation bubble; open a YouTube video to use bilingual subtitles.
+## Install and start reading
 
-The current default configuration uses Microsoft's built-in translation endpoint, so you can try it first. Other services may require an API key, endpoint, or local service.
+1. Download <code>chrome.zip</code> from the [latest release](https://github.com/Guivyn/lingoflow/releases/latest) and unzip it.
+2. Open <code>chrome://extensions</code>, enable **Developer mode**, and choose **Load unpacked**.
+3. Select the extracted directory. Open a foreign-language page and click the extension icon, or press <code>Alt+S</code>.
 
-### Build from source
+The default configuration uses Microsoft's built-in endpoint. Other providers may require an API key or endpoint. To update an existing installation, replace the files in its original directory and reload that extension entry.
 
-The build environment is defined by [`.nvmrc`](.nvmrc) and [`.pnpm-version`](.pnpm-version). The version block above is generated by `pnpm sync-version`. See the [release standard](docs/release-standard.md).
+## Reliability and compatibility
 
-```bash
-git clone https://github.com/Guivyn/lingoflow.git
-cd lingoflow
-pnpm install
-pnpm build
-```
+Requests support background cancellation, bounded concurrency, and error-aware retries. Cache identities account for effective configuration and full context; expiry and entry limits are enforced. Settings, website rules, and floating-button preferences share save-failure feedback.
 
-The build output is written to `build/chrome/`; load that directory from `chrome://extensions`. To create a release archive, run `pnpm build+zip`; the output is `build/chrome.zip`.
+See the [cache policy](docs/cache-policy.md), [performance baseline](docs/performance/README.md), and [upstream compatibility](docs/upstream-integration.md). Performance measurements use a repeatable simulated service and do not establish real-provider speed gains. Local AI, audio transcription, PDF/EPUB/image translation, and plugin runtimes are not included.
 
-## Use cases
-
-- **Whole-page translation**: automatic scanning, rule matching, and SPA mutation observation for bilingual article reading.
-- **Auto-translate to target language**: translate pages in other languages into the current page rule's target language, with one shared switch across the popup, in-page panel, and settings. [Behavior guide (Chinese)](docs/auto-translation.md)
-- **Selection and hover translation**: translate a word, phrase, or paragraph inline, in a translation box, or in a hover bubble.
-- **YouTube subtitles**: bilingual display, sentence splitting, subtitle styles, and optional AI-assisted segmentation.
-- **Dictionary and suggestions**: English dictionary lookup, input suggestions, and comparison across translation engines.
-
-## How it works
-
-- Automatic scanning handles common pages; built-in rules and SPA observation cover more complex sites.
-- Whole-page, selection, and hover translation use separate presentation modes suited to each reading context.
-- YouTube subtitles use an independent processing pipeline; AI segmentation is an optional enhancement, not a prerequisite.
+Latest version: [Release notes](https://github.com/Guivyn/lingoflow/releases/latest). Existing local settings and rules retain their storage namespace across the major-version upgrade.
 
 ## Engines and configuration
 
@@ -104,7 +74,15 @@ The active global bindings are shown in `chrome://extensions/shortcuts`. Page-le
 
 ## Development
 
+<!-- release-standard:start -->
+**v2.0.0** · Node.js **22** · pnpm **11.18.0**
+<!-- release-standard:end -->
+
+The toolchain is defined by [`.nvmrc`](.nvmrc) and [`.pnpm-version`](.pnpm-version); the version block is generated from the release standard. See the [release standard](docs/release-standard.md).
+
 ```bash
+git clone https://github.com/Guivyn/lingoflow.git
+cd lingoflow
 pnpm install
 pnpm start       # local development, starting at the Options page
 pnpm test        # unit tests
@@ -112,6 +90,8 @@ pnpm test:ci     # one non-interactive test run
 pnpm lint        # ESLint
 pnpm build       # build the Chrome extension into build/chrome/
 ```
+
+Load `build/chrome/` in Chrome after building. Run `pnpm build+zip` to produce `build/chrome.zip`, its SHA-256 checksum, and a build report. [CI](https://github.com/Guivyn/lingoflow/actions/workflows/ci.yml) runs the checks and retains build artifacts.
 
 ## Contributing
 

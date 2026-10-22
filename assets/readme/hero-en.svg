@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title desc">
+<title id="title">LingoFlow: keep reading, in two languages.</title><desc id="desc">An open-source Chrome extension for bilingual webpages, selected text, and YouTube subtitles.</desc>
+<rect width="1200" height="300" rx="16" fill="#faf8f5"/>
+<rect x="54" y="54" width="14" height="48" rx="7" fill="#2f5bd9"/><rect x="74" y="66" width="14" height="36" rx="7" fill="#c96a4a"/>
+<text x="108" y="94" font-family="Georgia,'Noto Serif SC','SimSun',serif" font-size="53" fill="#2a2723">LingoFlow <tspan font-size="28" fill="#80796f">灵语</tspan></text>
+<text x="54" y="181" font-family="'Noto Serif SC','SimSun',serif" font-size="53" fill="#2a2723">Keep reading. <tspan fill="#b7583b">In two languages.</tspan></text>
+<text x="56" y="246" font-family="'Segoe UI','Microsoft YaHei',sans-serif" font-size="27" fill="#6f6a61">Webpages, selected text, and YouTube subtitles.</text>
+</svg>

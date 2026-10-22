@@ -1,83 +1,53 @@
-# LingoFlow（灵语）
+# LingoFlow · 灵语
 
 [中文](README.md) · [English](README.en.md)
 
-<!-- release-standard:start -->
-**v2.0.0** · Node.js **22** · pnpm **11.18.0**
-<!-- release-standard:end -->
-
-[下载最新版](https://github.com/Guivyn/lingoflow/releases/latest) · [查看 CI](https://github.com/Guivyn/lingoflow/actions/workflows/ci.yml)
-
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="LingoFlow 灵语：面向网页的双语阅读扩展，支持整页、划词、悬停和 YouTube 字幕">
+  <img src="./assets/readme/hero.svg" width="100%" alt="LingoFlow 灵语：保留原文，随时对照译文。网页、划词与 YouTube 字幕。">
 </p>
 
-LingoFlow 是一款轻量、开源的 Chrome 双语阅读扩展。它把网页、选中文本、悬停段落和 YouTube 字幕变成可以随时对照的双语阅读体验。
+**一款开源的 Chrome 双语阅读扩展。** 在网页中直接对照原文与译文，也支持选中文字、悬停段落和 YouTube 双语字幕。
 
-## 2.0.0 功能与改进
+[**下载 Chrome 安装包 →**](https://github.com/Guivyn/lingoflow/releases/latest) · [安装说明](#安装开始阅读) · [反馈问题](https://github.com/Guivyn/lingoflow/issues)
 
-- 更新弹窗与设置导航，高级选项按需展开，支持减少动态效果，补齐六种界面语言的新增文案。
-- 流式翻译优先处理可见内容与阅读顺序，首批提前发出；并发有上限，取消能传递到后台，重试按错误类型处理。
-- 缓存按有效配置和完整上下文区分，读取时检查有效期，并限制条目数量。
-- 通用设置、网站规则和悬浮按钮使用统一的保存失败反馈；大版本升级沿用现有存储命名空间，保留已有本地配置和规则。
-- 接入兼容的 YouTube 字幕捕获、分句与菜单改进，参见 [字幕实现](docs/youtube-translation.md) 与 [上游兼容范围](docs/upstream-integration.md)。
+## 按你的阅读习惯设置
 
-[性能基线报告](docs/performance/README.md) 使用可重复的模拟服务，不代表真实翻译接口的实测提速。本版本未引入本地 AI、音频转写、PDF/EPUB/图片翻译或服务插件运行时。
-
-## 界面预览
-
-设置中心按语言、翻译服务、网站规则、字幕和数据管理分组。高级选项按需展开，浅色与深色主题使用一致布局。
+选择语言与翻译服务，切换双语或仅译文。更多参数收进高级设置，需要时再展开。
 
 <p align="center">
-  <img src="./assets/readme/screenshots/settings-light.png" width="100%" alt="LingoFlow 浅色设置中心：语言与网页翻译常规设置">
+  <img src="./assets/readme/screenshots/settings-light.png" width="100%" alt="LingoFlow 设置中心实拍：语言、翻译服务、显示方式与悬浮按钮设置。">
 </p>
 
 <details>
   <summary>查看深色主题</summary>
 
   <p align="center">
-    <img src="./assets/readme/screenshots/settings-dark.png" width="100%" alt="LingoFlow 深色设置中心：语言与网页翻译常规设置">
+    <img src="./assets/readme/screenshots/settings-dark.png" width="100%" alt="LingoFlow 深色设置中心实拍。">
   </p>
 </details>
 
-## 30 秒上手
+## 从一页外文开始
 
-### 直接安装 Release 包（推荐）
+- **整页阅读**：可见内容优先，流式接口逐步显示译文，保留原文对照。
+- **随手查词**：选中或悬停文字，在当前页面查看翻译，也支持词典查询与输入联想。
+- **跟上视频**：YouTube 双语字幕，支持分句与样式设置；AI 分句是可选增强。[字幕实现](docs/youtube-translation.md)
+- **设好默认行为**：网站规则、动态页面监听与可选的自动翻译，适配不同站点。[自动翻译说明](docs/auto-translation.md)
 
-1. 前往 [最新版 Release](https://github.com/Guivyn/lingoflow/releases/latest) 下载 `chrome.zip`。
-2. 解压到任意本地目录，打开 `chrome://extensions` 并启用“开发者模式”。
-3. 点击“加载已解压的扩展程序”，选择解压后的目录。
-4. 打开任意外文网页，点击工具栏中的 LingoFlow 图标，或使用 `Alt+S` 切换整页翻译。
-5. 选中文字后使用页面上的翻译悬浮球；打开 YouTube 视频后即可使用双语字幕功能。
+## 安装，开始阅读
 
-当前默认配置使用 Microsoft 内置翻译端点，可先直接试用。选择其他服务时，请按服务要求填写 API Key、Endpoint 或本地服务地址。
+1. 下载 [最新版 Release](https://github.com/Guivyn/lingoflow/releases/latest) 中的 <code>chrome.zip</code> 并解压。
+2. 打开 <code>chrome://extensions</code>，启用“开发者模式”，点击“加载已解压的扩展程序”。
+3. 选择解压目录。打开外文网页，点击扩展图标，或按 <code>Alt+S</code> 开始翻译。
 
-### 从源码构建
+默认配置使用 Microsoft 内置端点，可先直接试用；其他服务可能需要 API Key 或 Endpoint。更新已有安装时，将文件覆盖到原扩展目录，再重新加载原扩展条目。
 
-构建环境以仓库的 [`.nvmrc`](.nvmrc) 和 [`.pnpm-version`](.pnpm-version) 为准，上方版本信息由 `pnpm sync-version` 自动生成。发布检查见 [交付规范](docs/release-standard.md)。
+## 稳定性与兼容范围
 
-```bash
-git clone https://github.com/Guivyn/lingoflow.git
-cd lingoflow
-pnpm install
-pnpm build
-```
+请求支持后台取消、并发上限和按错误类型重试。缓存区分有效配置与完整上下文，读取时执行有效期和条目数量限制。通用设置、网站规则和悬浮按钮使用统一的保存失败反馈。
 
-构建产物统一输出到 `build/chrome/`，在 `chrome://extensions` 中加载该目录即可。发布打包使用 `pnpm build+zip`，产物为 `build/chrome.zip`。
+详细说明见 [缓存策略](docs/cache-policy.md)、[性能基线](docs/performance/README.md) 与 [上游兼容范围](docs/upstream-integration.md)。性能基线使用可重复的模拟服务，不代表真实接口的实测提速。本版本未包含本地 AI、音频转写、PDF/EPUB/图片翻译及服务插件运行时。
 
-## 使用场景
-
-- **整页翻译**：自动扫描、规则匹配和 SPA 动态监听，保持文章主体的双语对照。
-- **目标语言自动翻译**：检测非目标语言页面后，自动译为当前网页规则的目标语言；弹窗、页面内面板和设置中心共享开关。[行为说明](docs/auto-translation.md)
-- **划词与悬停**：选中单词、短语或段落，使用行内译文、翻译框或悬浮气泡查看结果。
-- **YouTube 字幕**：双语显示、句子切分、字幕样式和可选的 AI 分句增强。
-- **词典与联想**：英文词典、输入联想和多翻译引擎对照。
-
-## 工作方式
-
-- 常见页面由自动扫描处理，复杂站点可以使用内置规则和 SPA 动态监听进行补充。
-- 整页、划词和悬停分别使用适合阅读场景的呈现方式，互不挤在同一个弹窗里。
-- 字幕翻译拥有独立的字幕处理管线；AI 分句是可选增强，不是使用 YouTube 字幕的前置条件。
+当前版本改进见 [Release 说明](https://github.com/Guivyn/lingoflow/releases/latest)。大版本升级沿用现有存储命名空间，保留已有本地配置和规则。
 
 ## 翻译引擎与配置
 
@@ -104,7 +74,15 @@ pnpm build
 
 ## 开发
 
+<!-- release-standard:start -->
+**v2.0.0** · Node.js **22** · pnpm **11.18.0**
+<!-- release-standard:end -->
+
+工具链以 [`.nvmrc`](.nvmrc) 和 [`.pnpm-version`](.pnpm-version) 为准，上方版本区块按发布规范自动生成。参见 [交付规范](docs/release-standard.md)。
+
 ```bash
+git clone https://github.com/Guivyn/lingoflow.git
+cd lingoflow
 pnpm install
 pnpm start       # 本地开发，入口为 Options 设置页
 pnpm test        # 单元测试
@@ -112,6 +90,8 @@ pnpm test:ci     # 单次、非交互测试
 pnpm lint        # ESLint
 pnpm build       # 构建 Chrome 扩展，产物输出到 build/chrome/
 ```
+
+构建后在 Chrome 中加载 `build/chrome/`。运行 `pnpm build+zip` 生成 `build/chrome.zip`、SHA-256 校验文件与构建报告。[CI](https://github.com/Guivyn/lingoflow/actions/workflows/ci.yml) 执行检查并保留构建产物。
 
 ## 反馈与贡献
 
