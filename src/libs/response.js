@@ -5,6 +5,7 @@
  */
 
 import { blobToBase64 } from "./utils";
+import { httpRequestError } from "./requestError";
 
 /**
  * 将 Response 解析为调用方期望的数据结构。
@@ -20,24 +21,7 @@ export const parseResponse = async (res, expect = null) => {
   }
 
   if (!res.ok) {
-    const msg = {
-      url: res.url,
-      status: res.status,
-      statusText: res.statusText,
-    };
-
-    try {
-      const errorText = await res.clone().text();
-      try {
-        msg.response = JSON.parse(errorText);
-      } catch {
-        msg.response = errorText;
-      }
-    } catch (e) {
-      msg.response = "Unable to read error body";
-    }
-
-    throw new Error(JSON.stringify(msg));
+    throw httpRequestError(res);
   }
 
   const contentType = res.headers.get("Content-Type") || "";

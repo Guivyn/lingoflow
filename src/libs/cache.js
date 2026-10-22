@@ -5,7 +5,6 @@
 
 import {
   CACHE_NAME,
-  DEFAULT_CACHE_TIMEOUT,
   MSG_CLEAR_CACHES,
   MSG_GET_HTTPCACHE,
   MSG_PUT_HTTPCACHE,
@@ -16,6 +15,72 @@ import { isBg } from "./browser";
 import { sendBgMsg } from "./msg";
 import { parseResponse } from "./response";
 import { sha256 } from "./utils";
+import { getSetting } from "./storage";
+import { CACHE_LIMITS, normalizeNumber } from "../core/storage/constraints";
+
+const CREATED_AT = "X-LingoFlow-Created-At";
+const EXPIRES_AT = "X-LingoFlow-Expires-At";
+export const DEFAULT_CACHE_MAX_ENTRIES = CACHE_LIMITS.cacheMaxEntries.fallback;
+let operations = Promise.resolve();
+let lastSweep = 0;
+let lastPolicy = "";
+const serialize = (fn) => {
+  const operation = operations.then(fn);
+  operations = operation.catch(() => undefined);
+  return operation;
+};
+
+const readPolicy = async () => {
+  const setting = await getSetting();
+  return {
+    maxAge: normalizeNumber(setting?.cacheMaxAge, CACHE_LIMITS.cacheMaxAge),
+    maxEntries: normalizeNumber(
+      setting?.cacheMaxEntries,
+      CACHE_LIMITS.cacheMaxEntries
+    ),
+  };
+};
+
+const isExpired = (response, policy, now) => {
+  const created = response.headers.get(CREATED_AT);
+  const expires = response.headers.get(EXPIRES_AT);
+  if (created === null || expires === null) return true;
+  const createdAt = Number(created);
+  const expiresAt = Number(expires);
+  if (
+    !Number.isFinite(createdAt) ||
+    !Number.isFinite(expiresAt) ||
+    createdAt < 0 ||
+    expiresAt < 0
+  )
+    return true;
+  // A shorter current policy applies immediately; extending it never revives expired entries.
+  return (
+    (expiresAt !== 0 && now >= expiresAt) ||
+    (policy.maxAge !== 0 && now >= createdAt + policy.maxAge * 1000)
+  );
+};
+
+const prune = async (cache, policy, now) => {
+  const policyKey = JSON.stringify(policy);
+  let keys = await cache.keys();
+  if (!lastSweep || now - lastSweep >= 60000 || policyKey !== lastPolicy) {
+    for (const key of keys) {
+      const response = await cache.match(key);
+      if (response && isExpired(response, policy, now)) await cache.delete(key);
+    }
+    lastSweep = now;
+    lastPolicy = policyKey;
+    keys = await cache.keys();
+  }
+  // FIFO eviction; updating a key moves it to the end in putHttpCache.
+  for (const key of keys.slice(
+    0,
+    Math.max(0, keys.length - policy.maxEntries)
+  )) {
+    await cache.delete(key);
+  }
+};
 
 /**
  * 清除翻译网络请求的本地缓存
@@ -25,10 +90,15 @@ export const tryClearCaches = async () => {
     if (isExt && !isBg()) {
       await sendBgMsg(MSG_CLEAR_CACHES);
     } else {
-      await caches.delete(CACHE_NAME);
+      await serialize(async () => {
+        await caches.delete(CACHE_NAME);
+        lastSweep = 0;
+        lastPolicy = "";
+      });
     }
   } catch (err) {
     appLog("clean caches", err);
+    throw err;
   }
 };
 
@@ -62,20 +132,27 @@ const newCacheReq = async (input, init) => {
  * @param {string} [expect] 预期的解析格式 (如 json/text 等)
  * @returns {Promise<*>} 缓存的数据，若无缓存返回 null
  */
-export const getHttpCache = async ({ input, init, expect }) => {
-  try {
-    const request = await newCacheReq(input, init);
-    const cache = await caches.open(CACHE_NAME);
-    const response = await cache.match(request);
-    if (response) {
-      const res = await parseResponse(response, expect);
-      return res;
+export const getHttpCache = ({ input, init, expect }) =>
+  serialize(async () => {
+    try {
+      const request = await newCacheReq(input, init);
+      const cache = await caches.open(CACHE_NAME);
+      const policy = await readPolicy();
+      await prune(cache, policy, Date.now());
+      const response = await cache.match(request);
+      if (response) {
+        if (isExpired(response, policy, Date.now())) {
+          await cache.delete(request);
+          return null;
+        }
+        const res = await parseResponse(response, expect);
+        return res;
+      }
+    } catch (err) {
+      appLog("get cache", err);
     }
-  } catch (err) {
-    appLog("get cache", err);
-  }
-  return null;
-};
+    return null;
+  });
 
 /**
  * 将成功请求回来的翻译数据及语种缓存写入 CacheStorage 中
@@ -84,28 +161,33 @@ export const getHttpCache = async ({ input, init, expect }) => {
  * @param {Object} data 待缓存的数据
  * @param {number} [maxAge=DEFAULT_CACHE_TIMEOUT] 缓存有效期 (秒)
  */
-export const putHttpCache = async ({
-  input,
-  init,
-  data,
-  maxAge = DEFAULT_CACHE_TIMEOUT, // todo: 从设置里面读取最大缓存时间
-}) => {
-  try {
-    const req = await newCacheReq(input, init);
-    const cache = await caches.open(CACHE_NAME);
-    const res = new Response(JSON.stringify(data), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": `max-age=${maxAge}`,
-      },
-    });
-    // res.headers.set("Cache-Control", `max-age=${maxAge}`);
-    await cache.put(req, res);
-  } catch (err) {
-    appLog("put cache", err);
-  }
-};
+export const putHttpCache = ({ input, init, data, maxAge }) =>
+  serialize(async () => {
+    try {
+      const req = await newCacheReq(input, init);
+      const cache = await caches.open(CACHE_NAME);
+      const policy = await readPolicy();
+      const ttl = normalizeNumber(maxAge, {
+        ...CACHE_LIMITS.cacheMaxAge,
+        fallback: policy.maxAge,
+      });
+      const createdAt = Date.now();
+      const res = new Response(JSON.stringify(data), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": ttl === 0 ? "no-cache" : `max-age=${ttl}`,
+          [CREATED_AT]: String(createdAt),
+          [EXPIRES_AT]: String(ttl === 0 ? 0 : createdAt + ttl * 1000),
+        },
+      });
+      await cache.delete(req);
+      await cache.put(req, res);
+      await prune(cache, policy, createdAt);
+    } catch (err) {
+      appLog("put cache", err);
+    }
+  });
 
 /**
  * getHttpCache 的跨环境包装层，若是 Content Script 会交由 Background 查询

@@ -53,7 +53,7 @@ try {
 
     // 同步到其他文件
     console.log(chalk.blue(`📦 开始同步版本号到其他文件...\n`));
-    await $`zx src/scripts/sync-version.mjs`;
+    await $`node src/scripts/sync-version.mjs`;
 
     console.log(chalk.green.bold(`\n✨ 版本更新完成！新版本: ${newVersion}\n`));
     console.log(chalk.gray(`提示: 版本号已更新，别忘了提交更改\n`));

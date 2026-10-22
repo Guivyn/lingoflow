@@ -48,6 +48,10 @@ describe("parseResponse", () => {
       headers: { "Content-Type": "application/json" },
     });
 
-    await expect(parseResponse(response)).rejects.toThrow('"status":400');
+    await expect(parseResponse(response)).rejects.toMatchObject({
+      status: 400,
+      code: "INVALID_REQUEST",
+      retryable: false,
+    });
   });
 });

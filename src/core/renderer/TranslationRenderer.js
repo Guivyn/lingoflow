@@ -562,7 +562,15 @@ export class TranslationRenderer {
   removeWrapper(wrapper) {
     const parent = wrapper.parentElement;
     this.#withViewportAnchor(() => {
-      const state = this.#translationNodes.get(wrapper);
+      const backup = this.#getTranslationBackup(wrapper);
+      const state =
+        this.#translationNodes.get(wrapper) ||
+        (backup
+          ? {
+              nodes: Array.from(backup.content.childNodes),
+              isHide: true,
+            }
+          : null);
       if (state?.isHide) {
         this.#restoreOriginal(wrapper, state.nodes);
       }
@@ -761,7 +769,11 @@ export class TranslationRenderer {
   #restoreOriginal(wrapper, nodes) {
     if (!nodes) return;
     const frag = document.createDocumentFragment();
-    nodes.forEach((node) => frag.appendChild(node));
+    nodes.forEach((node) => {
+      // Restore nested originals before discarding pending/loading wrappers.
+      if (node.nodeType === Node.ELEMENT_NODE) this.removeAllWrappers(node);
+      frag.appendChild(node);
+    });
     wrapper.parentElement?.insertBefore(frag, wrapper);
   }
 

@@ -2,7 +2,11 @@
 
 [中文](README.md) · [English](README.en.md)
 
-**v1.4.0** · [下载最新版](https://github.com/Guivyn/lingoflow/releases/latest) · [查看 CI](https://github.com/Guivyn/lingoflow/actions/workflows/ci.yml)
+<!-- release-standard:start -->
+**v2.0.0** · Node.js **22** · pnpm **11.18.0**
+<!-- release-standard:end -->
+
+[下载最新版](https://github.com/Guivyn/lingoflow/releases/latest) · [查看 CI](https://github.com/Guivyn/lingoflow/actions/workflows/ci.yml)
 
 <p align="center">
   <img src="./assets/readme/hero.svg" width="100%" alt="LingoFlow 灵语：面向网页的双语阅读扩展，支持整页、划词、悬停和 YouTube 字幕">
@@ -10,19 +14,29 @@
 
 LingoFlow 是一款轻量、开源的 Chrome 双语阅读扩展。它把网页、选中文本、悬停段落和 YouTube 字幕变成可以随时对照的双语阅读体验。
 
+## 2.0.0 功能与改进
+
+- 更新弹窗与设置导航，高级选项按需展开，支持减少动态效果，补齐六种界面语言的新增文案。
+- 流式翻译优先处理可见内容与阅读顺序，首批提前发出；并发有上限，取消能传递到后台，重试按错误类型处理。
+- 缓存按有效配置和完整上下文区分，读取时检查有效期，并限制条目数量。
+- 通用设置、网站规则和悬浮按钮使用统一的保存失败反馈；大版本升级沿用现有存储命名空间，保留已有本地配置和规则。
+- 接入兼容的 YouTube 字幕捕获、分句与菜单改进，参见 [字幕实现](docs/youtube-translation.md) 与 [上游兼容范围](docs/upstream-integration.md)。
+
+[性能基线报告](docs/performance/README.md) 使用可重复的模拟服务，不代表真实翻译接口的实测提速。本版本未引入本地 AI、音频转写、PDF/EPUB/图片翻译或服务插件运行时。
+
 ## 界面预览
 
-设置中心支持浅色与深色主题。主图展示语言、翻译参数和网站缓存配置；深色主题放在折叠区域。
+设置中心按语言、翻译服务、网站规则、字幕和数据管理分组。高级选项按需展开，浅色与深色主题使用一致布局。
 
 <p align="center">
-  <img src="./assets/readme/screenshots/settings-light.png" width="100%" alt="LingoFlow 浅色设置中心：语言、翻译参数与网站缓存配置">
+  <img src="./assets/readme/screenshots/settings-light.png" width="100%" alt="LingoFlow 浅色设置中心：语言与网页翻译常规设置">
 </p>
 
 <details>
   <summary>查看深色主题</summary>
 
   <p align="center">
-    <img src="./assets/readme/screenshots/settings-dark.png" width="100%" alt="LingoFlow 深色设置中心：语言、翻译参数与网站缓存配置">
+    <img src="./assets/readme/screenshots/settings-dark.png" width="100%" alt="LingoFlow 深色设置中心：语言与网页翻译常规设置">
   </p>
 </details>
 
@@ -40,7 +54,7 @@ LingoFlow 是一款轻量、开源的 Chrome 双语阅读扩展。它把网页�
 
 ### 从源码构建
 
-当前 CI 测试环境为 Node.js 20 与 pnpm 11.18.0；仓库通过 `.pnpm-version` 固定 pnpm 版本。
+构建环境以仓库的 [`.nvmrc`](.nvmrc) 和 [`.pnpm-version`](.pnpm-version) 为准，上方版本信息由 `pnpm sync-version` 自动生成。发布检查见 [交付规范](docs/release-standard.md)。
 
 ```bash
 git clone https://github.com/Guivyn/lingoflow.git

@@ -55,6 +55,13 @@ export class YouTubePlayerUi {
   #menuManager = null;
   #notificationEl = null;
   #notificationTimeout = null;
+  closeMenu = () => {
+    this.#isMenuShow = false;
+    this.#menuManager?.hide();
+    this.#toggleButton?.setAttribute("aria-expanded", "false");
+    this.#toggleButton?.replaceChildren(createLogoSVG());
+    this.#toggleButton?.focus();
+  };
 
   /**
    * 创建播放器 UI 管理器。
@@ -77,7 +84,10 @@ export class YouTubePlayerUi {
    */
   updateMenuProps() {
     if (this.#menuManager && this.#isMenuShow) {
-      this.#menuManager.updateProps(this.#getMenuProps());
+      this.#menuManager.updateProps({
+        ...this.#getMenuProps(),
+        onClose: this.closeMenu,
+      });
     }
   }
 
@@ -106,6 +116,9 @@ export class YouTubePlayerUi {
     const toggleButton = document.createElement("button");
     toggleButton.className = "ytp-button lingoflow-subtitle-button";
     toggleButton.title = APP_NAME;
+    toggleButton.setAttribute("aria-label", APP_NAME);
+    toggleButton.setAttribute("aria-haspopup", "dialog");
+    toggleButton.setAttribute("aria-expanded", "false");
 
     toggleButton.appendChild(createLogoSVG());
     lingoflowControls.appendChild(toggleButton);
@@ -116,7 +129,7 @@ export class YouTubePlayerUi {
       className: "notranslate",
       reactComponent: Menus,
       rootElement: lingoflowControls,
-      props: this.#getMenuProps(),
+      props: { ...this.#getMenuProps(), onClose: this.closeMenu },
     });
 
     toggleButton.onclick = () => {
@@ -127,10 +140,9 @@ export class YouTubePlayerUi {
         );
         this.#menuManager.show();
         this.updateMenuProps();
+        toggleButton.setAttribute("aria-expanded", "true");
       } else {
-        this.#isMenuShow = false;
-        this.#toggleButton?.replaceChildren(createLogoSVG());
-        this.#menuManager.hide();
+        this.closeMenu();
       }
     };
     this.#toggleButton = toggleButton;

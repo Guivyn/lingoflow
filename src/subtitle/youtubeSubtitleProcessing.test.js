@@ -283,6 +283,7 @@ describe("youtubeSubtitleProcessing", () => {
 
     expect(subtitles.length).toBeGreaterThan(1);
     expect(subtitles[0].text).toContain("First,");
+    expect(subtitles.every((cue) => cue.text.length <= 20)).toBe(true);
   });
 
   test.each([

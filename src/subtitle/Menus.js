@@ -36,6 +36,15 @@ function MenuItem({ children, onClick, disabled = false }) {
 
   return (
     <div
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled || undefined}
+      onKeyDown={(event) => {
+        if (!disabled && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onClick?.();
+        }
+      }}
       style={{
         display: "flex",
         justifyContent: "space-between",
@@ -249,6 +258,7 @@ export function Menus({
   updateSetting,
   downloadSubtitle,
   transApis,
+  onClose,
 }) {
   // 当快捷菜单的任何子选项发生更改时，统一向上层派发更新事件
   const handleChange = useCallback(
@@ -307,6 +317,14 @@ export function Menus({
 
   return (
     <div
+      role="dialog"
+      aria-label={i18n("subtitle_setting") || "Subtitle settings"}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          onClose?.();
+        }
+      }}
       style={{
         position: "absolute",
         left: 0,

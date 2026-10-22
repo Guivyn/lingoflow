@@ -42,6 +42,27 @@ function createRenderer(
 }
 
 describe("TranslationRenderer", () => {
+  test("restores a pending wrapper backup and removes nested loading wrappers", () => {
+    const renderer = createRenderer();
+    const outer = document.createElement("span");
+    outer.className = DomKit.LINGOFLOW_CLASS.warpper;
+    const backup = document.createElement("template");
+    backup.className = DomKit.LINGOFLOW_CLASS.backup;
+    const original = document.createElement("p");
+    original.appendChild(document.createTextNode("Original content"));
+    const nested = document.createElement("span");
+    nested.className = DomKit.LINGOFLOW_CLASS.warpper;
+    nested.innerHTML = "<svg></svg>";
+    original.appendChild(nested);
+    backup.content.appendChild(original);
+    outer.appendChild(backup);
+    document.body.appendChild(outer);
+    renderer.removeWrapper(outer);
+    expect(document.body.textContent).toContain("Original content");
+    expect(
+      document.body.querySelectorAll(`.${DomKit.LINGOFLOW_CLASS.warpper}, svg`)
+    ).toHaveLength(0);
+  });
   let originalCSSStyleSheet;
 
   beforeEach(() => {

@@ -6,7 +6,7 @@ import {
   SETTINGS_VERSION_V4,
   SETTINGS_VERSION_V5,
 } from "../../config/prompt";
-import { CURRENT_SETTINGS_VERSION, SETTINGS_SCHEMA_VERSION } from "./schema";
+import { CURRENT_SETTINGS_VERSION, SETTINGS_SCHEMA_VERSION, normalizeSetting } from "./schema";
 import {
   LEGACY_SUBTITLE_ORIGIN_STYLE,
   LEGACY_SUBTITLE_TRANSLATION_STYLE,
@@ -140,5 +140,5 @@ export function runSettingMigrations(
     version = nextVersion;
   }
 
-  return current;
+  return normalizeSetting(current);
 }

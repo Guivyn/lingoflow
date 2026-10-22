@@ -1,7 +1,7 @@
 /**
  * @file fetch.js
- * @description 网络请求兼容入口。对外保留历史使用的 fetchData、fetchStream、fetchPatcher 等函数名，
- * 内部只负责组合缓存、并发池、普通请求适配和流式请求适配，避免调用方感知本次分层重构。
+ * @description 网络请求兼容入口。对外提供 fetchData、fetchStream、fetchPatcher 等函数，
+ * 内部只负责组合缓存、并发池、普通请求适配和流式请求适配，向调用方提供统一请求接口。
  */
 
 import { getFetchPool, runWithGlobalFetchLimit } from "./pool";
@@ -14,6 +14,7 @@ import {
   mergeAbortSignals,
 } from "./request";
 import { fetchStreamNative, requestStream } from "./requestStream";
+import { normalizeRequestError } from "./requestError";
 
 export { fetchPatcher, fetchHandle, fnPolyfill, fetchStreamNative };
 
@@ -40,8 +41,14 @@ export const fetchData = async (
     throw new Error("URL is empty");
   }
 
+  opts.signal = mergeAbortSignals([opts.signal, init?.signal]);
+  if (opts.signal?.aborted)
+    throw new DOMException("The operation was aborted.", "AbortError");
+
   if (useCache) {
     const resCache = await getHttpCachePolyfill(input, init);
+    if (opts.signal?.aborted)
+      throw new DOMException("The operation was aborted.", "AbortError");
     if (resCache) {
       return resCache;
     }
@@ -100,19 +107,44 @@ export async function* fetchStream(
       signal: mergeAbortSignals([opts.signal, streamController.signal]),
     };
 
-    const streamPromise = fetchPool.push(() =>
-      runWithGlobalFetchLimit(async () => {
-        try {
-          for await (const chunk of requestStream(input, init, streamOpts)) {
-            asyncQueue.push(chunk);
-          }
-          asyncQueue.finish();
-        } catch (e) {
-          asyncQueue.error(e);
-        }
-        return null;
-      })
-    );
+    let emitted = false;
+    const streamPromise = fetchPool
+      .push(
+        () =>
+          runWithGlobalFetchLimit(async () => {
+            if (streamOpts.signal.aborted)
+              throw new DOMException(
+                "The operation was aborted.",
+                "AbortError"
+              );
+            try {
+              for await (const chunk of requestStream(
+                input,
+                init,
+                streamOpts
+              )) {
+                emitted = true;
+                asyncQueue.push(chunk);
+              }
+              asyncQueue.finish();
+            } catch (e) {
+              const error = normalizeRequestError(e);
+              // Once data is visible, automatic replay could duplicate or mix translations.
+              if (emitted && error.name !== "AbortError") {
+                error.retryable = false;
+                error.code = "STREAM_INTERRUPTED";
+                error.message =
+                  "流式翻译中断，已停止自动重试；请手动重试以重新生成整段译文。";
+              }
+              throw error;
+            }
+            return null;
+          }),
+        { opts: streamOpts }
+      )
+      .catch((error) => {
+        asyncQueue.error(error);
+      });
 
     try {
       yield* asyncQueue.iterate();

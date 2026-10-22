@@ -1,5 +1,7 @@
+import { API_LIMITS, normalizeNumber } from "../core/storage/constraints";
 import { DEFAULT_FETCH_INTERVAL, DEFAULT_FETCH_LIMIT } from "../config";
 import { appLog } from "./log";
+import { normalizeRequestError, retryDelay } from "./requestError";
 
 /**
  * 任务池（TaskPool）
@@ -9,7 +11,6 @@ class TaskPool {
   #pool = []; // 待执行的任务队列
 
   #maxRetry = 2; // 最大重试次数
-  #retryInterval = 1000; // 发生错误时的重试间隔时间（毫秒）
   #limit; // 最大并发限制数
   #interval; // 任务最小启动时间间隔（毫秒），防止请求过于高频
   #retryTimers = new Map(); // 重试定时器，用于 clear() 时统一取消
@@ -17,21 +18,16 @@ class TaskPool {
   #currentConcurrent = 0; // 当前正在执行的任务数
   #lastExecutionTime = 0; // 上一个任务的启动时间戳，用于计算延迟
   #schedulerTimer = null; // 用于调度下一个任务的延迟定时器
+  #cooldownUntil = 0;
 
   /**
    * 构造函数
    * @param {number} interval - 任务最小启动间隔
    * @param {number} limit - 最大并发数
-   * @param {number} retryInterval - 失败重试间隔
    */
-  constructor(
-    interval = DEFAULT_FETCH_INTERVAL,
-    limit = DEFAULT_FETCH_LIMIT,
-    retryInterval = 1000
-  ) {
+  constructor(interval = DEFAULT_FETCH_INTERVAL, limit = DEFAULT_FETCH_LIMIT) {
     this.#interval = interval;
     this.#limit = limit;
-    this.#retryInterval = retryInterval;
   }
 
   /**
@@ -52,7 +48,11 @@ class TaskPool {
     const now = Date.now();
     const timeSinceLast = now - this.#lastExecutionTime;
     // 计算距离上一次任务启动是否已满足最小间隔，如果不满足则计算所需延迟
-    const delay = Math.max(0, this.#interval - timeSinceLast);
+    const delay = Math.max(
+      0,
+      this.#interval - timeSinceLast,
+      this.#cooldownUntil - now
+    );
 
     this.#schedulerTimer = setTimeout(() => {
       this.#schedulerTimer = null;
@@ -77,31 +77,50 @@ class TaskPool {
    * @param {object} task - 任务对象，包含执行函数、参数、Promise的回调和当前重试次数
    */
   async #execute(task) {
+    if (task.settled) return;
     this.#currentConcurrent++;
     const { fn, args, resolve, reject, retry } = task;
 
     try {
+      if (args?.opts?.signal?.aborted || args?.init?.signal?.aborted) {
+        throw new DOMException("The operation was aborted.", "AbortError");
+      }
       // 执行传入的异步任务函数
       const res = await fn(args);
       resolve(res);
     } catch (err) {
-      appLog("task pool", err);
-      if (err?.name === "AbortError") {
-        reject(err);
+      if (task.settled) return;
+      const error = normalizeRequestError(err);
+      appLog("task pool", error);
+      if (error?.name === "AbortError") {
+        reject(error);
         return;
       }
       // 如果发生异常且重试次数未达到上限，则安排延迟重试
-      if (retry < this.#maxRetry) {
+      if (error.retryable && retry < this.#maxRetry) {
+        const backoff = retryDelay(error, retry);
+        if (error.status === 429) {
+          // Cool down the whole API pool, including fresh work, instead of only one retry.
+          this.#cooldownUntil = Math.max(
+            this.#cooldownUntil,
+            Date.now() + backoff
+          );
+          clearTimeout(this.#schedulerTimer);
+          this.#schedulerTimer = null;
+        }
         const retryTimer = setTimeout(() => {
           this.#retryTimers.delete(retryTimer);
+          if (task.settled) return;
           // 将重试的任务重新放入队列头部，以保证重试任务优先被执行
-          this.#pool.unshift({ ...task, retry: retry + 1 });
+          task.retry = retry + 1;
+          this.#pool.unshift(task);
           this.#scheduleNext();
-        }, this.#retryInterval);
+        }, backoff);
         this.#retryTimers.set(retryTimer, task);
+        task.retryTimer = retryTimer;
       } else {
         // 达到最大重试次数后，抛出错误并拒绝 Promise
-        reject(err);
+        reject(error);
       }
     } finally {
       // 任务结束，并发数递减，触发下一次调度
@@ -118,7 +137,44 @@ class TaskPool {
    */
   push(fn, args) {
     return new Promise((resolve, reject) => {
-      this.#pool.push({ fn, args, resolve, reject, retry: 0 });
+      const signal = args?.opts?.signal || args?.init?.signal;
+      if (signal?.aborted) {
+        reject(new DOMException("The operation was aborted.", "AbortError"));
+        return;
+      }
+      const cleanup = () => {
+        signal?.removeEventListener("abort", onAbort);
+        clearTimeout(task.retryTimer);
+        this.#retryTimers.delete(task.retryTimer);
+      };
+      const task = {
+        fn,
+        args,
+        retry: 0,
+        settled: false,
+        retryTimer: null,
+        resolve: (value) => {
+          if (task.settled) return;
+          task.settled = true;
+          cleanup();
+          resolve(value);
+        },
+        reject: (error) => {
+          if (task.settled) return;
+          task.settled = true;
+          cleanup();
+          reject(error);
+        },
+      };
+      const onAbort = () => {
+        const index = this.#pool.indexOf(task);
+        if (index !== -1) this.#pool.splice(index, 1);
+        task.reject(
+          new DOMException("The operation was aborted.", "AbortError")
+        );
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+      this.#pool.push(task);
       this.#scheduleNext();
     });
   }
@@ -203,21 +259,10 @@ export const runWithGlobalFetchLimit = (fn, args) =>
  */
 const fetchPools = new Map();
 
-const normalizePoolSettings = (interval, limit) => {
-  const parsedInterval = Number(interval ?? DEFAULT_FETCH_INTERVAL);
-  const parsedLimit = Number(limit ?? DEFAULT_FETCH_LIMIT);
-
-  return {
-    interval:
-      Number.isFinite(parsedInterval) && parsedInterval >= 0
-        ? Math.min(5000, Math.floor(parsedInterval))
-        : DEFAULT_FETCH_INTERVAL,
-    limit:
-      Number.isFinite(parsedLimit) && parsedLimit >= 1
-        ? Math.min(100, Math.floor(parsedLimit))
-        : DEFAULT_FETCH_LIMIT,
-  };
-};
+const normalizePoolSettings = (interval, limit) => ({
+  interval: normalizeNumber(interval, API_LIMITS.fetchInterval),
+  limit: normalizeNumber(limit, API_LIMITS.fetchLimit),
+});
 
 /**
  * 获取当前接口配置对应的请求池实例

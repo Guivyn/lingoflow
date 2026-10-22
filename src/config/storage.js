@@ -3,12 +3,15 @@
  * @description 存储相关的常量配置模块。定义保存在本地（如 chrome.storage.local）中的键名 (Key) 及版本化规则。
  */
 
-import { APP_NAME, APP_VERSION } from "./app";
+import { APP_NAME } from "./app";
+
+// 存储命名空间独立于发布版本，兼容现有配置；数据迁移由 schema 版本管理。
+const STORAGE_NAMESPACE_VERSION = 1;
 
 // --- 浏览器本地存储 (chrome.storage 或 localStorage) 的键名 ---
-export const STOKEY_SETTING = `${APP_NAME}_setting_v${APP_VERSION[0]}`; // 当前大版本全局配置缓存键名
+export const STOKEY_SETTING = `${APP_NAME}_setting_v${STORAGE_NAMESPACE_VERSION}`; // 当前存储版本全局配置缓存键名
 export const STOKEY_SETTING_BACKUP_V1_BEFORE_V2 = `${STOKEY_SETTING}_backup_v1_before_v2`; // settings v1 升级 v2 前的完整备份
-export const STOKEY_RULES = `${APP_NAME}_rules_v${APP_VERSION[0]}`; // 当前大版本网页规则缓存键名
+export const STOKEY_RULES = `${APP_NAME}_rules_v${STORAGE_NAMESPACE_VERSION}`; // 当前存储版本网页规则缓存键名
 export const STOKEY_FAB = `${APP_NAME}_fab`; // 网页翻译悬浮球最近一次位置等配置缓存键名
 export const STOKEY_TRANBOX = `${APP_NAME}_tranbox`; // 划词翻译框的最后状态缓存键名
 export const STOKEY_SEPARATE_WINDOW = `${APP_NAME}_separate_window`; // 划词翻译独立小窗口的最后边界尺寸(坐标及宽高)缓存键名

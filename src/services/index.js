@@ -25,11 +25,13 @@ import {
   buildSubtitleSystemPrompt,
   formatIndexSubtitleEvents,
   handleSummarize,
+  summarizeSystemPrompt,
 } from "../providers/translation";
 import { getHttpCachePolyfill, putHttpCachePolyfill } from "../libs/cache";
 import { getBatchQueue, normalizeBatchOptions } from "../libs/batchQueue";
 import { getDocInfo } from "../libs/docInfo";
 import { isChineseTargetText } from "../libs/targetLanguage";
+import { getResultCacheIdentity, RESULT_CACHE_VERSION } from "./cacheIdentity";
 
 const PROMPT_CACHE_SALT = "prompt-cache";
 const PROMPT_CACHE_SCOPE_BATCH = "batch";
@@ -104,6 +106,7 @@ export const apiTranslate = async ({
   useCache = true,
   usePool = true,
   signal,
+  requestPriority,
 }) => {
   if (!text) {
     throw new Error("The text cannot be empty.");
@@ -126,10 +129,8 @@ export const apiTranslate = async ({
     return { trText: text, srLang: to, srCode: toLang, isSame: true };
   }
 
-  // 缓存 Key (cacheOpts) 构造。
-  // 特别是将项目的 REACT_APP_VERSION 版本号（仅前两位小版本）加入了缓存 key。
-  // 这可以确保用户在升级扩展插件后，旧版本的翻译缓存会被自动作废，防止旧的翻译 Prompt/规则影响新版效果。
-  // 此外，如果当前是视频字幕翻译，还会缓存前 50 字符的上下文视频摘要信息，使上下文关联缓存更智能。
+  // Snapshot the same context for cache identity and provider dispatch.
+  const effectiveDocInfo = docInfo || getDocInfo();
   const [v1, v2] = process.env.REACT_APP_VERSION.split(".");
   const promptSig = await getPromptCacheSig(
     apiSetting,
@@ -142,7 +143,13 @@ export const apiTranslate = async ({
     toLang,
     version: [v1, v2].join("."),
     promptSig,
-    ...(docInfo?.summary && { ctx: docInfo.summary.slice(0, 50) }),
+    cacheVer: RESULT_CACHE_VERSION,
+    resultSig: await getResultCacheIdentity(apiSetting, "translate", {
+      fromLang,
+      toLang,
+      promptSig,
+      docInfo: effectiveDocInfo,
+    }),
   };
   const cacheInput = `${URL_CACHE_TRAN}?${queryString.stringify(cacheOpts)}`;
 
@@ -180,8 +187,18 @@ export const apiTranslate = async ({
       batchLength,
       batchConcurrency: useSerialBatch ? 1 : batchConcurrency,
     });
-    const key = `${apiSlug}_${fromLang}_${toLang}_${enableStream ? "stream" : "batch"}_${promptSig}_${batchOptions.batchConcurrency}_${batchOptions.batchInterval}_${batchOptions.batchSize}_${batchOptions.batchLength}`;
-    const queue = getBatchQueue(key, handleTranslate, batchOptions);
+    const key = `${apiSlug}_${fromLang}_${toLang}_${enableStream ? "stream" : "batch"}_${cacheOpts.resultSig}_${batchOptions.batchConcurrency}_${batchOptions.batchInterval}_${batchOptions.batchSize}_${batchOptions.batchLength}`;
+    const queue = getBatchQueue(key, handleTranslate, {
+      ...batchOptions,
+      // Keep context-dependent requests serial; optimize only independent realtime streams.
+      firstBatchSize:
+        enableStream &&
+        apiSetting.streamRenderMode === "realtime" &&
+        !useSerialBatch &&
+        batchOptions.batchConcurrency > 1
+          ? 4
+          : 0,
+    });
 
     translation = await queue.addTask(text, {
       from,
@@ -192,8 +209,9 @@ export const apiTranslate = async ({
       apiSetting,
       usePool,
       onStreamChunk,
-      docInfo,
+      docInfo: effectiveDocInfo,
       signal,
+      requestPriority,
     });
   } else {
     // 2.3 不支持批量翻译、需要单个请求执行的 API (如某些流式大模型 API)
@@ -205,7 +223,7 @@ export const apiTranslate = async ({
       langMap,
       apiSetting,
       usePool,
-      docInfo,
+      docInfo: effectiveDocInfo,
       onStreamChunk,
       signal,
     });
@@ -252,7 +270,7 @@ export const apiTranslate = async ({
   }
 
   if (!trText) {
-    throw new Error("tanslate api got empty trtext");
+    throw new Error("translate API returned empty text");
   }
 
   // 判断是否发生了“源语言与目标语言相同”的无效翻译情况 (如英文网页翻译为英文)
@@ -335,6 +353,14 @@ export const apiDict = async ({
     version: [v1, v2].join("."),
     promptSig: await getPromptCacheSig(apiSetting, PROMPT_CACHE_SCOPE_DICT),
     contextSig: contextSig.slice(0, 16),
+    cacheVer: RESULT_CACHE_VERSION,
+    resultSig: await getResultCacheIdentity(apiSetting, "dict", {
+      fromLang,
+      toLang,
+      docInfo: effectiveDocInfo,
+      context,
+      prompts: getPromptCacheFields(apiSetting, PROMPT_CACHE_SCOPE_DICT),
+    }),
   };
   const cacheInput = `${URL_CACHE_DICT}?${queryString.stringify(cacheOpts)}`;
 
@@ -388,6 +414,7 @@ export const apiSubtitle = async ({
   signal,
 }) => {
   if (!events?.length) return [];
+  const effectiveDocInfo = docInfo || getDocInfo();
   const formattedEvents = formatIndexSubtitleEvents(
     events,
     apiSetting.subtitlePrompt
@@ -416,7 +443,7 @@ export const apiSubtitle = async ({
     to: toLang,
     fromLang,
     toLang,
-    docInfo,
+    docInfo: effectiveDocInfo,
   });
   const cacheOpts = {
     apiSlug: apiSetting.apiSlug,
@@ -428,6 +455,13 @@ export const apiSubtitle = async ({
     fromLang,
     toLang,
     segVer: 4,
+    cacheVer: RESULT_CACHE_VERSION,
+    resultSig: await getResultCacheIdentity(apiSetting, "subtitle", {
+      fromLang,
+      toLang,
+      renderedPrompt,
+      docInfo: effectiveDocInfo,
+    }),
     promptSig: (await getCacheDigest(renderedPrompt, PROMPT_CACHE_SALT)).slice(
       0,
       16
@@ -447,7 +481,7 @@ export const apiSubtitle = async ({
     from: fromLang,
     to: toLang,
     apiSetting,
-    docInfo,
+    docInfo: effectiveDocInfo,
     onSubtitleChunk,
     signal,
   });
@@ -470,7 +504,17 @@ export const apiSummarizeContext = async ({
   transcript,
   apiSetting,
 }) => {
-  const cacheOpts = { apiSlug: apiSetting.apiSlug, videoId };
+  const cacheOpts = {
+    apiSlug: apiSetting.apiSlug,
+    videoId,
+    cacheVer: RESULT_CACHE_VERSION,
+    resultSig: await getResultCacheIdentity(apiSetting, "summary", {
+      title,
+      description,
+      transcript,
+      systemPrompt: summarizeSystemPrompt,
+    }),
+  };
   const cacheInput = `${URL_CACHE_CONTEXT}?${queryString.stringify(cacheOpts)}`;
 
   // 1. 读取总结摘要缓存，避免每次打开同一视频重复对长文本请求总结
@@ -500,4 +544,3 @@ export { apiGoogleLangdetect } from "./langdetect";
 export { apiMicrosoftDict, apiYoudaoDict } from "./dictionary";
 export { apiBaiduSuggest, apiYoudaoSuggest } from "./suggest";
 export * from "./zdic";
-

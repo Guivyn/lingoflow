@@ -1,0 +1,381 @@
+{
+  "kind": "controlled virtual-clock benchmark; no live provider or browser paint measurements",
+  "node": "v24.18.0",
+  "fixture": "12 paragraphs; observer interval 10ms; scanner interval 100ms; batch wait 150ms; provider TTFB 180ms; token interval 20ms; cold cache",
+  "runs": [
+    {
+      "concurrency": 1,
+      "firstWordMs": 475,
+      "topParagraphFirstWordMs": 475,
+      "firstScreenCompleteMs": 735,
+      "allCompleteMs": 1155,
+      "requestCount": 1,
+      "maxActive": 1,
+      "submitted": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        8
+      ],
+      "outputOrder": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "requests": [
+        {
+          "startMs": 255,
+          "paragraphs": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "active": 1,
+          "endMs": 1155
+        }
+      ],
+      "paragraphs": [
+        {
+          "id": 0,
+          "firstWordMs": 475,
+          "completeMs": 495
+        },
+        {
+          "id": 1,
+          "firstWordMs": 535,
+          "completeMs": 555
+        },
+        {
+          "id": 2,
+          "firstWordMs": 595,
+          "completeMs": 615
+        },
+        {
+          "id": 3,
+          "firstWordMs": 655,
+          "completeMs": 675
+        },
+        {
+          "id": 4,
+          "firstWordMs": 715,
+          "completeMs": 735
+        },
+        {
+          "id": 5,
+          "firstWordMs": 775,
+          "completeMs": 795
+        },
+        {
+          "id": 6,
+          "firstWordMs": 835,
+          "completeMs": 855
+        },
+        {
+          "id": 7,
+          "firstWordMs": 895,
+          "completeMs": 915
+        },
+        {
+          "id": 8,
+          "firstWordMs": 955,
+          "completeMs": 975
+        },
+        {
+          "id": 9,
+          "firstWordMs": 1015,
+          "completeMs": 1035
+        },
+        {
+          "id": 10,
+          "firstWordMs": 1075,
+          "completeMs": 1095
+        },
+        {
+          "id": 11,
+          "firstWordMs": 1135,
+          "completeMs": 1155
+        }
+      ]
+    },
+    {
+      "concurrency": 2,
+      "firstWordMs": 345,
+      "topParagraphFirstWordMs": 345,
+      "firstScreenCompleteMs": 545,
+      "allCompleteMs": 935,
+      "requestCount": 2,
+      "maxActive": 2,
+      "submitted": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        8
+      ],
+      "outputOrder": [
+        0,
+        1,
+        2,
+        4,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "requests": [
+        {
+          "startMs": 125,
+          "paragraphs": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "active": 1,
+          "endMs": 545
+        },
+        {
+          "startMs": 275,
+          "paragraphs": [
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "active": 2,
+          "endMs": 935
+        }
+      ],
+      "paragraphs": [
+        {
+          "id": 0,
+          "firstWordMs": 345,
+          "completeMs": 365
+        },
+        {
+          "id": 1,
+          "firstWordMs": 405,
+          "completeMs": 425
+        },
+        {
+          "id": 2,
+          "firstWordMs": 465,
+          "completeMs": 485
+        },
+        {
+          "id": 4,
+          "firstWordMs": 495,
+          "completeMs": 515
+        },
+        {
+          "id": 3,
+          "firstWordMs": 525,
+          "completeMs": 545
+        },
+        {
+          "id": 5,
+          "firstWordMs": 555,
+          "completeMs": 575
+        },
+        {
+          "id": 6,
+          "firstWordMs": 615,
+          "completeMs": 635
+        },
+        {
+          "id": 7,
+          "firstWordMs": 675,
+          "completeMs": 695
+        },
+        {
+          "id": 8,
+          "firstWordMs": 735,
+          "completeMs": 755
+        },
+        {
+          "id": 9,
+          "firstWordMs": 795,
+          "completeMs": 815
+        },
+        {
+          "id": 10,
+          "firstWordMs": 855,
+          "completeMs": 875
+        },
+        {
+          "id": 11,
+          "firstWordMs": 915,
+          "completeMs": 935
+        }
+      ]
+    },
+    {
+      "concurrency": 4,
+      "firstWordMs": 345,
+      "topParagraphFirstWordMs": 345,
+      "firstScreenCompleteMs": 545,
+      "allCompleteMs": 935,
+      "requestCount": 2,
+      "maxActive": 2,
+      "submitted": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        8
+      ],
+      "outputOrder": [
+        0,
+        1,
+        2,
+        4,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "requests": [
+        {
+          "startMs": 125,
+          "paragraphs": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "active": 1,
+          "endMs": 545
+        },
+        {
+          "startMs": 275,
+          "paragraphs": [
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "active": 2,
+          "endMs": 935
+        }
+      ],
+      "paragraphs": [
+        {
+          "id": 0,
+          "firstWordMs": 345,
+          "completeMs": 365
+        },
+        {
+          "id": 1,
+          "firstWordMs": 405,
+          "completeMs": 425
+        },
+        {
+          "id": 2,
+          "firstWordMs": 465,
+          "completeMs": 485
+        },
+        {
+          "id": 4,
+          "firstWordMs": 495,
+          "completeMs": 515
+        },
+        {
+          "id": 3,
+          "firstWordMs": 525,
+          "completeMs": 545
+        },
+        {
+          "id": 5,
+          "firstWordMs": 555,
+          "completeMs": 575
+        },
+        {
+          "id": 6,
+          "firstWordMs": 615,
+          "completeMs": 635
+        },
+        {
+          "id": 7,
+          "firstWordMs": 675,
+          "completeMs": 695
+        },
+        {
+          "id": 8,
+          "firstWordMs": 735,
+          "completeMs": 755
+        },
+        {
+          "id": 9,
+          "firstWordMs": 795,
+          "completeMs": 815
+        },
+        {
+          "id": 10,
+          "firstWordMs": 855,
+          "completeMs": 875
+        },
+        {
+          "id": 11,
+          "firstWordMs": 915,
+          "completeMs": 935
+        }
+      ]
+    }
+  ]
+}

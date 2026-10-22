@@ -1,19 +1,10 @@
+import { PROVIDER_CAPABILITIES } from "../capabilities";
 import { OPT_TRANS_GOOGLE } from "../../config";
 
 export const googleProvider = {
   apiType: OPT_TRANS_GOOGLE,
   name: "Google",
-  capabilities: {
-    builtin: true,
-    machine: true,
-    ai: false,
-    mulkeys: false,
-    batch: true,
-    context: false,
-    stream: false,
-    darkIcon: false,
-    sponsor: false,
-  },
+  capabilities: PROVIDER_CAPABILITIES.Google,
   thinking: null,
   buildRequest({ texts, from, to, url, key }) {
     // Google2 的 translateHtml 接口使用 protobuf 风格的 JSON 数组，

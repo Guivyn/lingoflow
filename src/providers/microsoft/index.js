@@ -1,20 +1,11 @@
+import { PROVIDER_CAPABILITIES } from "../capabilities";
 import { OPT_TRANS_MICROSOFT } from "../../config";
 import { stringifyParams } from "../shared";
 
 export const microsoftProvider = {
   apiType: OPT_TRANS_MICROSOFT,
   name: "Microsoft",
-  capabilities: {
-    builtin: true,
-    machine: true,
-    ai: false,
-    mulkeys: false,
-    batch: true,
-    context: false,
-    stream: false,
-    darkIcon: false,
-    sponsor: false,
-  },
+  capabilities: PROVIDER_CAPABILITIES.Microsoft,
   thinking: null,
   buildRequest({ texts, from, to }) {
     // Edge 前端内部公开端点：免鉴权，Body 为纯字符串数组；from 留空表示自动检测。

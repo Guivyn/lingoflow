@@ -30,7 +30,7 @@ const tasks = [{ output: "chrome.zip", source: "chrome" }];
 try {
   for (const task of tasks) {
     console.log(`Zipping folder ${task.source}...`);
-    await $`npx bestzip ${task.output} ${task.source}`;
+    await $`pnpm exec bestzip ${task.output} ${task.source}`;
   }
   console.log(chalk.green("\nZip created successfully."));
 } catch (err) {

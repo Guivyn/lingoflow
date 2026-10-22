@@ -1,7 +1,7 @@
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import Stack from "@mui/material/Stack";
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import SettingsIcon from "@mui/icons-material/Settings";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useI18n } from "../../hooks/I18n";
 import ProductSignature from "../../ui/components/ProductSignature";
@@ -17,9 +17,8 @@ import ProductSignature from "../../ui/components/ProductSignature";
  */
 export default function Header({
   onClose,
-  toggleTab,
   openSeparateWindow,
-  showTrantab = false,
+  handleOpenSetting,
 }) {
   const i18n = useI18n();
 
@@ -38,11 +37,7 @@ export default function Header({
     >
       {/* 头部左侧：主页按钮与插件名称/版本号 */}
       <Stack direction="row" justifyContent="flex-start" alignItems="center">
-        <IconButton
-          onClick={handleHomepage}
-          title="LingoFlow"
-          sx={{ p: 0.5 }}
-        >
+        <IconButton onClick={handleHomepage} title="LingoFlow" sx={{ p: 0.5 }}>
           <ProductSignature variant="popup" />
         </IconButton>
       </Stack>
@@ -58,18 +53,6 @@ export default function Header({
         </IconButton>
       ) : (
         <Stack direction="row" alignItems="center">
-          {/* 切换到独立文本翻译输入框面板 */}
-          <IconButton
-            onClick={toggleTab}
-            title={i18n("toggle_transbox")}
-            aria-label={i18n("toggle_transbox")}
-            sx={{
-              p: 0.75,
-              color: showTrantab ? "primary.main" : "inherit",
-            }}
-          >
-            <ChatBubbleOutlineIcon fontSize="small" />
-          </IconButton>
           {/* <DarkModeButton /> */}
           {/* 独立窗口打开 */}
           <IconButton
@@ -80,6 +63,16 @@ export default function Header({
           >
             <OpenInNewIcon fontSize="small" />
           </IconButton>
+          {handleOpenSetting && (
+            <IconButton
+              onClick={handleOpenSetting}
+              title={i18n("setting")}
+              aria-label={i18n("setting")}
+              sx={{ p: 0.75 }}
+            >
+              <SettingsIcon fontSize="small" />
+            </IconButton>
+          )}
         </Stack>
       )}
     </Stack>

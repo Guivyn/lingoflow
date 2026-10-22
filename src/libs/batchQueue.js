@@ -1,9 +1,5 @@
-import {
-  DEFAULT_BATCH_INTERVAL,
-  DEFAULT_BATCH_SIZE,
-  DEFAULT_BATCH_LENGTH,
-  DEFAULT_BATCH_CONCURRENCY,
-} from "../config";
+import { API_LIMITS, normalizeNumber } from "../core/storage/constraints";
+import { getBatchCompatibility } from "../services/cacheIdentity";
 
 /**
  * 批处理队列工厂函数
@@ -18,39 +14,12 @@ import {
  * @param {number} [options.batchConcurrency] - 同时执行的最大批次数
  * @returns {object} 返回具有 addTask 和 destroy 方法的实例对象
  */
-const normalizeInteger = (value, fallback, min, max) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed)
-    ? Math.min(max, Math.max(min, Math.floor(parsed)))
-    : fallback;
-};
-
-export const normalizeBatchOptions = (options = {}) => ({
-  batchInterval: normalizeInteger(
-    options.batchInterval ?? DEFAULT_BATCH_INTERVAL,
-    DEFAULT_BATCH_INTERVAL,
-    0,
-    10000
-  ),
-  batchSize: normalizeInteger(
-    options.batchSize ?? DEFAULT_BATCH_SIZE,
-    DEFAULT_BATCH_SIZE,
-    1,
-    100
-  ),
-  batchLength: normalizeInteger(
-    options.batchLength ?? DEFAULT_BATCH_LENGTH,
-    DEFAULT_BATCH_LENGTH,
-    1000,
-    100000
-  ),
-  batchConcurrency: normalizeInteger(
-    options.batchConcurrency ?? DEFAULT_BATCH_CONCURRENCY,
-    DEFAULT_BATCH_CONCURRENCY,
-    1,
-    100
-  ),
-});
+export const normalizeBatchOptions = (options = {}) =>
+  Object.fromEntries(
+    ["batchInterval", "batchSize", "batchLength", "batchConcurrency"].map(
+      (field) => [field, normalizeNumber(options[field], API_LIMITS[field])]
+    )
+  );
 
 const BatchQueue = (taskFn, options = {}) => {
   const queue = []; // 存储待处理翻译任务的队列
@@ -62,6 +31,11 @@ const BatchQueue = (taskFn, options = {}) => {
   } = normalizeBatchOptions(options);
   let activeBatchCount = 0; // 当前正在执行的批次数
   let timer = null; // 用于延迟处理任务的定时器
+  const firstBatchSize = Math.max(
+    0,
+    Math.min(batchSize, Number(options.firstBatchSize) || 0)
+  );
+  let firstBatch = firstBatchSize > 0;
 
   const createAbortError = () =>
     new DOMException("The operation was aborted.", "AbortError");
@@ -96,6 +70,11 @@ const BatchQueue = (taskFn, options = {}) => {
     }
 
     rejectCancelledTasks();
+    queue.sort(
+      (a, b) =>
+        (a.args?.requestPriority ?? Infinity) -
+        (b.args?.requestPriority ?? Infinity)
+    );
 
     // 如果队列为空或已经达到批次并发上限，则直接返回
     if (queue.length === 0 || activeBatchCount >= concurrency) {
@@ -107,16 +86,21 @@ const BatchQueue = (taskFn, options = {}) => {
     let tasksToProcess = [];
     let currentBatchLength = 0;
     let endIndex = 0;
+    const currentBatchSize = firstBatch ? firstBatchSize : batchSize;
 
     // 贪心策略：根据 batchSize 和字符长度 batchLength 计算本批次可以打包执行的任务范围
     const batchSignal = queue[0]?.args?.signal;
     for (const task of queue) {
       // 一批任务共享 taskFn 的参数；不同会话的 AbortSignal 不能混入同一批，
       // 否则第一条旧字幕取消时会连带取消仍有效的新字幕。
-      if (task.args?.signal !== batchSignal) break;
+      if (
+        task.args?.signal !== batchSignal ||
+        task.compatibility !== queue[0].compatibility
+      )
+        break;
       const textLength = task.payload?.length || 0;
       if (
-        endIndex >= batchSize ||
+        endIndex >= currentBatchSize ||
         (currentBatchLength + textLength > batchLength && endIndex > 0)
       ) {
         break;
@@ -137,6 +121,9 @@ const BatchQueue = (taskFn, options = {}) => {
       activeBatchCount--;
       return;
     }
+    firstBatch = false;
+    // Fill the configured concurrent slots while this stream is still running.
+    if (queue.length > 0) scheduleProcessing();
 
     try {
       const payloads = tasksToProcess.map((item) => item.payload);
@@ -241,7 +228,10 @@ const BatchQueue = (taskFn, options = {}) => {
    */
   const scheduleProcessing = () => {
     if (activeBatchCount < concurrency && !timer && queue.length > 0) {
-      timer = setTimeout(processQueue, batchInterval);
+      timer = setTimeout(
+        processQueue,
+        firstBatch ? Math.min(batchInterval, 16) : batchInterval
+      );
     }
   };
 
@@ -271,6 +261,7 @@ const BatchQueue = (taskFn, options = {}) => {
         return;
       }
       args?.signal?.addEventListener?.("abort", task.onAbort, { once: true });
+      task.compatibility = getBatchCompatibility(args);
       queue.push(task);
 
       // 如果当前积压的任务量已达批处理阈值，则立即开始处理

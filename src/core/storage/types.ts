@@ -1,7 +1,6 @@
 /**
  * Options 与 Storage 共享的配置契约类型。
- * 这些类型先作为目标模型落地，不改变现有扁平 setting 的存储结构；
- * 后续做“扁平 setting -> 嵌套 Config”大迁移时再接入实际读写。
+ * ProviderConfig 描述 transApis 条目；Config 是未参与运行期存储读写的分域类型。
  */
 
 export type DarkMode = "dark" | "light" | "auto";
@@ -67,8 +66,8 @@ export type RulesConfig = {
 };
 
 /**
- * 目标配置模型：`language`、`providers`、`renderer`、`rules` 分域管理。
- * 本轮仅作为类型契约，不参与存储读写。
+ * 分域配置类型：`language`、`providers`、`renderer`、`rules` 分域管理。
+ * 此类型不参与存储读写。
  */
 export type Config = {
   version: number;

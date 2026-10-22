@@ -1,4 +1,6 @@
 export { tokens } from "./theme/tokens";
+export { default as AdvancedSettings } from "./components/AdvancedSettings/AdvancedSettings";
+export { default as SegmentedControl } from "./components/SegmentedControl/SegmentedControl";
 export type { DesignTokens } from "./theme/tokens";
 export * from "./mui";
 export * from "./icons";

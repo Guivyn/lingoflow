@@ -25,6 +25,22 @@ jest.mock("./Menus.js", () => ({
 }));
 
 describe("YouTubePlayerUi", () => {
+  test("menu close keeps the button accessibility state in sync", () => {
+    const controls = document.createElement("div");
+    document.body.appendChild(controls);
+    const ui = createUi(null);
+    ui.injectToggleButton(controls);
+    const button = controls.querySelector("button");
+    expect(button.getAttribute("aria-haspopup")).toBe("dialog");
+    button.click();
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    const props =
+      mockUpdateProps.mock.calls[mockUpdateProps.mock.calls.length - 1][0];
+    props.onClose();
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+    expect(mockHide).toHaveBeenCalled();
+    ui.removeToggleButton();
+  });
   let setting;
 
   beforeEach(() => {

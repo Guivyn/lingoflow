@@ -25,7 +25,7 @@ import { logger } from "../libs/log";
 import { sendBgMsg } from "../libs/msg";
 import { isExt } from "../libs/client";
 import { updateStoredSetting } from "../libs/storage";
-import { migrateAutoTranslateSetting } from "../core/storage/schema";
+import { normalizeSetting } from "../core/storage/schema";
 
 // 创建全局设置 Context，用于在子组件中访问配置数据和更新、重载方法
 const SettingContext = createContext({
@@ -50,10 +50,11 @@ export function SettingProvider({ children, context }) {
     reload,
   } = useStorage(STOKEY_SETTING, DEFAULT_SETTING, { persist: false });
   const setting = useMemo(
-    () => storedSetting && migrateAutoTranslateSetting(storedSetting),
+    () => storedSetting && normalizeSetting(storedSetting),
     [storedSetting]
   );
   const [saveStatus, setSaveStatus] = useState("idle");
+  const [validationIssues, setValidationIssues] = useState([]);
   const saveSequenceRef = useRef(0);
 
   // 先更新当前界面，随后基于最新存储快照串行合并写入。
@@ -62,10 +63,20 @@ export function SettingProvider({ children, context }) {
       const sequence = ++saveSequenceRef.current;
       update(objOrFn);
       setSaveStatus("saving");
-      return updateStoredSetting(objOrFn)
+      return updateStoredSetting((current) => {
+        const next =
+          typeof objOrFn === "function"
+            ? objOrFn(current)
+            : { ...current, ...objOrFn };
+        const issues = [];
+        const normalized = normalizeSetting(next, { issues });
+        if (sequence === saveSequenceRef.current) setValidationIssues(issues);
+        return normalized;
+      })
         .then((nextSetting) => {
           // 旧请求完成时只更新状态提示，不能覆盖之后已经输入的新值。
           if (sequence === saveSequenceRef.current) {
+            update(() => nextSetting);
             setSaveStatus("saved");
           }
           return nextSetting;
@@ -219,7 +230,15 @@ export function SettingProvider({ children, context }) {
   }
 
   return (
-    <SettingContext.Provider value={value}>{children}</SettingContext.Provider>
+    <SettingContext.Provider value={value}>
+      {isOptionsPage && validationIssues.length > 0 && (
+        <Alert severity="warning" onClose={() => setValidationIssues([])}>
+          配置中存在不合法或不受支持的值，已按统一规则修正 / Invalid or
+          unsupported settings were normalized: {validationIssues.join("; ")}
+        </Alert>
+      )}
+      {children}
+    </SettingContext.Provider>
   );
 }
 

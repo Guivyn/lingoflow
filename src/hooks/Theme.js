@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { CssBaseline, GlobalStyles } from "@mui/material";
+import Fade from "@mui/material/Fade";
 import { useDarkMode } from "./ColorMode";
 import { THEME_DARK, THEME_LIGHT } from "../config";
 import { tokens } from "../ui";
 import { browser } from "../libs/browser";
+
+const EMPTY_THEME_OPTIONS = Object.freeze({});
+const EMPTY_THEME_STYLES = Object.freeze({});
 
 // 本地打包的思源宋体标题子集。内容脚本页面里必须用扩展资源绝对 URL 才能跨网页加载。
 const DISPLAY_FONT_URL = (() => {
@@ -22,7 +26,11 @@ const DISPLAY_FONT_URL = (() => {
  * 用于监听系统及用户配置的暗黑模式，并全局提供 Material-UI 主题上下文和基础全局样式
  * @param {object} props { children, options, styles }
  */
-export default function Theme({ children, options = {}, styles = {} }) {
+export default function Theme({
+  children,
+  options = EMPTY_THEME_OPTIONS,
+  styles = EMPTY_THEME_STYLES,
+}) {
   // 获取当前用户设置的深色模式：'light', 'dark' 或是 'auto'
   const { darkMode } = useDarkMode();
   // 保存系统级别的暗黑模式状态，默认为浅色 (light)
@@ -66,9 +74,13 @@ export default function Theme({ children, options = {}, styles = {} }) {
       palette: {
         mode: isDarkMode ? THEME_DARK : THEME_LIGHT,
         primary: {
-          main: isDarkMode ? "#d08263" : tokens.color.primary,
-          dark: isDarkMode ? "#e0977a" : tokens.color.primaryHover,
-          light: tokens.color.primarySoft,
+          main: isDarkMode ? tokens.dark.primary : tokens.color.primary,
+          dark: isDarkMode
+            ? tokens.dark.primaryHover
+            : tokens.color.primaryHover,
+          light: isDarkMode
+            ? tokens.dark.primarySoft
+            : tokens.color.primarySoft,
         },
         success: {
           main: tokens.color.success,
@@ -81,24 +93,36 @@ export default function Theme({ children, options = {}, styles = {} }) {
           main: tokens.color.danger,
         },
         info: {
-          main: isDarkMode ? "#7c96e8" : tokens.color.blue,
-          light: tokens.color.blueSoft,
+          main: isDarkMode ? tokens.dark.blue : tokens.color.blue,
+          light: isDarkMode ? tokens.dark.blueSoft : tokens.color.blueSoft,
         },
         background: {
-          default: isDarkMode ? "#1b1915" : tokens.color.background,
-          paper: isDarkMode ? "#232019" : tokens.color.surface,
+          default: isDarkMode
+            ? tokens.dark.background
+            : tokens.color.background,
+          paper: isDarkMode ? tokens.dark.surface : tokens.color.surface,
         },
-        surface: isDarkMode ? "#232019" : tokens.color.surface,
-        surfaceMuted: isDarkMode ? "#2a261f" : tokens.color.surfaceMuted,
-        surfaceRaised: isDarkMode ? "#332e27" : tokens.color.surfaceRaised,
-        border: isDarkMode ? "#332f28" : tokens.color.border,
-        borderStrong: isDarkMode ? "#453f35" : tokens.color.borderStrong,
+        surface: isDarkMode ? tokens.dark.surface : tokens.color.surface,
+        surfaceMuted: isDarkMode
+          ? tokens.dark.surfaceMuted
+          : tokens.color.surfaceMuted,
+        surfaceRaised: isDarkMode
+          ? tokens.dark.surfaceRaised
+          : tokens.color.surfaceRaised,
+        border: isDarkMode ? tokens.dark.border : tokens.color.border,
+        borderStrong: isDarkMode
+          ? tokens.dark.borderStrong
+          : tokens.color.borderStrong,
         text: {
-          primary: isDarkMode ? "#efeae1" : tokens.color.text,
-          secondary: isDarkMode ? "#aaa398" : tokens.color.textSecondary,
-          disabled: isDarkMode ? "#6e685d" : tokens.color.textDisabled,
+          primary: isDarkMode ? tokens.dark.text : tokens.color.text,
+          secondary: isDarkMode
+            ? tokens.dark.textSecondary
+            : tokens.color.textSecondary,
+          disabled: isDarkMode
+            ? tokens.dark.textDisabled
+            : tokens.color.textDisabled,
         },
-        divider: isDarkMode ? "#332f28" : tokens.color.border,
+        divider: isDarkMode ? tokens.dark.border : tokens.color.border,
       },
       typography: {
         htmlFontSize,
@@ -113,6 +137,72 @@ export default function Theme({ children, options = {}, styles = {} }) {
         borderRadius: tokens.radius.sm,
       },
       components: {
+        MuiSwitch: {
+          styleOverrides: {
+            root: { width: 40, height: 24, padding: 0, overflow: "visible" },
+            sizeSmall: { width: 40, height: 24, padding: 0 },
+            switchBase: {
+              padding: 3,
+              "& .MuiSwitch-input": { width: 40, height: 24, left: 0, top: 0 },
+              transition: `transform ${tokens.motion.fast}ms ${tokens.motion.easing}, color ${tokens.motion.fast}ms`,
+              "&.Mui-checked": {
+                transform: "translateX(16px)",
+                color: tokens.color.surface,
+                "& .MuiSwitch-input": { left: -16 },
+                "& + .MuiSwitch-track": { opacity: 1 },
+              },
+              "&.Mui-disabled + .MuiSwitch-track": { opacity: 0.35 },
+            },
+            thumb: {
+              width: 18,
+              height: 18,
+              boxShadow: "none",
+              backgroundColor: tokens.color.surface,
+            },
+            track: {
+              borderRadius: 12,
+              opacity: 1,
+              backgroundColor: isDarkMode
+                ? tokens.dark.borderStrong
+                : tokens.color.borderStrong,
+              transition: `background-color ${tokens.motion.fast}ms ${tokens.motion.easing}`,
+            },
+          },
+        },
+        MuiMenu: {
+          defaultProps: {
+            TransitionComponent: Fade,
+            transitionDuration: {
+              enter: tokens.motion.menuEnter,
+              exit: tokens.motion.menuExit,
+            },
+          },
+          styleOverrides: {
+            paper: {
+              border: `1px solid ${isDarkMode ? tokens.dark.border : tokens.color.border}`,
+              borderRadius: 8,
+              boxShadow: tokens.shadow.md,
+              maxHeight: "min(360px, calc(100vh - 32px))",
+            },
+            list: { padding: 4 },
+          },
+        },
+        MuiMenuItem: {
+          styleOverrides: {
+            root: {
+              minHeight: 40,
+              borderRadius: 4,
+              fontSize: tokens.font.sizeSm,
+            },
+          },
+        },
+        MuiSelect: {
+          styleOverrides: {
+            icon: {
+              transition: `transform ${tokens.motion.fast}ms ${tokens.motion.easing}`,
+            },
+          },
+        },
         MuiButton: {
           defaultProps: {
             disableElevation: true,
@@ -150,15 +240,47 @@ export default function Theme({ children, options = {}, styles = {} }) {
             unicodeRange:
               "U+0020-007E, U+00A0-00FF, U+2000-206F, U+3000-303F, U+4E00-9FFF, U+FF00-FFEF",
           },
-          ":where(a, button, input, select, textarea, [tabindex]:not([tabindex='-1']), [role='button'], [role='tab'], [role='checkbox'], [role='switch']):focus-visible": {
-            outline: `2px solid ${theme.palette.primary.main}`,
-            outlineOffset: "2px",
-          },
-          ":where(a, button, input, select, textarea, [tabindex]:not([tabindex='-1']), [role='button'], [role='tab']):not(:disabled)": {
-            transition: `background-color ${tokens.motion.fast}ms ${tokens.motion.easing}, color ${tokens.motion.fast}ms ${tokens.motion.easing}, border-color ${tokens.motion.fast}ms ${tokens.motion.easing}, box-shadow ${tokens.motion.fast}ms ${tokens.motion.easing}`,
-          },
+          ":where(a, button, input, select, textarea, [tabindex]:not([tabindex='-1']), [role='button'], [role='tab'], [role='checkbox'], [role='switch']):focus-visible":
+            {
+              outline: `2px solid ${theme.palette.primary.main}`,
+              outlineOffset: "2px",
+            },
+          ":where(a, button, input, select, textarea, [tabindex]:not([tabindex='-1']), [role='button'], [role='tab']):not(:disabled)":
+            {
+              transition: `background-color ${tokens.motion.fast}ms ${tokens.motion.easing}, color ${tokens.motion.fast}ms ${tokens.motion.easing}, border-color ${tokens.motion.fast}ms ${tokens.motion.easing}, box-shadow ${tokens.motion.fast}ms ${tokens.motion.easing}`,
+            },
           "input[type='number']": {
             textAlign: "right",
+          },
+          ".lf-popup .MuiInput-root, .lf-options .MuiInput-root": {
+            backgroundColor: theme.palette.background.paper,
+            borderRadius: "4px 4px 0 0",
+            fontSize: tokens.font.sizeData,
+          },
+          ".lf-popup .MuiInput-root:before, .lf-options .MuiInput-root:before":
+            { borderBottomColor: theme.palette.divider },
+          ".lf-popup .MuiSelect-select, .lf-options .MuiSelect-select": {
+            backgroundColor: theme.palette.surfaceMuted,
+            padding: "10px 32px 10px 14px",
+            borderRadius: "6px",
+            minHeight: "20px",
+          },
+          ".lf-popup .MuiInput-root:before, .lf-popup .MuiInput-root:hover:not(.Mui-disabled):before":
+            { borderBottom: 0 },
+          ".lf-options .lf-api-fields .MuiInputLabel-root": {
+            position: "static",
+            transform: "none",
+            fontSize: tokens.font.sizeCaption,
+            color: theme.palette.text.secondary,
+            marginBottom: 8,
+          },
+          ".lf-options .lf-api-fields .MuiInputBase-root": { marginTop: 0 },
+          ".lf-options .lf-api-fields .MuiInput-input": {
+            padding: "10px 12px",
+          },
+          "@keyframes lf-panel-enter": {
+            from: { opacity: 0.4, transform: "translateY(3px)" },
+            to: { opacity: 1, transform: "translateY(0)" },
           },
           "@media (prefers-reduced-motion: reduce)": {
             "*": {

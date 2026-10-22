@@ -34,9 +34,11 @@ export default function SettingRow({
         alignItems: align === "center" ? "center" : "flex-start",
         justifyContent: "space-between",
         gap: `${tokens.spacing.lg}px`,
-        minHeight: 36,
-        px: `${tokens.spacing.sm}px`,
-        py: `${tokens.spacing.xs}px`,
+        minHeight: 64,
+        px: 0,
+        py: `${tokens.spacing.sm}px`,
+        flexWrap: { xs: "wrap", sm: "nowrap" },
+        transition: `background-color ${tokens.motion.fast}ms ${tokens.motion.easing}`,
         "&:hover": {
           bgcolor: theme.palette.surfaceMuted,
           borderRadius: `${tokens.radius.sm}px`,
@@ -69,8 +71,9 @@ export default function SettingRow({
       <Box
         sx={{
           flex: "0 0 auto",
-          minWidth: controlMinWidth,
-          maxWidth: controlMaxWidth,
+          minWidth: { xs: 0, sm: controlMinWidth },
+          width: { xs: "100%", sm: 230 },
+          maxWidth: { xs: "100%", sm: controlMaxWidth },
           textAlign: "right",
         }}
       >

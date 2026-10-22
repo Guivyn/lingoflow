@@ -1,5 +1,7 @@
 #!/usr/bin/env zx
 import { argv, quote, $ } from "zx";
+import { pkg, syncStandard } from "./release-standard.mjs";
+import { syncDesignTokens } from "./design-tokens.mjs";
 
 // 在 Windows 上使用 cmd.exe，避免 zx 默认使用 WSL bash 导致 node not found
 if (process.platform === "win32") {
@@ -29,6 +31,9 @@ const inDest = (file) => path.join(targetDir, file);
 console.log(chalk.blue(`\nStarting Chrome build...`));
 
 try {
+  await syncStandard(true);
+  await syncDesignTokens(true);
+  process.env.REACT_APP_VERSION = pkg.version;
   // 1. 清空当前目标的构建目录
   await fs.remove(targetDir);
 
@@ -49,9 +54,7 @@ try {
   // 3. 后处理：扩展包不需要独立 content 页面
   await fs.remove(inDest("content.html"));
 
-  console.log(
-    chalk.green("Chrome build completed successfully!")
-  );
+  console.log(chalk.green("Chrome build completed successfully!"));
 } catch (err) {
   console.error(chalk.red(`\n❌ Build failed for ${target}:`));
   console.error(err);

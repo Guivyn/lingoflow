@@ -1,20 +1,10 @@
+import { PROVIDER_CAPABILITIES } from "../capabilities";
 import { OPT_TRANS_DEEPLX } from "../../config";
 
 export const deeplxProvider = {
   apiType: OPT_TRANS_DEEPLX,
   name: "DeepLX",
-  capabilities: {
-    builtin: true,
-    machine: true,
-    ai: false,
-    mulkeys: true,
-    batch: true,
-    context: false,
-    stream: false,
-    darkIcon: true,
-    sponsor: false,
-    multipleUrls: true,
-  },
+  capabilities: PROVIDER_CAPABILITIES.DeepLX,
   thinking: null,
   buildRequest({ texts, from, to, url, key }) {
     const body = {

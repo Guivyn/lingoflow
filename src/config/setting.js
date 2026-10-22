@@ -18,6 +18,7 @@ import {
 } from "./prompt";
 import { DEFAULT_CUSTOM_STYLES } from "./styles";
 import { tokens } from "../ui/theme/tokens";
+import { CACHE_LIMITS, SUBTITLE_LIMITS } from "../core/storage/constraints";
 
 // --- 默认系统快捷键映射 ---
 export const OPT_SHORTCUT_TRANSLATE = "toggleTranslate"; // 切换整页双语翻译
@@ -131,11 +132,11 @@ export const DEFAULT_SUBTITLE_SETTING = {
   apiSlug: OPT_TRANS_MICROSOFT, // 默认的字幕翻译接口 (使用微软翻译)
   segSlug: "-", // 智能 AI 断句/字幕合并的算法选择 ("-" 表示禁用 AI 段落合并)
   forceSubtitleRetranslate: false, // AI 断句服务与翻译服务不同时，是否强制使用翻译服务重翻译文
-  chunkLength: 1000, // 新配置默认使用更短 AI 分块；已保存的用户值仍由存储配置优先覆盖
-  longSentenceThreshold: 100, // 启用基于标点规则拆分的长句判定字符长度限制
+  chunkLength: SUBTITLE_LIMITS.chunkLength.fallback,
+  longSentenceThreshold: SUBTITLE_LIMITS.longSentenceThreshold.fallback,
   useAlgorithmBreaker: "rule", // 字幕断句断行处理器类型 ("rule" 规则断行，"statistical" 基于时间统计特征断行)
-  preTrans: 90, // 字幕翻译提前发送的时长 (毫秒)，防止接口网络延迟导致字幕不同步
-  throttleTrans: 30, // 节流延迟：两次翻译请求的最小时间间隔 (毫秒)
+  preTrans: SUBTITLE_LIMITS.preTrans.fallback,
+  throttleTrans: SUBTITLE_LIMITS.throttleTrans.fallback,
   // fromLang: "en",
   toLang: "zh-CN", // 字幕译文的目标语言
   autoTranslate: true, // 是否在获取并解析视频字幕后立即启动翻译
@@ -167,6 +168,8 @@ export const DEFAULT_SETTING = {
   autoTransTarget: true, // 将非目标语言页面自动译为当前规则的目标语言，开关持久保存
   httpTimeout: DEFAULT_HTTP_TIMEOUT, // 接口请求超时时间
   clearCache: false, // 每次浏览器重启时，是否自动清空翻译结果的本地网络缓存
+  cacheMaxAge: CACHE_LIMITS.cacheMaxAge.fallback,
+  cacheMaxEntries: CACHE_LIMITS.cacheMaxEntries.fallback,
   fabClickAction: 0, // 工具栏悬浮球按钮双击或单击的默认响应行为 (如开启/关闭翻译)
   // injectWebfix: true, // 是否注入修复补丁(作废)
   // detectRemote: false, // 是否使用远程语言检测 （从rule移回）

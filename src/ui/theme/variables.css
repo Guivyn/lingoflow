@@ -1,3 +1,4 @@
+/* Generated from tokens.source.json by pnpm sync:design. Do not edit directly. */
 :root {
   --lf-color-primary: #c96a4a;
   --lf-color-primary-hover: #b2583b;
@@ -31,6 +32,8 @@
   --lf-color-dark-blue: #7c96e8;
   --lf-color-dark-border: #332f28;
   --lf-color-dark-border-strong: #453f35;
+  --lf-color-dark-surface-raised: #332e27;
+  --lf-color-dark-blue-soft: rgba(124,150,232,.12);
   --lf-color-translation-accent: #c96a4a;
   --lf-color-translation-accent-hover: #b2583b;
   --lf-color-translation-accent-soft: #f7ece5;
@@ -60,11 +63,8 @@
   --lf-radius-md: 8px;
   --lf-radius-full: 999px;
   --lf-font-display-family: "LingoFlow Serif Display";
-  --lf-font-display: "LingoFlow Serif Display", Georgia, "Times New Roman",
-    "Noto Serif SC", "SimSun", "STSong", serif;
-  --lf-font-family: "Segoe UI Variable Text", "Segoe UI", "Noto Sans SC",
-    "Microsoft YaHei UI", "Microsoft YaHei", "DengXian",
-    sans-serif;
+  --lf-font-display: "LingoFlow Serif Display", Georgia, "Times New Roman", "Noto Serif SC", "SimSun", "STSong", serif;
+  --lf-font-family: "Segoe UI Variable Text", "Segoe UI", "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", "DengXian", sans-serif;
   --lf-font-mono: "Cascadia Mono", Consolas, "Microsoft YaHei UI", monospace;
   --lf-font-size-keycap: 11px;
   --lf-font-size-caption: 12px;
@@ -76,6 +76,14 @@
   --lf-font-size-section: 20px;
   --lf-font-size-title: 20px;
   --lf-font-size-display: 32px;
+  --lf-font-weight-normal: 400;
+  --lf-font-weight-medium: 500;
+  --lf-font-weight-semibold: 600;
+  --lf-font-weight-bold: 700;
+  --lf-font-tracking-display: -0.02em;
+  --lf-font-tracking-section: -0.01em;
+  --lf-font-tracking-caption: 0.02em;
+  --lf-font-tracking-normal: 0;
   --lf-shadow-sm: 0 1px 2px rgba(42, 39, 35, 0.05);
   --lf-shadow-md: 0 18px 44px rgba(42, 39, 35, 0.1);
   --lf-layout-sidebar-width: 236px;
@@ -85,4 +93,11 @@
   --lf-motion-medium: 200ms;
   --lf-motion-enter: 450ms;
   --lf-motion-easing: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --lf-motion-selected: 180ms;
+  --lf-motion-panel: 140ms;
+  --lf-motion-overlay-exit: 100ms;
+  --lf-motion-menu-enter: 120ms;
+  --lf-motion-menu-exit: 80ms;
+  --lf-z-index-sticky: 10;
+  --lf-z-index-drawer: 1200;
 }

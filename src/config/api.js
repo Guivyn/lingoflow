@@ -1,3 +1,4 @@
+import { PROVIDER_CAPABILITIES } from "../providers/capabilities";
 /**
  * @file api.js
  * @description 翻译 API 配置模块，定义各类翻译引擎和词典的默认请求参数、模型名称、语言映射以及 AI 翻译提示词模版。
@@ -62,44 +63,27 @@ export const OPT_LANGDETECTOR_ALL = [OPT_TRANS_GOOGLE];
 export const OPT_LANGDETECTOR_MAP = new Set(OPT_LANGDETECTOR_ALL);
 
 // 翻译引擎特殊集合：按能力将翻译引擎分类
-export const API_SPE_TYPES = {
-  // 内置翻译引擎
-  builtin: new Set(OPT_ALL_TRANS_TYPES),
-  // 机器翻译引擎（传统查表/神经网络翻译，不需要大型语言模型）
-  machine: new Set([
-    OPT_TRANS_GOOGLE,
-    OPT_TRANS_MICROSOFT,
-    OPT_TRANS_DEEPL,
-    OPT_TRANS_DEEPLX,
-  ]),
-  // 大语言模型 AI 翻译引擎
-  ai: new Set([OPT_TRANS_OPENAI, OPT_TRANS_DEEPSEEK, OPT_TRANS_CUSTOMIZE]),
-  // 支持多 API Key 轮询/备用的引擎
-  mulkeys: new Set([
-    OPT_TRANS_DEEPSEEK,
-    OPT_TRANS_DEEPL,
-    OPT_TRANS_DEEPLX,
-    OPT_TRANS_OPENAI,
-    OPT_TRANS_CUSTOMIZE,
-  ]),
-  // 支持段落聚合（批处理合并）翻译的引擎
-  batch: new Set([
-    OPT_TRANS_GOOGLE,
-    OPT_TRANS_DEEPSEEK,
-    OPT_TRANS_MICROSOFT,
-    OPT_TRANS_DEEPL,
-    OPT_TRANS_OPENAI,
-    OPT_TRANS_CUSTOMIZE,
-  ]),
-  // 支持带历史会话（Context）关联的翻译引擎
-  context: new Set([OPT_TRANS_DEEPSEEK, OPT_TRANS_OPENAI, OPT_TRANS_CUSTOMIZE]),
-  // 支持流式文本返回（Server-Sent Events / Stream）的翻译引擎
-  stream: new Set([OPT_TRANS_DEEPSEEK, OPT_TRANS_OPENAI]),
-  // 官方推荐/赞助商的翻译服务
-  sponsors: new Set(),
-  // 暗黑模式下图标反色
-  darkIcon: new Set([OPT_TRANS_DEEPL, OPT_TRANS_DEEPLX, OPT_TRANS_OPENAI]),
-};
+export const API_SPE_TYPES = Object.fromEntries(
+  [
+    "builtin",
+    "machine",
+    "ai",
+    "mulkeys",
+    "batch",
+    "context",
+    "stream",
+    "sponsors",
+    "darkIcon",
+    "multipleUrls",
+  ].map((key) => [
+    key,
+    new Set(
+      Object.entries(PROVIDER_CAPABILITIES)
+        .filter(([, caps]) => caps[key === "sponsors" ? "sponsor" : key])
+        .map(([apiType]) => apiType)
+    ),
+  ])
+);
 
 // 思考模式参数映射：定义各 API 的思考开关和强度参数。
 // 这里的设计可以将 AI 推理模型的“思考过程”(Reasoning Effort) 与普通参数解耦，支持可视化调节。
@@ -560,7 +544,7 @@ const defaultApiOpts = {
     ...defaultApi,
     url: "https://api.openai.com/v1/chat/completions",
     modelListUrl: "https://api.openai.com/v1/models",
-    model: "gpt-4",
+    model: "gpt-5.6-sol", // 新接口的默认模型；已有接口使用各自保存的 model 值。
     ...defaultAiApiOpts,
   },
   [OPT_TRANS_CUSTOMIZE]: {

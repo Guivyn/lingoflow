@@ -19,6 +19,7 @@ import { useSetting } from "../../hooks/Setting";
 import { getSettingWithDefault } from "../../libs/storage";
 import { matchRule } from "../../libs/rules";
 import { useTheme } from "@mui/material/styles";
+import { SegmentedControl, tokens } from "../../ui";
 
 /**
  * 获取当前网页的规则与全局设置。
@@ -137,6 +138,22 @@ export default function Popup() {
   // 获取当前网页规则失败时的错误信息，便于在夸克等浏览器中定位问题
   const [queryError, setQueryError] = useState("");
   const [reloadTick, setReloadTick] = useState(0);
+  const [domain, setDomain] = useState("");
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("preview") === "1") {
+      setDomain("github.com");
+      return;
+    }
+    let active = true;
+    getCurTab()
+      .then((tab) => {
+        if (active && tab?.url) setDomain(new URL(tab.url).hostname);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // 跳转到浏览器插件的设置选项页面
   const handleOpenSetting = useCallback(() => {
@@ -199,10 +216,6 @@ export default function Popup() {
   }, [reloadTick]);
 
   // 切换“网页翻译配置”与“输入翻译面板”两个标签页
-  const toggleTab = useCallback(() => {
-    setShowTrantab((pre) => !pre);
-  }, []);
-
   // 请求后台 Background 在独立的无边框小窗口中打开当前翻译页面，并关闭当前 Popup
   const openSeparateWindow = useCallback(() => {
     sendBgMsg(MSG_OPEN_SEPARATE_WINDOW);
@@ -221,83 +234,111 @@ export default function Popup() {
   }
 
   return (
-    <Box width={360} sx={{ bgcolor: theme.palette.background.default }}>
+    <Box
+      className="lf-popup"
+      width={380}
+      sx={{ maxWidth: "100vw", bgcolor: theme.palette.background.paper }}
+    >
       {/* 头部组件 */}
       <Header
-        toggleTab={toggleTab}
         openSeparateWindow={openSeparateWindow}
-        showTrantab={showTrantab}
+        handleOpenSetting={handleOpenSetting}
       />
+      <Box sx={{ px: 2.5, pt: 1.5, pb: 1.5 }}>
+        <SegmentedControl
+          label={i18n("translation_mode", "翻译模式")}
+          value={showTrantab ? "text" : "web"}
+          options={[
+            { value: "web", label: i18n("web_translation", "网页翻译") },
+            { value: "text", label: i18n("text_translation", "文本翻译") },
+          ]}
+          onChange={(value) => setShowTrantab(value === "text")}
+        />
+      </Box>
       {/* 内容区域 */}
       <Box>
-        {showTrantab ? (
+        <Box
+          hidden={!showTrantab}
+          sx={{
+            animation: `lf-panel-enter ${tokens.motion.panel}ms ${tokens.motion.easing}`,
+          }}
+        >
           <Trantab />
-        ) : rule ? (
-          <PopupCont
-            rule={rule}
-            setting={setting}
-            setRule={setRule}
-            setSetting={setSetting}
-            handleOpenSetting={handleOpenSetting}
-          />
-        ) : (
-          /* 如果当前网页规则未成功获取 (例如在扩展禁用的标签页上)，显示备用的支持页脚 */
-          <Stack sx={{ p: 2 }} spacing={1.5}>
-            {queryError && (
-              <Typography
-                variant="caption"
-                sx={{
-                  color: "error.main",
-                  overflowWrap: "anywhere",
-                  maxHeight: 96,
-                  overflowY: "auto",
-                }}
+        </Box>
+        <Box
+          hidden={showTrantab}
+          sx={{
+            animation: `lf-panel-enter ${tokens.motion.panel}ms ${tokens.motion.easing}`,
+          }}
+        >
+          {rule ? (
+            <PopupCont
+              rule={rule}
+              setting={setting}
+              setRule={setRule}
+              setSetting={setSetting}
+              handleOpenSetting={handleOpenSetting}
+              domain={domain}
+            />
+          ) : (
+            /* 如果当前网页规则未成功获取 (例如在扩展禁用的标签页上)，显示备用的支持页脚 */
+            <Stack sx={{ p: 2 }} spacing={1.5}>
+              {queryError && (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "error.main",
+                    overflowWrap: "anywhere",
+                    maxHeight: 96,
+                    overflowY: "auto",
+                  }}
+                >
+                  {queryError}
+                </Typography>
+              )}
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
               >
-                {queryError}
-              </Typography>
-            )}
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-            >
-              <Button
-                size="small"
-                variant="text"
-                onClick={() => setReloadTick((t) => t + 1)}
-              >
-                {i18n("retry", "Retry")}
-              </Button>
-              <Button
-                size="small"
-                variant="text"
-                onClick={() => {
-                  window.open(
-                    "https://chromewebstore.google.com/detail/lingoflow/bdiifdefkgmcblbcghdlonllpjhhjgof/reviews",
-                    "_blank"
-                  );
-                }}
-              >
-                {i18n("comment_support")}
-              </Button>
-              <Button
-                size="small"
-                variant="text"
-                onClick={() => {
-                  window.open(
-                    "https://github.com/Guivyn/lingoflow#%E8%B5%9E%E8%B5%8F",
-                    "_blank"
-                  );
-                }}
-              >
-                {i18n("appreciate_support")}
-              </Button>
-              <Button size="small" variant="text" onClick={handleOpenSetting}>
-                {i18n("setting")}
-              </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={() => setReloadTick((t) => t + 1)}
+                >
+                  {i18n("retry", "Retry")}
+                </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={() => {
+                    window.open(
+                      "https://chromewebstore.google.com/detail/lingoflow/bdiifdefkgmcblbcghdlonllpjhhjgof/reviews",
+                      "_blank"
+                    );
+                  }}
+                >
+                  {i18n("comment_support")}
+                </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={() => {
+                    window.open(
+                      "https://github.com/Guivyn/lingoflow#%E8%B5%9E%E8%B5%8F",
+                      "_blank"
+                    );
+                  }}
+                >
+                  {i18n("appreciate_support")}
+                </Button>
+                <Button size="small" variant="text" onClick={handleOpenSetting}>
+                  {i18n("setting")}
+                </Button>
+              </Stack>
             </Stack>
-          </Stack>
-        )}
+          )}
+        </Box>
       </Box>
     </Box>
   );

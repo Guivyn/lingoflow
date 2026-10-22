@@ -1,7 +1,9 @@
 /**
  * @file i18n.js
- * @description 国际化本地化字典文件，包含支持的界面语言、自定义 API 请求帮助文档，以及多语言文案对照（支持中文、英文、繁体中文、日文、韩文）。
+ * @description 界面语言、自定义 API 帮助文档与本地化文案，支持简体中文、繁体中文、英语、日语、韩语和土耳其语。
  */
+
+import { INTERFACE_I18N } from "./locales/interface";
 
 export const UI_LANGS = [
   ["en", "English"],
@@ -77,6 +79,7 @@ async ({ res, ...args }) => {
 
 /** 为字幕断句工作台集中生成六种界面语言的文案映射。 */
 export const I18N = {
+  ...INTERFACE_I18N,
   app_name: {
     zh: `灵语`,
     en: `LingoFlow`,
@@ -999,6 +1002,26 @@ export const I18N = {
     ko: `중복된 값이 있습니다`,
     tr: `Yinelenen Değerler Var`,
   },
+  cache_max_age: {
+    zh: "缓存有效期（秒）",
+    en: "Cache lifetime (seconds)",
+  },
+  cache_max_age_help: {
+    zh: "默认 604800 秒（7 天）；0 表示不按时间过期。缩短有效期立即生效，延长不恢复已过期缓存。",
+    en: "Default: 604800 seconds (7 days). 0 disables time expiry. Shorter lifetimes apply immediately; extending the lifetime does not revive expired entries.",
+  },
+  cache_max_entries: {
+    zh: "最大缓存条目数",
+    en: "Maximum cache entries",
+  },
+  cache_max_entries_help: {
+    zh: "默认 2000 条，超过上限时移除最早写入的缓存；永久缓存同样受此限制。",
+    en: "Default: 2000 entries. The oldest writes are removed first, including entries without time expiry.",
+  },
+  cache_clear_failed: {
+    zh: "缓存清理失败，请重试",
+    en: "Failed to clear cache. Please try again.",
+  },
   if_clear_cache: {
     zh: `翻译缓存策略`,
     en: `Translation cache policy`,
@@ -1008,12 +1031,12 @@ export const I18N = {
     tr: `Çeviri önbelleği politikası`,
   },
   clear_cache_never: {
-    zh: `保留 7 天，重启不清理`,
-    en: `Keep for 7 days, no cleanup on restart`,
-    zh_TW: `保留 7 天，重新啟動不清理`,
-    ja: `7日間保持し、再起動時にクリアしない`,
-    ko: `7일간 유지하고 재시작 시 정리하지 않음`,
-    tr: `7 gün sakla, yeniden başlatmada temizleme`,
+    zh: `重启不清理（遵循有效期与条目上限）`,
+    en: `Keep on restart (expiry and entry limit still apply)`,
+    zh_TW: `重新啟動不清理（遵循有效期與條目上限）`,
+    ja: `再起動時に保持（有効期限と件数上限は適用）`,
+    ko: `재시작 시 유지 (만료 및 항목 제한 적용)`,
+    tr: `Yeniden başlatmada sakla (süre ve kayıt sınırı geçerlidir)`,
   },
   clear_cache_restart: {
     zh: `重启浏览器时清除缓存`,

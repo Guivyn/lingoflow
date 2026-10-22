@@ -6,10 +6,9 @@ import MenuItem from "@mui/material/MenuItem";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Switch from "@mui/material/Switch";
 import Button from "@mui/material/Button";
-import Grid from "@mui/material/Grid";
+import { AdvancedSettings, SegmentedControl } from "../../ui";
 import Menu from "@mui/material/Menu";
 import IconButton from "@mui/material/IconButton";
-import SettingsIcon from "@mui/icons-material/Settings";
 import { sendBgMsg, sendTabMsg } from "../../libs/msg";
 import { isExt } from "../../libs/client";
 import { useI18n } from "../../hooks/I18n";
@@ -74,10 +73,12 @@ export default function PopupCont({
   setSetting,
   handleOpenSetting,
   processActions,
+  domain,
 }) {
   const i18n = useI18n();
   // 注册的快捷键指令映射表
   const [commands, setCommands] = useState({});
+  const [saveError, setSaveError] = useState("");
   // 语言胶囊下拉菜单锚点与当前编辑的语言方向
   const [langAnchor, setLangAnchor] = useState(null);
   const [langMenuFor, setLangMenuFor] = useState("from");
@@ -117,6 +118,7 @@ export default function PopupCont({
       };
       setRule(nextRule);
       await persistRule(nextRule);
+      setSaveError("");
 
       if (!processActions) {
         await sendTabMsg(MSG_TRANS_TOGGLE);
@@ -124,6 +126,7 @@ export default function PopupCont({
         processActions({ action: MSG_TRANS_TOGGLE });
       }
     } catch (err) {
+      setSaveError(i18n("settings_save_failed", "设置未能保存，请重试"));
       appLog("toggle trans", err);
     }
   };
@@ -140,6 +143,7 @@ export default function PopupCont({
         },
       }));
       setSetting(nextSetting);
+      setSaveError("");
 
       const payload = { tranboxSetting: nextSetting.tranboxSetting };
       if (!processActions) {
@@ -148,6 +152,7 @@ export default function PopupCont({
         processActions({ action: MSG_TRANS_PUTSETTING, args: payload });
       }
     } catch (err) {
+      setSaveError(i18n("settings_save_failed", "设置未能保存，请重试"));
       appLog("toggle transbox", err);
     }
   };
@@ -158,7 +163,9 @@ export default function PopupCont({
     try {
       const nextSetting = await updateStoredSetting({ autoTransTarget });
       setSetting(nextSetting);
+      setSaveError("");
     } catch (err) {
+      setSaveError(i18n("settings_save_failed", "设置未能保存，请重试"));
       appLog("persist autoTransTarget", err);
       return;
     }
@@ -166,6 +173,7 @@ export default function PopupCont({
     // 让所有已打开标签页从存储重读配置，避免旧标签页继续使用过期状态。
     if (isExt) {
       sendBgMsg(MSG_RELOAD_SETTING).catch((err) => {
+        setSaveError(i18n("settings_save_failed", "设置未能保存，请重试"));
         appLog("broadcast autoTransTarget reload", err);
       });
     }
@@ -180,6 +188,7 @@ export default function PopupCont({
         });
       }
     } catch (err) {
+      setSaveError(i18n("settings_save_failed", "设置未能保存，请重试"));
       appLog("apply autoTransTarget", err);
     }
   };
@@ -190,6 +199,7 @@ export default function PopupCont({
       const nextRule = { ...rule, ...fields };
       setRule(nextRule);
       await persistRule(nextRule);
+      setSaveError("");
 
       if (!processActions) {
         await sendTabMsg(MSG_TRANS_PUTRULE, fields);
@@ -197,6 +207,7 @@ export default function PopupCont({
         await processActions({ action: MSG_TRANS_PUTRULE, args: fields });
       }
     } catch (err) {
+      setSaveError(i18n("settings_save_failed", "设置未能保存，请重试"));
       appLog("update rule", err);
     }
   };
@@ -279,24 +290,49 @@ export default function PopupCont({
     ([value]) => POPUP_COMMON_LANGS.has(value) || value === toLang
   );
   const compactLabelSx = {
-    "& .MuiFormControlLabel-label": {
-      fontSize: tokens.font.sizeData,
-    },
+    width: "100%",
+    mx: 0,
+    py: 0.75,
+    justifyContent: "space-between",
+    flexDirection: "row-reverse",
+    "& .MuiFormControlLabel-label": { fontSize: tokens.font.sizeData },
   };
   const langCapsuleBaseSx = {
     cursor: "pointer",
     border: "none",
-    borderRadius: tokens.radius.full,
-    px: `${tokens.spacing.xl}px`,
-    py: `${tokens.spacing.sm}px`,
-    fontFamily: tokens.font.mono,
-    fontSize: tokens.font.sizeLg,
-    fontWeight: tokens.font.weightSemibold,
-    lineHeight: 1.2,
+    borderRadius: "6px",
+    flex: 1,
+    minWidth: 0,
+    px: 1.5,
+    py: 1.25,
+    fontFamily: tokens.font.family,
+    fontSize: tokens.font.sizeData,
+    fontWeight: tokens.font.weightMedium,
+    lineHeight: 1.4,
+    "&:hover": { filter: "brightness(.98)" },
   };
-
+  const popupRowSx = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 1.5,
+    minHeight: 52,
+  };
   return (
-    <Stack sx={{ p: 1.5 }} spacing={1.5}>
+    <Stack className="lf-popup" sx={{ px: 2.5, pt: 1, pb: 1 }} spacing={0.5}>
+      {domain && (
+        <Typography
+          sx={{
+            color: "text.secondary",
+            fontSize: tokens.font.sizeCaption,
+            pb: 1.25,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {domain}
+        </Typography>
+      )}
       {/* 双语状态条：源语蓝 / 译语陶土，点击换语言 */}
       <Stack
         direction="row"
@@ -317,7 +353,9 @@ export default function PopupCont({
             color: "info.main",
           }}
         >
-          {fromLang === "auto" ? "Auto" : langShortName(fromLangLabel)}
+          {fromLang === "auto"
+            ? i18n("automatic_detection", "自动检测")
+            : langShortName(fromLangLabel)}
         </Box>
         <IconButton
           type="button"
@@ -349,178 +387,207 @@ export default function PopupCont({
         </Box>
       </Stack>
 
-      {/* 主开关：整行状态 */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ py: 2 }}
+      >
         <Box>
           <Typography
-            component="div"
+            component="h2"
             sx={{
-              fontSize: tokens.font.sizeMd,
-              fontWeight: tokens.font.weightMedium,
-              color: "text.primary",
+              m: 0,
+              fontFamily: tokens.font.display,
+              fontSize: tokens.font.sizeSection,
+              fontWeight: 600,
             }}
           >
-            {i18n("translate_alt")}
+            {i18n("translate_current_page", "翻译此页")}
           </Typography>
           <Typography
-            component="div"
             sx={{
+              mt: 0.75,
               fontFamily: tokens.font.mono,
-              fontSize: tokens.font.sizeCaption,
+              fontSize: tokens.font.sizeKeycap,
               color: "text.secondary",
             }}
           >
-            {`${transOpen === "true" ? i18n("status_enabled") : i18n("status_disabled")}${commands["toggleTranslate"] ? ` · ${commands["toggleTranslate"]}` : ""}`}
+            {transOpen === "true"
+              ? i18n("status_enabled")
+              : i18n("status_disabled")}
+            {commands.toggleTranslate ? " · " + commands.toggleTranslate : ""}
           </Typography>
         </Box>
-        <Switch checked={transOpen === "true"} onChange={handleTransToggle} />
+        <Switch
+          inputProps={{ "aria-label": i18n("translate_alt") }}
+          checked={transOpen === "true"}
+          onChange={handleTransToggle}
+        />
       </Stack>
-
-      {/* 次级开关 2x2 */}
-      <Grid container columns={12} spacing={0.5} sx={{ pl: 1.5 }}>
-        <Grid item xs={6}>
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                name="autoScan"
-                value={autoScan === "true" ? "false" : "true"}
-                checked={autoScan !== "false"}
-                onChange={handleChange}
-              />
-            }
-            label={i18n("autoscan_alt")}
-            sx={compactLabelSx}
-          />
-        </Grid>
-        <Grid item xs={6}>
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                name="scanAll"
-                value={scanAll === "true" ? "false" : "true"}
-                checked={scanAll === "true"}
-                onChange={handleChange}
-              />
-            }
-            label={i18n("scan_all_nodes")}
-            sx={compactLabelSx}
-          />
-        </Grid>
-        <Grid item xs={6}>
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                name="transOnly"
-                value={transOnly === "true" ? "false" : "true"}
-                checked={transOnly === "true"}
-                onChange={handleChange}
-              />
-            }
-            label={i18n("transonly_alt")}
-            sx={compactLabelSx}
-          />
-        </Grid>
-        <Grid item xs={6}>
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                name="autoTransTarget"
-                checked={setting?.autoTransTarget !== false}
-                onChange={handleAutoTransTargetToggle}
-              />
-            }
-            label={i18n("auto_trans_target")}
-            title={i18n("auto_trans_target_helper")}
-            sx={compactLabelSx}
-          />
-        </Grid>
-        <Grid item xs={6}>
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                name="tranboxEnabled"
-                value={!tranboxEnabled}
-                checked={tranboxEnabled}
-                onChange={handleTransboxToggle}
-              />
-            }
-            label={i18n("selection_translate")}
-            sx={compactLabelSx}
-          />
-        </Grid>
-      </Grid>
-
-      {/* 服务与样式 */}
-      <Box>
-        <Stack direction="row" spacing={1}>
-          <TextField
-            select
-            SelectProps={{ MenuProps: { disablePortal: true } }}
-            size="small"
-            value={apiSlug}
-            name="apiSlug"
-            label={i18n("translate_service")}
-            onChange={handleChange}
-            fullWidth
-          >
-            {optApis.map(({ key, name }) => (
-              <MenuItem key={key} value={key}>
-                {name}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <TextField
-            select
-            SelectProps={{ MenuProps: { disablePortal: true } }}
-            size="small"
-            value={textStyle}
-            name="textStyle"
-            label={
-              commands["toggleStyle"]
-                ? `${i18n("text_style_alt")}(${commands["toggleStyle"]})`
-                : i18n("text_style_alt")
-            }
-            onChange={handleChange}
-            fullWidth
-          >
-            {allTextStyles.map((item) => (
-              <MenuItem key={item.styleSlug} value={item.styleSlug}>
-                {item.styleName}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Stack>
+      <Box sx={popupRowSx}>
+        <Typography sx={{ fontSize: tokens.font.sizeData }}>
+          {i18n("translate_service")}
+        </Typography>
+        <TextField
+          select
+          size="small"
+          variant="standard"
+          name="apiSlug"
+          value={optApis.some((a) => a.key === apiSlug) ? apiSlug : ""}
+          onChange={handleChange}
+          SelectProps={{
+            displayEmpty: true,
+            inputProps: { "aria-label": i18n("translate_service") },
+          }}
+          sx={{ width: 185 }}
+        >
+          {!optApis.some((a) => a.key === apiSlug) && (
+            <MenuItem value="" disabled>
+              {i18n("choose_service", "请选择服务")}
+            </MenuItem>
+          )}
+          {optApis.map((item) => (
+            <MenuItem key={item.key} value={item.key}>
+              {item.name}
+            </MenuItem>
+          ))}
+        </TextField>
       </Box>
-
-      {/* 底部操作：赞赏支持与设置 */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Box sx={popupRowSx}>
+        <Typography sx={{ fontSize: tokens.font.sizeData }}>
+          {i18n("display_mode", "显示方式")}
+        </Typography>
+        <Box sx={{ width: 185 }}>
+          <SegmentedControl
+            label={i18n("display_mode", "显示方式")}
+            value={transOnly === "true" ? "only" : "bilingual"}
+            options={[
+              {
+                value: "bilingual",
+                label: i18n("bilingual_display", "双语对照"),
+              },
+              { value: "only", label: i18n("translation_only", "仅译文") },
+            ]}
+            onChange={(value) =>
+              updateRuleFields({
+                transOnly: value === "only" ? "true" : "false",
+              })
+            }
+          />
+        </Box>
+      </Box>
+      <Box sx={popupRowSx}>
+        <Typography sx={{ fontSize: tokens.font.sizeData }}>
+          {i18n("text_style_alt")}
+        </Typography>
+        <TextField
+          select
+          size="small"
+          variant="standard"
+          name="textStyle"
+          value={
+            allTextStyles.some((s) => s.styleSlug === textStyle)
+              ? textStyle
+              : ""
+          }
+          onChange={handleChange}
+          SelectProps={{
+            displayEmpty: true,
+            inputProps: { "aria-label": i18n("text_style_alt") },
+          }}
+          sx={{ width: 185 }}
+        >
+          {!allTextStyles.some((s) => s.styleSlug === textStyle) && (
+            <MenuItem value="">{i18n("none", "无")}</MenuItem>
+          )}
+          {allTextStyles.map((item) => (
+            <MenuItem key={item.styleSlug} value={item.styleSlug}>
+              {item.styleName}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Box>
+      <AdvancedSettings title={i18n("more_options", "更多选项")}>
+        <FormControlLabel
+          sx={compactLabelSx}
+          label={i18n("autoscan_alt")}
+          control={
+            <Switch
+              size="small"
+              name="autoScan"
+              value={autoScan === "true" ? "false" : "true"}
+              checked={autoScan !== "false"}
+              onChange={handleChange}
+            />
+          }
+        />
+        <FormControlLabel
+          sx={compactLabelSx}
+          label={i18n("scan_all_nodes")}
+          control={
+            <Switch
+              size="small"
+              name="scanAll"
+              value={scanAll === "true" ? "false" : "true"}
+              checked={scanAll === "true"}
+              onChange={handleChange}
+            />
+          }
+        />
+        <FormControlLabel
+          sx={compactLabelSx}
+          label={i18n("auto_trans_target")}
+          title={i18n("auto_trans_target_helper")}
+          control={
+            <Switch
+              size="small"
+              name="autoTransTarget"
+              checked={setting?.autoTransTarget !== false}
+              onChange={handleAutoTransTargetToggle}
+            />
+          }
+        />
+      </AdvancedSettings>
+      <FormControlLabel
+        sx={compactLabelSx}
+        label={i18n("selection_translate")}
+        control={
+          <Switch
+            size="small"
+            name="tranboxEnabled"
+            checked={!!tranboxEnabled}
+            onChange={handleTransboxToggle}
+          />
+        }
+      />
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ pt: 0.75 }}
+      >
         <Button
-          variant="text"
-          onClick={() => {
-            window.open(
-              "https://github.com/Guivyn/lingoflow#%E8%B5%9E%E8%B5%8F",
-              "_blank"
-            );
+          size="small"
+          onClick={handleOpenSetting}
+          sx={{
+            color: "text.secondary",
+            fontSize: tokens.font.sizeCaption,
+            px: 0,
           }}
         >
-          {i18n("appreciate_support")}
+          {i18n("open_settings", "打开设置")} ↗
         </Button>
-        <IconButton
-          onClick={handleOpenSetting}
-          title={i18n("setting")}
-          aria-label={i18n("setting")}
-          sx={{ p: 0.5 }}
+        <Typography
+          role={saveError ? "alert" : undefined}
+          sx={{
+            fontSize: tokens.font.sizeKeycap,
+            color: saveError ? "error.main" : "text.secondary",
+          }}
         >
-          <SettingsIcon fontSize="small" />
-        </IconButton>
+          {saveError || i18n("settings_auto_save", "修改自动保存")}
+        </Typography>
       </Stack>
-
       {/* 语言菜单 */}
       <Menu
         anchorEl={langAnchor}
@@ -540,7 +607,9 @@ export default function PopupCont({
                 closeLangMenu();
               }}
             >
-              {value === "auto" ? "Auto" : langShortName(name)}
+              {value === "auto"
+                ? i18n("automatic_detection", "自动检测")
+                : langShortName(name)}
             </MenuItem>
           )
         )}

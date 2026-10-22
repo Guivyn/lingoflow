@@ -277,6 +277,13 @@ export class Translator {
   #isShadowRootJsInjected = false; //
   #enabled = false; // 全局默认状态
   #runId = 0; // 用于中止过期的异步请求
+  #requestController = new AbortController();
+
+  #advanceRun() {
+    this.#runId++;
+    this.#requestController.abort();
+    this.#requestController = new AbortController();
+  }
 
   #combinedSkipsRegex; // 跳过文本正则表达式
 
@@ -840,6 +847,8 @@ export class Translator {
 
   // 判断是否需要换行
   #formatTranslateError(error) {
+    if (error?.name === "RequestError")
+      return `[${error.code}] ${error.message}`;
     if (error instanceof Error) {
       const tag = error.name ? `[${error.name}]` : "[UnknownError]";
       const msg = error.message ? ` ${error.message}` : "";
@@ -860,6 +869,7 @@ export class Translator {
 
   // 翻译内联节点
   async #translateNodeGroup(nodes, hostNode, deLang) {
+    const groupRunId = this.#runId;
     const {
       transTag,
       textStyle,
@@ -952,6 +962,10 @@ export class Translator {
 
       // 异步刷新临时文本缓冲区到 DOM 中
       const flushPendingText = () => {
+        if (this.#runId !== currentRunId) {
+          rafId = null;
+          return;
+        }
         if (!hasFirstChunk) {
           innerRef.textContent = "";
           innerRef.appendChild(document.createTextNode(pendingText));
@@ -993,7 +1007,12 @@ export class Translator {
 
       // 2. 发起真实的翻译网络请求
       const { trText: translatedText, isSame: isSameLang } =
-        await this.#translateFetch(processedString, deLang, onStreamChunk);
+        await this.#translateFetch(
+          processedString,
+          deLang,
+          onStreamChunk,
+          hostNode.getBoundingClientRect().top + (window.scrollY || 0)
+        );
 
       // 请求完成后，立刻注销多余的 RAF 定时监听器，防止内存泄漏
       if (rafId) {
@@ -1068,6 +1087,7 @@ export class Translator {
         }
       }
     } catch (err) {
+      if (err?.name === "AbortError" || groupRunId !== this.#runId) return;
       const errorText = this.#formatTranslateError(err);
       appLog("translate group error: ", errorText);
       if (err?.message === "Request terminated") {
@@ -1112,7 +1132,7 @@ export class Translator {
   }
 
   // 发起翻译请求
-  #translateFetch(text, deLang = "", onStreamChunk = null) {
+  #translateFetch(text, deLang = "", onStreamChunk = null, requestPriority) {
     const { toLang, transStartHook } = this.#rule;
     const fromLang = deLang || this.#rule.fromLang;
     const rawApiSetting = { ...this.#apiSetting };
@@ -1131,6 +1151,8 @@ export class Translator {
       toLang,
       apiSetting,
       onStreamChunk,
+      signal: this.#requestController.signal,
+      requestPriority,
     };
 
     // 翻译开始钩子函数（允许用户在翻译请求发送前修改文本、语言或词典配置）
@@ -1150,7 +1172,7 @@ export class Translator {
       }
     }
 
-    return apiTranslate(args);
+    return apiTranslate({ ...args, signal: this.#requestController.signal });
   }
 
   // 查找指定节点下所有译文节点
@@ -1331,7 +1353,7 @@ export class Translator {
     if (this.#enabled) return;
     this.#enabled = true;
     this.#rule.transOpen = "true";
-    this.#runId++;
+    this.#advanceRun();
 
     if (this.#isInitialized) {
       if (this.#transAllnow) {
@@ -1352,16 +1374,19 @@ export class Translator {
 
   // 翻译页面标题
   async #translateTitle() {
+    const currentRunId = this.#runId;
     const docInfo = getDocInfo();
     if (!docInfo?.title) return;
 
     try {
       const deLang = await tryDetectLang(docInfo.title);
+      if (currentRunId !== this.#runId) return;
       const { trText } = await this.#translateFetch(docInfo.title, deLang);
+      if (currentRunId !== this.#runId) return;
       this.#docInfo.title = document.title; // 缓存原标题
       document.title = trText || docInfo.title;
     } catch (err) {
-      appLog("tanslate title", err);
+      appLog("translate title", err);
     }
   }
 
@@ -1370,7 +1395,7 @@ export class Translator {
     if (!this.#enabled) return;
     this.#enabled = false;
     this.#rule.transOpen = "false";
-    this.#runId++;
+    this.#advanceRun();
     this.#pageLangPromise = null;
 
     this.#cleanupAllNodes();
@@ -1388,7 +1413,7 @@ export class Translator {
   // 重新扫描页面
   rescan() {
     if (!this.#isInitialized) return;
-    this.#runId++;
+    this.#advanceRun();
     // 页面运行期间元素的 display 可能被动态修改，全量重扫时整体失效块级判定缓存。
     Translator.displayCache = new WeakMap();
 
@@ -1440,7 +1465,7 @@ export class Translator {
   // 停止运行
   stop() {
     // 尚未启用时 disable 会直接返回，也要取消正在等待的自动语言检测。
-    this.#runId++;
+    this.#advanceRun();
     this.disable();
     this.#resetOptions();
     this.#renderer.disableTransOnlyRevert();

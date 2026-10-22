@@ -1,4 +1,5 @@
 import {
+  APP_NAME,
   STOKEY_RULES,
   STOKEY_SETTING,
   STOKEY_SETTING_BACKUP_V1_BEFORE_V2,
@@ -17,6 +18,11 @@ import {
 describe("storage adapter migration", () => {
   beforeEach(() => {
     window.localStorage.clear();
+  });
+
+  test("release version preserves existing settings and rules namespaces", () => {
+    expect(STOKEY_SETTING).toBe(APP_NAME + "_setting_v1");
+    expect(STOKEY_RULES).toBe(APP_NAME + "_rules_v1");
   });
 
   test("migrates v1 setting and writes a backup", async () => {

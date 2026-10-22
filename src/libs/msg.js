@@ -48,7 +48,7 @@ export const getCurTabId = async () => {
  * @param {Object} args 指令参数数据
  * @returns {Promise<*>} 后台响应的数据
  */
-export const sendBgMsg = (action, args) =>
+export const sendBgMsg = async (action, args) =>
   browser?.runtime?.sendMessage?.({ action, args });
 
 /**

@@ -1,20 +1,11 @@
+import { PROVIDER_CAPABILITIES } from "../capabilities";
 import { OPT_TRANS_OPENAI } from "../../config";
 import { injectThinking, parseAIRes, parseSTRes } from "../shared";
 
 export const openaiProvider = {
   apiType: OPT_TRANS_OPENAI,
   name: "OpenAI",
-  capabilities: {
-    builtin: true,
-    machine: false,
-    ai: true,
-    mulkeys: true,
-    batch: true,
-    context: true,
-    stream: true,
-    darkIcon: true,
-    sponsor: false,
-  },
+  capabilities: PROVIDER_CAPABILITIES.OpenAI,
   thinking: {
     type: "openai",
     efforts: [

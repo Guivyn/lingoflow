@@ -163,6 +163,16 @@ export class YouTubeCaptionProvider {
         event.data.response.length <= 8 * 1024 * 1024
       ) {
         const { url, response } = event.data;
+        try {
+          const captionUrl = new URL(url);
+          if (
+            captionUrl.origin !== event.origin ||
+            captionUrl.pathname !== "/api/timedtext"
+          )
+            return;
+        } catch {
+          return;
+        }
         this.#handleInterceptedRequest(url, response);
       }
     });
@@ -562,15 +572,16 @@ export class YouTubeCaptionProvider {
       if (this.#isStaleProcessing(processingVersion)) return;
 
       this.#fullDescription = fullDescription || "";
-      const captionTrack = findCaptionTrack(
+      const selectedCaptionTrack = findCaptionTrack(
         captionTracks,
         lang,
         interceptedKind
       );
-      if (!captionTrack) {
+      if (!selectedCaptionTrack) {
         logger.debug("Youtube Provider: CaptionTrack not found:", videoId);
         return;
       }
+      const captionTrack = { ...selectedCaptionTrack };
       if (!captionTrack.baseUrl.startsWith("https")) {
         captionTrack.baseUrl = window.location.origin + captionTrack.baseUrl;
       }

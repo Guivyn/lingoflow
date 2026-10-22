@@ -14,6 +14,7 @@ export const CMD_OPEN_SEPARATE_WINDOW = "openSeparateWindow"; // 打开独立的
 
 // --- 扩展运行中的内部通信 Message Action 常量 ---
 export const MSG_FETCH = "lingoflow_fetch"; // 代理请求 (避免内容脚本跨域限制)
+export const MSG_CANCEL_FETCH = "lingoflow_cancel_fetch";
 export const MSG_GET_HTTPCACHE = "get_httpcache"; // 获取网页翻译请求的本地缓存
 export const MSG_PUT_HTTPCACHE = "put_httpcache"; // 写入翻译请求的缓存数据
 export const MSG_OPEN_OPTIONS = "open_options"; // 打开扩展设置页面消息

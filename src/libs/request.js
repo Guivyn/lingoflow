@@ -7,10 +7,11 @@
 import { isExt } from "./client";
 import { sendBgMsg } from "./msg";
 import { getSettingWithDefault } from "./storage";
-import { MSG_FETCH, DEFAULT_HTTP_TIMEOUT } from "../config";
+import { MSG_FETCH, MSG_CANCEL_FETCH, DEFAULT_HTTP_TIMEOUT } from "../config";
 import { isBg } from "./browser";
 import { appLog } from "./log";
 import { parseResponse } from "./response";
+import { normalizeRequestError, restoreRequestError } from "./requestError";
 
 const HTTP_TIMEOUT_CACHE_TTL = 5000;
 let cachedHttpTimeout = null;
@@ -129,8 +130,12 @@ export const fetchPatcher = async (input, init = {}, opts) => {
  * @returns {Promise<*>} 解析后的响应数据。
  */
 export const fetchHandle = async ({ input, init, opts = {} }) => {
-  const res = await fetchPatcher(input, init, opts);
-  return parseResponse(res, opts.expect);
+  try {
+    const res = await fetchPatcher(input, init, opts);
+    return await parseResponse(res, opts.expect);
+  } catch (error) {
+    throw normalizeRequestError(error);
+  }
 };
 
 /**
@@ -142,33 +147,48 @@ export const fetchHandle = async ({ input, init, opts = {} }) => {
  * @returns {Promise<*>} 请求结果。
  */
 export const fnPolyfill = ({ fn, msg = MSG_FETCH, ...args }) => {
+  const signal = mergeAbortSignals([args.init?.signal, args.opts?.signal]);
+  if (signal?.aborted)
+    return Promise.reject(
+      new DOMException("The operation was aborted.", "AbortError")
+    );
   if (isExt && !isBg()) {
-    const signal = args.opts?.signal;
+    const requestId =
+      globalThis.crypto?.randomUUID?.() ||
+      `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const safeArgs = {
       ...args,
+      requestId,
+      init: { ...args.init, signal: undefined },
       opts: { ...args.opts, signal: undefined },
     };
-    const requestPromise = sendBgMsg(msg, safeArgs);
-    if (signal) {
-      const abortPromise = new Promise((_, reject) => {
-        if (signal.aborted) {
-          reject(new DOMException("The operation was aborted.", "AbortError"));
-          return;
+    return new Promise((resolve, reject) => {
+      const onAbort = () => {
+        signal?.removeEventListener("abort", onAbort);
+        if (msg === MSG_FETCH) {
+          Promise.resolve(sendBgMsg(MSG_CANCEL_FETCH, { requestId })).catch(
+            () => {}
+          );
         }
-        // sendMessage 是一次性请求，无法撤回 background 已发出的 fetch；这里至少让前台等待方立即结束。
-        signal.addEventListener(
-          "abort",
-          () =>
-            reject(
-              new DOMException("The operation was aborted.", "AbortError")
-            ),
-          { once: true }
-        );
-      });
-      return Promise.race([requestPromise, abortPromise]);
-    }
-    // Content Script 直接跨域能力受限，普通请求统一交给 Background 代发。
-    return requestPromise;
+        reject(new DOMException("The operation was aborted.", "AbortError"));
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+      Promise.resolve()
+        .then(() => {
+          if (signal?.aborted)
+            throw new DOMException("The operation was aborted.", "AbortError");
+          return sendBgMsg(msg, safeArgs);
+        })
+        .then((result) => {
+          if (result?.__lingoflowRequestError)
+            throw restoreRequestError(result.__lingoflowRequestError);
+          if (signal?.aborted)
+            throw new DOMException("The operation was aborted.", "AbortError");
+          return result;
+        })
+        .then(resolve, reject)
+        .finally(() => signal?.removeEventListener("abort", onAbort));
+    });
   }
 
   return fn({ ...args });

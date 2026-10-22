@@ -163,7 +163,7 @@ export default class DomManager {
 
     const enhancedProps = {
       ...props,
-      onClose: this.hide.bind(this),
+      onClose: props.onClose || this.hide.bind(this),
     };
 
     const ComponentToRender = this._ReactComponent;

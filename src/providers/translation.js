@@ -493,6 +493,7 @@ export const handleDict = async ({
         throw err;
       }
 
+      if (err?.name === "RequestError") throw err;
       appLog("dictionary stream failed, fallback to non-stream", err);
     }
 
@@ -705,6 +706,7 @@ export async function* handleTranslate(
       if (err?.name === "AbortError") {
         throw err;
       }
+      if (err?.name === "RequestError") throw err;
       appLog("translate stream failed, fallback to non-stream", err);
     }
 
@@ -912,6 +914,7 @@ export const handleSubtitle = async ({
       if (err?.name === "AbortError") {
         throw err;
       }
+      if (err?.name === "RequestError") throw err;
       appLog("subtitle stream failed, fallback to non-stream", err);
     }
 
@@ -1034,7 +1037,7 @@ async function handleSubtitleStreamInternal(
  * @param {*} param0
  * @returns
  */
-const summarizeSystemPrompt = `Analyze the video title, description, and transcript below. Produce a concise briefing (max 300 words) to help a subtitle translator understand the content accurately.
+export const summarizeSystemPrompt = `Analyze the video title, description, and transcript below. Produce a concise briefing (max 300 words) to help a subtitle translator understand the content accurately.
 
 Cover these aspects:
 1. Main topic, themes, and subject domain

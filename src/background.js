@@ -1,6 +1,7 @@
 import browser from "webextension-polyfill";
 import {
   MSG_FETCH,
+  MSG_CANCEL_FETCH,
   MSG_GET_HTTPCACHE,
   MSG_PUT_HTTPCACHE,
   MSG_TRANS_GETRULE,
@@ -38,6 +39,8 @@ import {
   runDataMigration,
 } from "./libs/storage";
 import { fetchHandle, fetchStreamNative } from "./libs/fetch";
+import { createRequestRegistry } from "./libs/requestRegistry";
+import { serializeRequestError } from "./libs/requestError";
 import { tryClearCaches, getHttpCache, putHttpCache } from "./libs/cache";
 import { sendTabMsg, getCurTabId, getCurTab } from "./libs/msg";
 import { saveRule, matchRule } from "./libs/rules";
@@ -48,7 +51,6 @@ import {
   isTrustedExtensionSender,
   isExtensionPageSender,
   normalizeInjectText,
-  normalizeProxyFetchArgs,
   normalizeProxyStreamArgs,
   sanitizeDnrList,
   validateHashInput,
@@ -483,7 +485,7 @@ browser.runtime.onStartup.addListener(async () => {
   logger.setLevel(logLevel);
 
   if (clearCache) {
-    tryClearCaches();
+    await tryClearCaches();
   }
 
   // 浏览器/扩展启动时重建右键菜单，避免菜单状态丢失。
@@ -508,8 +510,13 @@ const injectToCurrentTab = async (func, args) => {
 };
 
 // 后台消息指令与对应处理器映射表
+const requestRegistry = createRequestRegistry(fetchHandle);
 const messageHandlers = {
-  [MSG_FETCH]: (args) => fetchHandle(normalizeProxyFetchArgs(args)), // 跨域请求代理
+  [MSG_FETCH]: async (args, sender) => {
+    try { return await requestRegistry.run(args, sender); }
+    catch (error) { return { __lingoflowRequestError: serializeRequestError(error) }; }
+  },
+  [MSG_CANCEL_FETCH]: (args, sender) => requestRegistry.cancel(args, sender),
   [MSG_GET_HTTPCACHE]: (args) => getHttpCache(args), // 读取翻译 HTTP 缓存
   [MSG_PUT_HTTPCACHE]: (args) => putHttpCache(args), // 存入翻译 HTTP 缓存
   [MSG_TRANS_GETRULE]: async () => {
@@ -709,7 +716,7 @@ async function handleStreamFetch(port, args) {
     // 过滤用户主动取消导致的 AbortError，保留真正的上游请求错误。
     if (error.name !== "AbortError") {
       if (!disconnected) {
-        port.postMessage({ type: "error", error: error.message });
+        port.postMessage({ type: "error", error: error.message, details: serializeRequestError(error) });
       }
     }
   } finally {

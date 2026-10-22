@@ -1,3 +1,4 @@
+import { API_LIMITS } from "../../core/storage/constraints";
 import {
   useState,
   useEffect,
@@ -16,7 +17,9 @@ import { apiTranslate } from "../../services";
 import { fetchModelList } from "../../libs/modelList";
 import {
   AddIcon,
-  Alert,
+  AdvancedSettings,
+  PageHeading,
+  tokens,
   ApiIcon,
   BlockIcon,
   Box,
@@ -30,7 +33,6 @@ import {
   Grid,
   Input,
   KeyboardArrowDownIcon,
-  Link,
   List,
   ListItem,
   ListItemButton,
@@ -279,6 +281,7 @@ function SensitiveTextField({ value = "", onChange, inputProps, ...props }) {
 
   return (
     <Input
+      variant="standard"
       {...props}
       value={displayValue}
       onFocus={() => setEditing(true)}
@@ -579,53 +582,45 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
   }, [apiSlug, apiType, httpTimeout, key, modelListStatus, modelListUrl]);
 
   return (
-    <Stack spacing={3}>
+    <Stack
+      className="lf-api-fields"
+      spacing={2.5}
+      sx={{ "& > .MuiFormControl-root": { width: "100%" } }}
+    >
+      <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <Typography
+          component="h2"
+          sx={{ fontFamily: tokens.font.display, fontSize: 22 }}
+        >
+          {apiName || apiType}
+        </Typography>
+        <Switch
+          checked={!isDisabled}
+          inputProps={{ "aria-label": i18n("enable") }}
+          onChange={(e) =>
+            handleChange({
+              target: { name: "isDisabled", value: !e.target.checked },
+            })
+          }
+        />
+      </Stack>
       <Box>
-        <Grid container spacing={2} columns={12}>
-          <Grid item xs={12} sm={12} md={6} lg={3}>
-            <Input
-              size="small"
-              fullWidth
-              label={i18n("api_name")}
-              name="apiName"
-              value={apiName}
-              onChange={handleChange}
-            />
-          </Grid>
-          <Grid item xs={12} sm={12} md={6} lg={3}>
-            <Select
-              fullWidth
-              size="small"
-              name="transAllnow"
-              value={transAllnow}
-              label={i18n("trigger_mode")}
-              onChange={handleChange}
-            >
-              <MenuItem value={false}>{i18n("mk_pagescroll")}</MenuItem>
-              <MenuItem value={true}>{i18n("mk_pageopen")}</MenuItem>
-            </Select>
-          </Grid>
-          <Grid item xs={12} sm={12} md={6} lg={3}>
-            <ValidationInput
-              fullWidth
-              size="small"
-              label={i18n("pagescroll_root_margin")}
-              type="number"
-              name="rootMargin"
-              value={rootMargin}
-              onChange={handleChange}
-              min={0}
-              max={10000}
-            />
-          </Grid>
-        </Grid>
+        <Input
+          variant="standard"
+          size="small"
+          fullWidth
+          label={i18n("api_name")}
+          name="apiName"
+          value={apiName}
+          onChange={handleChange}
+        />
       </Box>
-
       {!API_SPE_TYPES.machine.has(apiType) && (
         <>
           <Input
+            variant="standard"
             size="small"
-            label={"URL"}
+            label={i18n("service_url", "服务地址")}
             name="url"
             value={url}
             onChange={handleChange}
@@ -636,8 +631,9 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
             }
           />
           <SensitiveTextField
+            variant="standard"
             size="small"
-            label={"Key"}
+            label="API Key"
             name="key"
             value={key}
             onChange={handleChange}
@@ -647,522 +643,148 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
           />
         </>
       )}
-
       {API_SPE_TYPES.ai.has(apiType) && (
-        <>
-          <Input
-            size="small"
-            fullWidth
-            label={i18n("model_list_url")}
-            name="modelListUrl"
-            value={modelListUrl}
-            onChange={handleChange}
-          />
-          <Box>
-            <Grid container spacing={2} columns={12}>
-              <Grid item xs={12} sm={12} md={6} lg={3}>
-                <ReusableAutocomplete
-                  freeSolo
-                  size="small"
-                  fullWidth
-                  options={allModelOptions}
-                  name="model"
-                  label={"Model"}
-                  value={model}
-                  onChange={handleChange}
-                  onFocus={handleLoadModelList}
-                  loading={modelListStatus === "loading"}
-                  loadingText={i18n("model_list_loading")}
-                  noOptionsText={i18n("model_list_empty")}
-                  textFieldProps={{
-                    helperText: modelListHelperText,
-                    error: modelListStatus === "error",
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={12} md={6} lg={3}>
-                <ReusableAutocomplete
-                  freeSolo
-                  size="small"
-                  fullWidth
-                  options={BUILTIN_STONES}
-                  name="tone"
-                  label={i18n("translation_style")}
-                  value={tone}
-                  onChange={handleChange}
-                />
-              </Grid>
-              <Grid item xs={12} sm={12} md={6} lg={3}>
-                <ValidationInput
-                  size="small"
-                  fullWidth
-                  label={"Temperature (0.0-2.0)"}
-                  type="number"
-                  name="temperature"
-                  value={temperature}
-                  onChange={handleChange}
-                  min={0.0}
-                  max={2.0}
-                  isFloat={true}
-                  inputProps={{
-                    step: 0.1,
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={12} md={6} lg={3}>
-                <ValidationInput
-                  size="small"
-                  fullWidth
-                  label={"Max Tokens (0-1000000)"}
-                  type="number"
-                  name="maxTokens"
-                  value={maxTokens}
-                  onChange={handleChange}
-                  min={0}
-                  max={1000000}
-                />
-              </Grid>
-            </Grid>
-          </Box>
-        </>
+        <ReusableAutocomplete
+          freeSolo
+          size="small"
+          fullWidth
+          options={allModelOptions}
+          name="model"
+          label={i18n("model_name", "模型")}
+          value={model}
+          onChange={handleChange}
+          onFocus={handleLoadModelList}
+          loading={modelListStatus === "loading"}
+          loadingText={i18n("model_list_loading")}
+          noOptionsText={i18n("model_list_empty")}
+          textFieldProps={{
+            helperText: modelListHelperText,
+            error: modelListStatus === "error",
+          }}
+        />
       )}
-
-      {apiType === OPT_TRANS_CUSTOMIZE && (
-        <>
-          <CodeField
-            size="small"
-            label={"Request Hook"}
-            name="reqHook"
-            value={reqHook}
-            onChange={handleChange}
-            maxRows={10}
-            FormHelperTextProps={{
-              component: "div",
-            }}
-            helperText={
-              <Box component="pre" sx={{ overflowX: "auto" }}>
-                {i18n("request_hook_helper")}
-              </Box>
-            }
-          />
-          <CodeField
-            size="small"
-            label={"Response Hook"}
-            name="resHook"
-            value={resHook}
-            onChange={handleChange}
-            maxRows={10}
-            FormHelperTextProps={{
-              component: "div",
-            }}
-            helperText={
-              <Box component="pre" sx={{ overflowX: "auto" }}>
-                {i18n("response_hook_helper")}
-              </Box>
-            }
-          />
-        </>
-      )}
-
-      {API_SPE_TYPES.batch.has(apiType) && (
-        <Box>
-          <Grid container spacing={2} columns={12}>
+      <Stack
+        direction="row"
+        spacing={1.5}
+        alignItems="center"
+        flexWrap="wrap"
+        useFlexGap
+      >
+        <Button
+          size="small"
+          variant="contained"
+          onClick={handleSave}
+          disabled={!isModified}
+        >
+          {i18n("save")}
+        </Button>
+        <TestButton api={activeFormData} />
+        <Typography
+          sx={{ fontSize: tokens.font.sizeCaption, color: "text.secondary" }}
+        >
+          {isModified
+            ? i18n("api_unsaved_changes", "有未保存的修改")
+            : i18n("api_saved_settings", "当前配置已保存")}
+        </Typography>
+      </Stack>
+      <AdvancedSettings title={i18n("advanced_settings", "高级设置")}>
+        <Stack
+          spacing={3}
+          sx={{
+            pt: 1,
+            "& .MuiGrid-item": {
+              flexBasis: { xs: "100%", lg: "50%" },
+              maxWidth: { xs: "100%", lg: "50%" },
+            },
+          }}
+        >
+          <Grid container spacing={2}>
             <Grid item xs={12} sm={12} md={6} lg={3}>
               <Select
                 fullWidth
                 size="small"
-                name="useBatchFetch"
-                value={useBatchFetch}
-                label={i18n("use_batch_fetch")}
+                name="transAllnow"
+                value={transAllnow}
+                label={i18n("trigger_mode")}
                 onChange={handleChange}
               >
-                <MenuItem value={false}>{i18n("disable")}</MenuItem>
-                <MenuItem value={true}>{i18n("enable")}</MenuItem>
+                <MenuItem value={false}>{i18n("mk_pagescroll")}</MenuItem>
+                <MenuItem value={true}>{i18n("mk_pageopen")}</MenuItem>
               </Select>
             </Grid>
             <Grid item xs={12} sm={12} md={6} lg={3}>
               <ValidationInput
-                size="small"
                 fullWidth
-                label={i18n("batch_interval")}
+                size="small"
+                label={i18n("pagescroll_root_margin")}
                 type="number"
-                name="batchInterval"
-                value={batchInterval}
+                name="rootMargin"
+                value={rootMargin}
                 onChange={handleChange}
-                min={10}
+                min={0}
                 max={10000}
               />
             </Grid>
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <ValidationInput
-                size="small"
-                fullWidth
-                label={i18n("batch_size")}
-                type="number"
-                name="batchSize"
-                value={batchSize}
-                onChange={handleChange}
-                min={1}
-                max={100}
-              />
-            </Grid>
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <ValidationInput
-                size="small"
-                fullWidth
-                label={i18n("batch_length")}
-                type="number"
-                name="batchLength"
-                value={batchLength}
-                onChange={handleChange}
-                min={1000}
-                max={100000}
-              />
-            </Grid>
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <ValidationInput
-                size="small"
-                fullWidth
-                label={i18n("batch_concurrency")}
-                type="number"
-                name="batchConcurrency"
-                value={contextForcesSerialBatch ? 1 : batchConcurrency}
-                onChange={handleChange}
-                min={1}
-                max={100}
-                disabled={contextForcesSerialBatch}
-                helperText={
-                  contextForcesSerialBatch
-                    ? i18n("batch_concurrency_context_hint")
-                    : ""
-                }
-              />
-            </Grid>
           </Grid>
-        </Box>
-      )}
-
-      <Box>
-        <Grid container spacing={2} columns={12}>
-          {API_SPE_TYPES.stream.has(apiType) && (
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="useStream"
-                value={useStream}
-                label={i18n("use_stream")}
-                onChange={handleChange}
-              >
-                <MenuItem value={false}>{i18n("disable")}</MenuItem>
-                <MenuItem value={true}>{i18n("enable")}</MenuItem>
-              </Select>
-            </Grid>
-          )}
-
-          {API_SPE_TYPES.stream.has(apiType) && useStream && (
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="streamRenderMode"
-                value={streamRenderMode}
-                label={i18n("stream_render_mode")}
-                onChange={handleChange}
-              >
-                <MenuItem value="disabled">{i18n("disable")}</MenuItem>
-                <MenuItem value="realtime">
-                  {i18n("stream_render_realtime")}
-                </MenuItem>
-                <MenuItem value="segment">
-                  {i18n("stream_render_segment")}
-                </MenuItem>
-              </Select>
-            </Grid>
-          )}
-
-          {API_SPE_TYPES.context.has(apiType) && (
+          {API_SPE_TYPES.ai.has(apiType) && (
             <>
-              <Grid item xs={12} sm={12} md={6} lg={3}>
-                {" "}
-                <Select
-                  size="small"
-                  fullWidth
-                  name="useContext"
-                  value={useContext}
-                  label={i18n("use_context")}
-                  onChange={handleChange}
-                >
-                  <MenuItem value={false}>{i18n("disable")}</MenuItem>
-                  <MenuItem value={true}>{i18n("enable")}</MenuItem>
-                </Select>
-              </Grid>
-              <Grid item xs={12} sm={12} md={6} lg={3}>
-                {" "}
-                <Input
-                  size="small"
-                  fullWidth
-                  label={i18n("context_size")}
-                  type="number"
-                  name="contextSize"
-                  value={contextSize}
-                  onChange={handleChange}
-                  min={1}
-                  max={20}
-                />
-              </Grid>
+              <Input
+                size="small"
+                fullWidth
+                label={i18n("model_list_url")}
+                name="modelListUrl"
+                value={modelListUrl}
+                onChange={handleChange}
+              />
+              <Box>
+                <Grid container spacing={2} columns={12}>
+                  <Grid item xs={12} sm={12} md={6} lg={3}>
+                    <ReusableAutocomplete
+                      freeSolo
+                      size="small"
+                      fullWidth
+                      options={BUILTIN_STONES}
+                      name="tone"
+                      label={i18n("translation_style")}
+                      value={tone}
+                      onChange={handleChange}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={12} md={6} lg={3}>
+                    <ValidationInput
+                      size="small"
+                      fullWidth
+                      label={i18n("temperature_label", "生成随机性（0–2）")}
+                      type="number"
+                      name="temperature"
+                      value={temperature}
+                      onChange={handleChange}
+                      min={API_LIMITS.temperature.min}
+                      max={API_LIMITS.temperature.max}
+                      isFloat={true}
+                      inputProps={{
+                        step: 0.1,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={12} md={6} lg={3}>
+                    <ValidationInput
+                      size="small"
+                      fullWidth
+                      label={i18n("max_tokens_label", "最大输出长度（Token）")}
+                      type="number"
+                      name="maxTokens"
+                      value={maxTokens}
+                      onChange={handleChange}
+                      min={API_LIMITS.maxTokens.min}
+                      max={API_LIMITS.maxTokens.max}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
             </>
           )}
-        </Grid>
-      </Box>
-
-      <Box>
-        <Grid container spacing={2} columns={12}>
-          <Grid item xs={12} sm={12} md={6} lg={3}>
-            <ValidationInput
-              size="small"
-              fullWidth
-              label={i18n("fetch_limit")}
-              type="number"
-              name="fetchLimit"
-              value={fetchLimit}
-              onChange={handleChange}
-              min={1}
-              max={100}
-            />
-          </Grid>
-          <Grid item xs={12} sm={12} md={6} lg={3}>
-            <ValidationInput
-              size="small"
-              fullWidth
-              label={i18n("fetch_interval")}
-              type="number"
-              name="fetchInterval"
-              value={fetchInterval}
-              onChange={handleChange}
-              min={0}
-              max={5000}
-            />
-          </Grid>
-          <Grid item xs={12} sm={12} md={6} lg={3}>
-            <ValidationInput
-              size="small"
-              fullWidth
-              label={i18n("http_timeout")}
-              type="number"
-              name="httpTimeout"
-              value={httpTimeout}
-              onChange={handleChange}
-              min={1}
-              max={600}
-            />
-          </Grid>
-          <Grid item xs={12} sm={12} md={6} lg={3}></Grid>
-        </Grid>
-      </Box>
-
-      {API_SPE_TYPES.ai.has(apiType) && (
-        <Box>
-          <Grid container spacing={2} columns={12}>
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="nobatchPromptSlug"
-                value={selectedNobatchPromptSlug}
-                label={i18n("nobatch_prompt", "非聚合翻译提示词")}
-                onChange={handlePromptChange}
-              >
-                {nobatchPromptOptions.map((prompt) => (
-                  <MenuItem key={prompt.slug} value={prompt.slug}>
-                    {getPromptDisplayName(prompt, i18n)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </Grid>
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              {/* AI 词典使用独立提示词，避免复用普通翻译提示词时输出格式不可控。 */}
-              <Select
-                fullWidth
-                size="small"
-                name="batchPromptSlug"
-                value={selectedBatchPromptSlug}
-                label={i18n("batch_prompt", "聚合翻译提示词")}
-                onChange={handlePromptChange}
-              >
-                {batchPromptOptions.map((prompt) => (
-                  <MenuItem key={prompt.slug} value={prompt.slug}>
-                    {getPromptDisplayName(prompt, i18n)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </Grid>
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="subtitlePromptSlug"
-                value={selectedSubtitlePromptSlug}
-                label={i18n("subtitle_prompt", "AI断句提示词")}
-                onChange={handlePromptChange}
-              >
-                {subtitlePromptOptions.map((prompt) => (
-                  <MenuItem key={prompt.slug} value={prompt.slug}>
-                    {getPromptDisplayName(prompt, i18n)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </Grid>
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="dictPromptSlug"
-                value={selectedDictPromptSlug}
-                label={i18n("ai_dict_prompt", "AI词典提示词")}
-                onChange={handlePromptChange}
-              >
-                {dictionaryPromptOptions.map((prompt) => (
-                  <MenuItem key={prompt.slug} value={prompt.slug}>
-                    {getPromptDisplayName(prompt, i18n)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </Grid>
-          </Grid>
-        </Box>
-      )}
-
-      {thinkingParam && (
-        <Box>
-          <Grid container spacing={2} columns={12}>
-            <Grid item xs={12} sm={12} md={6} lg={3}>
-              <Select
-                fullWidth
-                size="small"
-                name="thinkingMode"
-                value={thinkingMode}
-                label={i18n("thinking_mode")}
-                onChange={handleChange}
-                helperText={i18n("thinking_mode_helper")}
-              >
-                <MenuItem value="auto">
-                  {i18n("thinking_mode_default")}
-                </MenuItem>
-                <MenuItem value="enabled">
-                  {i18n("thinking_mode_enabled")}
-                </MenuItem>
-                {thinkingParam.disableSupported !== false && (
-                  <MenuItem value="disabled">
-                    {i18n("thinking_mode_disabled")}
-                  </MenuItem>
-                )}
-              </Select>
-            </Grid>
-            {thinkingMode === "enabled" && thinkingParam.efforts && (
-              <Grid item xs={12} sm={12} md={6} lg={3}>
-                <Select
-                  fullWidth
-                  size="small"
-                  name="thinkingEffort"
-                  value={thinkingEffort}
-                  label={i18n("thinking_effort")}
-                  onChange={handleChange}
-                >
-                  {thinkingParam.efforts.map((e) => (
-                    <MenuItem key={e.value} value={e.value}>
-                      {e.label}
-                    </MenuItem>
-                  ))}
-                  <MenuItem value="_default">
-                    {i18n("thinking_effort_default")}
-                  </MenuItem>
-                </Select>
-              </Grid>
-            )}
-          </Grid>
-        </Box>
-      )}
-
-      {showMore && (
-        <>
-          <Box>
-            <Grid container spacing={2} columns={12}>
-              <Grid item xs={12} sm={12} md={6} lg={3}>
-                <Select
-                  fullWidth
-                  size="small"
-                  name="placeholder"
-                  value={placeholder}
-                  label={i18n("api_placeholder")}
-                  onChange={handleChange}
-                >
-                  {BUILTIN_PLACEHOLDERS.map((item) => (
-                    <MenuItem key={item} value={item}>
-                      {item}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </Grid>
-              <Grid item xs={12} sm={12} md={6} lg={3}>
-                <Select
-                  fullWidth
-                  size="small"
-                  name="placetag"
-                  value={placetag}
-                  label={i18n("api_placetag")}
-                  onChange={handleChange}
-                >
-                  {BUILTIN_PLACETAGS.map((item) => (
-                    <MenuItem key={item} value={item}>
-                      {`<${item}>`}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </Grid>
-              <Grid item xs={12} sm={12} md={6} lg={3}>
-                <Select
-                  fullWidth
-                  size="small"
-                  name="placetagFormat"
-                  value={placetagFormat}
-                  label={i18n("placetag_format") || "占位符格式"}
-                  onChange={handleChange}
-                >
-                  <MenuItem value="compact">
-                    {i18n("format_compact") || "简洁格式 <a1>"}
-                  </MenuItem>
-                  <MenuItem value="attribute">
-                    {i18n("format_attribute") || "属性格式 <a i=1>"}
-                  </MenuItem>
-                </Select>
-              </Grid>
-            </Grid>
-          </Box>
-
-          <>
-            {" "}
-            <CodeField
-              size="small"
-              label={i18n("custom_header")}
-              name="customHeader"
-              value={customHeader}
-              onChange={handleChange}
-              maxRows={10}
-              helperText={i18n("custom_header_help")}
-            />
-            <CodeField
-              size="small"
-              label={i18n("custom_body")}
-              name="customBody"
-              value={customBody}
-              onChange={handleChange}
-              maxRows={10}
-              helperText={i18n("custom_body_help")}
-            />
-          </>
-
-          {apiType !== OPT_TRANS_CUSTOMIZE && (
+          {apiType === OPT_TRANS_CUSTOMIZE && (
             <>
               <CodeField
                 size="small"
@@ -1198,74 +820,481 @@ function ApiFields({ apiSlug, deleteApi, copyApi, onCollapse }) {
               />
             </>
           )}
-        </>
-      )}
+          {API_SPE_TYPES.batch.has(apiType) && (
+            <Box>
+              <Grid container spacing={2} columns={12}>
+                <Grid item xs={12} sm={12} md={6} lg={3}>
+                  <Select
+                    fullWidth
+                    size="small"
+                    name="useBatchFetch"
+                    value={useBatchFetch}
+                    label={i18n("use_batch_fetch")}
+                    onChange={handleChange}
+                  >
+                    <MenuItem value={false}>{i18n("disable")}</MenuItem>
+                    <MenuItem value={true}>{i18n("enable")}</MenuItem>
+                  </Select>
+                </Grid>
+                <Grid item xs={12} sm={12} md={6} lg={3}>
+                  <ValidationInput
+                    size="small"
+                    fullWidth
+                    label={i18n("batch_interval")}
+                    type="number"
+                    name="batchInterval"
+                    value={batchInterval}
+                    onChange={handleChange}
+                    min={API_LIMITS.batchInterval.min}
+                    max={API_LIMITS.batchInterval.max}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={12} md={6} lg={3}>
+                  <ValidationInput
+                    size="small"
+                    fullWidth
+                    label={i18n("batch_size")}
+                    type="number"
+                    name="batchSize"
+                    value={batchSize}
+                    onChange={handleChange}
+                    min={API_LIMITS.batchSize.min}
+                    max={API_LIMITS.batchSize.max}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={12} md={6} lg={3}>
+                  <ValidationInput
+                    size="small"
+                    fullWidth
+                    label={i18n("batch_length")}
+                    type="number"
+                    name="batchLength"
+                    value={batchLength}
+                    onChange={handleChange}
+                    min={API_LIMITS.batchLength.min}
+                    max={API_LIMITS.batchLength.max}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={12} md={6} lg={3}>
+                  <ValidationInput
+                    size="small"
+                    fullWidth
+                    label={i18n("batch_concurrency")}
+                    type="number"
+                    name="batchConcurrency"
+                    value={contextForcesSerialBatch ? 1 : batchConcurrency}
+                    onChange={handleChange}
+                    min={API_LIMITS.batchConcurrency.min}
+                    max={API_LIMITS.batchConcurrency.max}
+                    disabled={contextForcesSerialBatch}
+                    helperText={
+                      contextForcesSerialBatch
+                        ? i18n("batch_concurrency_context_hint")
+                        : ""
+                    }
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+          <Box>
+            <Grid container spacing={2} columns={12}>
+              {API_SPE_TYPES.stream.has(apiType) && (
+                <Grid item xs={12} sm={12} md={6} lg={3}>
+                  <Select
+                    fullWidth
+                    size="small"
+                    name="useStream"
+                    value={useStream}
+                    label={i18n("use_stream")}
+                    onChange={handleChange}
+                  >
+                    <MenuItem value={false}>{i18n("disable")}</MenuItem>
+                    <MenuItem value={true}>{i18n("enable")}</MenuItem>
+                  </Select>
+                </Grid>
+              )}
 
-      <Stack
-        direction="row"
-        alignItems="center"
-        spacing={2}
-        useFlexGap
-        flexWrap="wrap"
-      >
-        <Button
-          size="small"
-          variant="contained"
-          onClick={handleSave}
-          disabled={!isModified}
-        >
-          {i18n("save")}
-        </Button>
-        <TestButton api={activeFormData} />
-        <Button size="small" variant="outlined" onClick={handleReset}>
-          {i18n("restore_default")}
-        </Button>
-        <Button size="small" variant="outlined" onClick={handleCopy}>
-          {i18n("copy_api")}
-        </Button>
-        <Button
-          size="small"
-          variant="outlined"
-          color="error"
-          onClick={handleDelete}
-        >
-          {i18n("delete")}
-        </Button>
+              {API_SPE_TYPES.stream.has(apiType) && useStream && (
+                <Grid item xs={12} sm={12} md={6} lg={3}>
+                  <Select
+                    fullWidth
+                    size="small"
+                    name="streamRenderMode"
+                    value={streamRenderMode}
+                    label={i18n("stream_render_mode")}
+                    onChange={handleChange}
+                  >
+                    <MenuItem value="disabled">{i18n("disable")}</MenuItem>
+                    <MenuItem value="realtime">
+                      {i18n("stream_render_realtime")}
+                    </MenuItem>
+                    <MenuItem value="segment">
+                      {i18n("stream_render_segment")}
+                    </MenuItem>
+                  </Select>
+                </Grid>
+              )}
 
-        <FormControlLabel
-          control={
-            <Switch
+              {API_SPE_TYPES.context.has(apiType) && (
+                <>
+                  <Grid item xs={12} sm={12} md={6} lg={3}>
+                    {" "}
+                    <Select
+                      size="small"
+                      fullWidth
+                      name="useContext"
+                      value={useContext}
+                      label={i18n("use_context")}
+                      onChange={handleChange}
+                    >
+                      <MenuItem value={false}>{i18n("disable")}</MenuItem>
+                      <MenuItem value={true}>{i18n("enable")}</MenuItem>
+                    </Select>
+                  </Grid>
+                  <Grid item xs={12} sm={12} md={6} lg={3}>
+                    {" "}
+                    <Input
+                      size="small"
+                      fullWidth
+                      label={i18n("context_size")}
+                      type="number"
+                      name="contextSize"
+                      value={contextSize}
+                      onChange={handleChange}
+                      min={API_LIMITS.contextSize.min}
+                      max={API_LIMITS.contextSize.max}
+                    />
+                  </Grid>
+                </>
+              )}
+            </Grid>
+          </Box>
+          <Box>
+            <Grid container spacing={2} columns={12}>
+              <Grid item xs={12} sm={12} md={6} lg={3}>
+                <ValidationInput
+                  size="small"
+                  fullWidth
+                  label={i18n("fetch_limit")}
+                  type="number"
+                  name="fetchLimit"
+                  value={fetchLimit}
+                  onChange={handleChange}
+                  min={API_LIMITS.fetchLimit.min}
+                  max={API_LIMITS.fetchLimit.max}
+                />
+              </Grid>
+              <Grid item xs={12} sm={12} md={6} lg={3}>
+                <ValidationInput
+                  size="small"
+                  fullWidth
+                  label={i18n("fetch_interval")}
+                  type="number"
+                  name="fetchInterval"
+                  value={fetchInterval}
+                  onChange={handleChange}
+                  min={API_LIMITS.fetchInterval.min}
+                  max={API_LIMITS.fetchInterval.max}
+                />
+              </Grid>
+              <Grid item xs={12} sm={12} md={6} lg={3}>
+                <ValidationInput
+                  size="small"
+                  fullWidth
+                  label={i18n("http_timeout")}
+                  type="number"
+                  name="httpTimeout"
+                  value={httpTimeout}
+                  onChange={handleChange}
+                  min={API_LIMITS.httpTimeout.min}
+                  max={API_LIMITS.httpTimeout.max}
+                />
+              </Grid>
+              <Grid item xs={12} sm={12} md={6} lg={3}></Grid>
+            </Grid>
+          </Box>
+          {API_SPE_TYPES.ai.has(apiType) && (
+            <Box>
+              <Grid container spacing={2} columns={12}>
+                <Grid item xs={12} sm={12} md={6} lg={3}>
+                  <Select
+                    fullWidth
+                    size="small"
+                    name="nobatchPromptSlug"
+                    value={selectedNobatchPromptSlug}
+                    label={i18n("nobatch_prompt", "非聚合翻译提示词")}
+                    onChange={handlePromptChange}
+                  >
+                    {nobatchPromptOptions.map((prompt) => (
+                      <MenuItem key={prompt.slug} value={prompt.slug}>
+                        {getPromptDisplayName(prompt, i18n)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </Grid>
+                <Grid item xs={12} sm={12} md={6} lg={3}>
+                  {/* AI 词典使用独立提示词，避免复用普通翻译提示词时输出格式不可控。 */}
+                  <Select
+                    fullWidth
+                    size="small"
+                    name="batchPromptSlug"
+                    value={selectedBatchPromptSlug}
+                    label={i18n("batch_prompt", "聚合翻译提示词")}
+                    onChange={handlePromptChange}
+                  >
+                    {batchPromptOptions.map((prompt) => (
+                      <MenuItem key={prompt.slug} value={prompt.slug}>
+                        {getPromptDisplayName(prompt, i18n)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </Grid>
+                <Grid item xs={12} sm={12} md={6} lg={3}>
+                  <Select
+                    fullWidth
+                    size="small"
+                    name="subtitlePromptSlug"
+                    value={selectedSubtitlePromptSlug}
+                    label={i18n("subtitle_prompt", "AI断句提示词")}
+                    onChange={handlePromptChange}
+                  >
+                    {subtitlePromptOptions.map((prompt) => (
+                      <MenuItem key={prompt.slug} value={prompt.slug}>
+                        {getPromptDisplayName(prompt, i18n)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </Grid>
+                <Grid item xs={12} sm={12} md={6} lg={3}>
+                  <Select
+                    fullWidth
+                    size="small"
+                    name="dictPromptSlug"
+                    value={selectedDictPromptSlug}
+                    label={i18n("ai_dict_prompt", "AI词典提示词")}
+                    onChange={handlePromptChange}
+                  >
+                    {dictionaryPromptOptions.map((prompt) => (
+                      <MenuItem key={prompt.slug} value={prompt.slug}>
+                        {getPromptDisplayName(prompt, i18n)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+          {thinkingParam && (
+            <Box>
+              <Grid container spacing={2} columns={12}>
+                <Grid item xs={12} sm={12} md={6} lg={3}>
+                  <Select
+                    fullWidth
+                    size="small"
+                    name="thinkingMode"
+                    value={thinkingMode}
+                    label={i18n("thinking_mode")}
+                    onChange={handleChange}
+                    helperText={i18n("thinking_mode_helper")}
+                  >
+                    <MenuItem value="auto">
+                      {i18n("thinking_mode_default")}
+                    </MenuItem>
+                    <MenuItem value="enabled">
+                      {i18n("thinking_mode_enabled")}
+                    </MenuItem>
+                    {thinkingParam.disableSupported !== false && (
+                      <MenuItem value="disabled">
+                        {i18n("thinking_mode_disabled")}
+                      </MenuItem>
+                    )}
+                  </Select>
+                </Grid>
+                {thinkingMode === "enabled" && thinkingParam.efforts && (
+                  <Grid item xs={12} sm={12} md={6} lg={3}>
+                    <Select
+                      fullWidth
+                      size="small"
+                      name="thinkingEffort"
+                      value={thinkingEffort}
+                      label={i18n("thinking_effort")}
+                      onChange={handleChange}
+                    >
+                      {thinkingParam.efforts.map((e) => (
+                        <MenuItem key={e.value} value={e.value}>
+                          {e.label}
+                        </MenuItem>
+                      ))}
+                      <MenuItem value="_default">
+                        {i18n("thinking_effort_default")}
+                      </MenuItem>
+                    </Select>
+                  </Grid>
+                )}
+              </Grid>
+            </Box>
+          )}
+          {showMore && (
+            <>
+              <Box>
+                <Grid container spacing={2} columns={12}>
+                  <Grid item xs={12} sm={12} md={6} lg={3}>
+                    <Select
+                      fullWidth
+                      size="small"
+                      name="placeholder"
+                      value={placeholder}
+                      label={i18n("api_placeholder")}
+                      onChange={handleChange}
+                    >
+                      {BUILTIN_PLACEHOLDERS.map((item) => (
+                        <MenuItem key={item} value={item}>
+                          {item}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </Grid>
+                  <Grid item xs={12} sm={12} md={6} lg={3}>
+                    <Select
+                      fullWidth
+                      size="small"
+                      name="placetag"
+                      value={placetag}
+                      label={i18n("api_placetag")}
+                      onChange={handleChange}
+                    >
+                      {BUILTIN_PLACETAGS.map((item) => (
+                        <MenuItem key={item} value={item}>
+                          {`<${item}>`}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </Grid>
+                  <Grid item xs={12} sm={12} md={6} lg={3}>
+                    <Select
+                      fullWidth
+                      size="small"
+                      name="placetagFormat"
+                      value={placetagFormat}
+                      label={i18n("placetag_format") || "占位符格式"}
+                      onChange={handleChange}
+                    >
+                      <MenuItem value="compact">
+                        {i18n("format_compact") || "简洁格式 <a1>"}
+                      </MenuItem>
+                      <MenuItem value="attribute">
+                        {i18n("format_attribute") || "属性格式 <a i=1>"}
+                      </MenuItem>
+                    </Select>
+                  </Grid>
+                </Grid>
+              </Box>
+
+              <>
+                {" "}
+                <CodeField
+                  size="small"
+                  label={i18n("custom_header")}
+                  name="customHeader"
+                  value={customHeader}
+                  onChange={handleChange}
+                  maxRows={10}
+                  helperText={i18n("custom_header_help")}
+                />
+                <CodeField
+                  size="small"
+                  label={i18n("custom_body")}
+                  name="customBody"
+                  value={customBody}
+                  onChange={handleChange}
+                  maxRows={10}
+                  helperText={i18n("custom_body_help")}
+                />
+              </>
+
+              {apiType !== OPT_TRANS_CUSTOMIZE && (
+                <>
+                  <CodeField
+                    size="small"
+                    label={"Request Hook"}
+                    name="reqHook"
+                    value={reqHook}
+                    onChange={handleChange}
+                    maxRows={10}
+                    FormHelperTextProps={{
+                      component: "div",
+                    }}
+                    helperText={
+                      <Box component="pre" sx={{ overflowX: "auto" }}>
+                        {i18n("request_hook_helper")}
+                      </Box>
+                    }
+                  />
+                  <CodeField
+                    size="small"
+                    label={"Response Hook"}
+                    name="resHook"
+                    value={resHook}
+                    onChange={handleChange}
+                    maxRows={10}
+                    FormHelperTextProps={{
+                      component: "div",
+                    }}
+                    helperText={
+                      <Box component="pre" sx={{ overflowX: "auto" }}>
+                        {i18n("response_hook_helper")}
+                      </Box>
+                    }
+                  />
+                </>
+              )}
+            </>
+          )}
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={1.5}
+            useFlexGap
+            flexWrap="wrap"
+          >
+            <Button size="small" variant="outlined" onClick={handleReset}>
+              {i18n("restore_default")}
+            </Button>
+            <Button size="small" variant="outlined" onClick={handleCopy}>
+              {i18n("copy_api")}
+            </Button>
+            <Button
               size="small"
-              name="isDisabled"
-              checked={isDisabled}
-              onChange={handleChange}
+              variant="outlined"
+              color="error"
+              onClick={handleDelete}
+            >
+              {i18n("delete")}
+            </Button>
+            <FormControlLabel
+              control={
+                <Switch
+                  size="small"
+                  checked={sortOrder === -1}
+                  onChange={(e) => {
+                    setFormData((prev) => {
+                      const nextData = {
+                        ...(prev?.apiSlug === apiSlug ? prev : api || {}),
+                        sortOrder: e.target.checked ? -1 : 0,
+                      };
+                      return nextData;
+                    });
+                  }}
+                  disabled={isDisabled}
+                />
+              }
+              label={i18n("is_pinned")}
             />
-          }
-          label={i18n("is_disabled")}
-        />
-
-        <FormControlLabel
-          control={
-            <Switch
-              size="small"
-              checked={sortOrder === -1}
-              onChange={(e) => {
-                setFormData((prev) => {
-                  const nextData = {
-                    ...(prev?.apiSlug === apiSlug ? prev : api || {}),
-                    sortOrder: e.target.checked ? -1 : 0,
-                  };
-                  return nextData;
-                });
-              }}
-              disabled={isDisabled}
-            />
-          }
-          label={i18n("is_pinned")}
-        />
-
-        <ShowMoreButton showMore={showMore} onChange={setShowMore} />
-      </Stack>
+            <ShowMoreButton showMore={showMore} onChange={setShowMore} />
+          </Stack>
+        </Stack>
+      </AdvancedSettings>
     </Stack>
   );
 }
@@ -1284,6 +1313,7 @@ function ApiListItem({
   onDrop,
   onDragEnd,
 }) {
+  const i18n = useI18n();
   const handleContentClick = (event) => {
     if (bulkMode) {
       onCheck(event, api.apiSlug);
@@ -1331,6 +1361,7 @@ function ApiListItem({
         />
       )}
       <ListItemButton
+        aria-label={api.apiName || api.apiType}
         selected={bulkMode ? checked : selected}
         onClick={handleContentClick}
         sx={{
@@ -1339,10 +1370,14 @@ function ApiListItem({
           minHeight: 40,
           py: 0.75,
           px: 0.5,
-          borderRadius: 0.5,
+          borderRadius: "4px",
+          "&.Mui-selected": {
+            bgcolor: "surfaceMuted",
+            boxShadow: "inset 2px 0 currentColor",
+          },
         }}
       >
-        <Tooltip title="Drag to reorder">
+        <Tooltip title={i18n("drag_to_reorder", "拖动调整顺序")}>
           <Box
             draggable
             onDragStart={onDragStart}
@@ -1601,29 +1636,17 @@ export default function Apis() {
 
   return (
     <Box>
-      <Stack spacing={3}>
-        <Alert severity="info">
-          {i18n("about_api")}
-          <br />
-          {i18n("about_api_2")}
-          <br />
-          {i18n("about_api_3")}
-          <Link
-            href="https://github.com/Guivyn/lingoflow/blob/main/docs/custom-api_v2.md"
-            target="_blank"
-          >
-            {i18n("goto_custom_api_example")}
-          </Link>
-        </Alert>
+      <Stack spacing={1}>
+        <PageHeading
+          title={i18n("translation_services", "翻译服务")}
+          description={i18n(
+            "translation_services_help",
+            "选择翻译引擎，配置连接和请求方式。"
+          )}
+        />
 
         <Box>
-          <Stack
-            direction="row"
-            alignItems="center"
-            spacing={2}
-            useFlexGap
-            flexWrap="wrap"
-          >
+          <Box sx={{ mb: 2 }}>
             <Button
               size="small"
               id="add-api-button"
@@ -1637,76 +1660,90 @@ export default function Apis() {
             >
               {i18n("add")}
             </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => {
-                const newDir = alphaSortDir === "asc" ? "desc" : "asc";
-                setAlphaSortDir(newDir);
-                setDetailKey((k) => k + 1);
-                alphaSortApis(newDir);
-              }}
-              startIcon={<SwapVertIcon />}
+            <AdvancedSettings
+              title={i18n("manage_service_list", "管理服务列表")}
             >
-              {i18n("sort_alphabetically")}
-            </Button>
-            <Button
-              size="small"
-              variant={bulkMode ? "contained" : "outlined"}
-              onClick={handleToggleBulkMode}
-            >
-              {i18n("bulk_actions")}
-            </Button>
-            {bulkMode && (
-              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+              <Stack
+                direction="row"
+                spacing={1.5}
+                useFlexGap
+                flexWrap="wrap"
+                sx={{ pb: 1 }}
+              >
                 <Button
                   size="small"
                   variant="outlined"
-                  disabled={apiItems.length === 0}
-                  onClick={handleToggleAllApis}
+                  onClick={() => {
+                    const newDir = alphaSortDir === "asc" ? "desc" : "asc";
+                    setAlphaSortDir(newDir);
+                    setDetailKey((k) => k + 1);
+                    alphaSortApis(newDir);
+                  }}
+                  startIcon={<SwapVertIcon />}
                 >
-                  {allApisChecked ? i18n("deselect_all") : i18n("select_all")}
+                  {i18n("sort_alphabetically")}
                 </Button>
                 <Button
                   size="small"
-                  variant="outlined"
-                  disabled={!hasCheckedApis}
-                  onClick={handlePinCheckedApis}
-                  startIcon={<PushPinIcon />}
+                  variant={bulkMode ? "contained" : "outlined"}
+                  onClick={handleToggleBulkMode}
                 >
-                  {i18n("pin_to_top")}
+                  {i18n("bulk_actions")}
                 </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={!hasCheckedApis}
-                  onClick={handleEnableCheckedApis}
-                  startIcon={<CheckCircleOutlineIcon />}
-                >
-                  {i18n("enable")}
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={!hasCheckedApis}
-                  onClick={handleDisableCheckedApis}
-                  startIcon={<BlockIcon />}
-                >
-                  {i18n("disable")}
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  disabled={!hasCheckedApis}
-                  onClick={handleDeleteCheckedApis}
-                  startIcon={<DeleteIcon />}
-                >
-                  {i18n("delete")}
-                </Button>
+                {bulkMode && (
+                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={apiItems.length === 0}
+                      onClick={handleToggleAllApis}
+                    >
+                      {allApisChecked
+                        ? i18n("deselect_all")
+                        : i18n("select_all")}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={!hasCheckedApis}
+                      onClick={handlePinCheckedApis}
+                      startIcon={<PushPinIcon />}
+                    >
+                      {i18n("pin_to_top")}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={!hasCheckedApis}
+                      onClick={handleEnableCheckedApis}
+                      startIcon={<CheckCircleOutlineIcon />}
+                    >
+                      {i18n("enable")}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={!hasCheckedApis}
+                      onClick={handleDisableCheckedApis}
+                      startIcon={<BlockIcon />}
+                    >
+                      {i18n("disable")}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      disabled={!hasCheckedApis}
+                      onClick={handleDeleteCheckedApis}
+                      startIcon={<DeleteIcon />}
+                    >
+                      {i18n("delete")}
+                    </Button>
+                  </Stack>
+                )}
               </Stack>
-            )}
-          </Stack>
+            </AdvancedSettings>
+          </Box>
           <Menu
             id="add-api-menu"
             anchorEl={anchorEl}
@@ -1738,22 +1775,19 @@ export default function Apis() {
           sx={{
             display: "flex",
             flexDirection: { xs: "column", md: "row" },
-            border: 1,
-            borderColor: "divider",
-            borderRadius: 1,
-            overflow: "hidden",
-            height: { md: "calc(100vh - 250px)" },
+            gap: { xs: 2, md: 4 },
+            alignItems: "flex-start",
           }}
         >
           <Box
             sx={(theme) => ({
-              width: { xs: "100%", md: 280 },
-              flex: { xs: "0 0 auto", md: "0 0 280px" },
+              width: { xs: "100%", md: 195 },
+              flex: { xs: "0 0 auto", md: "0 0 195px" },
               height: { md: "100%" },
               overflowY: "auto",
               borderRight: {
                 xs: 0,
-                md: `1px solid ${theme.palette.divider}`,
+                md: 0,
               },
               borderBottom: {
                 xs: `1px solid ${theme.palette.divider}`,
@@ -1786,7 +1820,7 @@ export default function Apis() {
             sx={{
               flex: 1,
               minWidth: 0,
-              p: 2,
+              p: 0,
               boxSizing: "border-box",
               height: { md: "100%" },
               overflowY: { md: "auto" },

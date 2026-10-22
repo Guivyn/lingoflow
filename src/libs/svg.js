@@ -26,10 +26,21 @@ export function createLoadingSVG(color = tokens.color.primary) {
   });
 
   const circleData = [
-    { cx: "6", begin: "0.1", values: "0 15 ; 0 -15; 0 15" },
-    { cx: "30", begin: "0.2", values: "0 10 ; 0 -10; 0 10" },
-    { cx: "54", begin: "0.3", values: "0 5 ; 0 -5; 0 5" },
+    { cx: "6", delay: "0.1s", distance: 15 },
+    { cx: "30", delay: "0.2s", distance: 10 },
+    { cx: "54", delay: "0.3s", distance: 5 },
   ];
+  // Adapt upstream #1200: avoid SMIL animateTransform on frequently detached SVGs.
+  const style = createSVGElement("style", {});
+  style.textContent =
+    circleData
+      .map(
+        ({ distance }, index) =>
+          `@keyframes lf-loading-${index} { 0%,100% { transform: translateY(${distance}px); } 50% { transform: translateY(-${distance}px); } }`
+      )
+      .join("\n") +
+    "\n@media (prefers-reduced-motion: reduce) { .lf-loading-dot { animation: none !important; } }";
+  svg.appendChild(style);
 
   circleData.forEach((data) => {
     const circle = createSVGElement("circle", {
@@ -38,16 +49,9 @@ export function createLoadingSVG(color = tokens.color.primary) {
       cx: data.cx,
       cy: "50",
       r: "6",
+      class: "lf-loading-dot",
+      style: `animation: lf-loading-${circleData.indexOf(data)} 1s ease-in-out ${data.delay} infinite;`,
     });
-    const animation = createSVGElement("animateTransform", {
-      attributeName: "transform",
-      dur: "1s",
-      type: "translate",
-      values: data.values,
-      repeatCount: "indefinite",
-      begin: data.begin,
-    });
-    circle.appendChild(animation);
     svg.appendChild(circle);
   });
 

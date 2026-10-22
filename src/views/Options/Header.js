@@ -14,9 +14,10 @@ import { tokens } from "../../ui";
  *
  * @param {Object} props
  * @param {Function} props.onDrawerToggle - 点击菜单按钮切换侧边栏展开/收起的回调函数 (移动端临时抽屉)
+ * @param {string} [props.saveStatusText] - 当前存储写入状态的本地化提示。
  */
 function Header(props) {
-  const { onDrawerToggle } = props;
+  const { onDrawerToggle, saveStatusText } = props;
   const theme = useTheme();
 
   return (
@@ -29,12 +30,9 @@ function Header(props) {
         boxShadow: "none",
       }}
     >
-      <Toolbar
-        variant="dense"
-        sx={{ minHeight: tokens.layout.headerHeight }}
-      >
-        {/* 仅在 sm 分批以下 (xs 移动端) 显示菜单图标按钮以展开临时 Navigator */}
-        <Box sx={{ display: { sm: "none", xs: "block" } }}>
+      <Toolbar variant="dense" sx={{ minHeight: tokens.layout.headerHeight }}>
+        {/* 窄窗口使用菜单按钮展开导航抽屉。 */}
+        <Box sx={{ display: { md: "none", xs: "block" } }}>
           <IconButton
             color="inherit"
             aria-label="open drawer"
@@ -44,9 +42,27 @@ function Header(props) {
             <MenuIcon />
           </IconButton>
         </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexGrow: 1 }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: 2, flexGrow: 1 }}
+        >
           <ProductSignature />
         </Box>
+        <Typography
+          role="status"
+          aria-live="polite"
+          title={saveStatusText}
+          sx={{
+            mr: 2,
+            maxWidth: { xs: 70, sm: 170 },
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontSize: tokens.font.sizeCaption,
+            color: "text.secondary",
+          }}
+        >
+          {saveStatusText}
+        </Typography>
         <Typography
           component="div"
           sx={{

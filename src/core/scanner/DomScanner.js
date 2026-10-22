@@ -31,6 +31,7 @@ export class DomScanner {
 
   #mo = null;
   #io = null;
+  #intersectionTimer = null;
   #observedNodes = new WeakSet();
   #viewNodes = new Set();
   #rootNodes = new Set();
@@ -183,6 +184,8 @@ export class DomScanner {
   }
 
   reset() {
+    clearTimeout(this.#intersectionTimer);
+    this.#intersectionTimer = null;
     this.#removeShadowRootListener();
     this.#io?.disconnect();
     this.#mo?.disconnect();
@@ -206,14 +209,30 @@ export class DomScanner {
     const rootMargin = state.rootMargin;
 
     const pending = new Set();
-    const flush = debounce(() => {
-      pending.forEach((node) => {
+    const flush = () => {
+      this.#intersectionTimer = null;
+      // Measure once per node, then prioritize the actual viewport and reading order.
+      const height =
+        window.innerHeight || document.documentElement.clientHeight;
+      const nodes = [...pending]
+        .filter((node) => node.isConnected)
+        .map((node) => {
+          const rect = node.getBoundingClientRect();
+          return { node, visible: rect.bottom > 0 && rect.top < height };
+        });
+      pending.clear();
+      nodes.sort((a, b) => {
+        if (a.visible !== b.visible) return a.visible ? -1 : 1;
+        const relation = a.node.compareDocumentPosition(b.node);
+        if (relation & Node.DOCUMENT_POSITION_DISCONNECTED) return 0;
+        return relation & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+      });
+      nodes.forEach(({ node }) => {
         if (this.#getState?.()?.enabled) {
           this.#onNode?.(node);
         }
       });
-      pending.clear();
-    }, transInterval);
+    };
 
     return new IntersectionObserver(
       (entries) => {
@@ -221,9 +240,12 @@ export class DomScanner {
           if (entry.isIntersecting) {
             this.#viewNodes.add(entry.target);
             pending.add(entry.target);
-            flush();
+            // Fixed collection window: later callbacks cannot postpone the first work.
+            if (this.#intersectionTimer === null)
+              this.#intersectionTimer = setTimeout(flush, transInterval);
           } else {
             this.#viewNodes.delete(entry.target);
+            pending.delete(entry.target);
           }
         });
       },

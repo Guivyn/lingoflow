@@ -12,13 +12,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Read package manager version
+        id: toolchain
+        run: echo "pnpm=$(cat .pnpm-version | tr -d '\r\n')" >> "$GITHUB_OUTPUT"
+
       - uses: pnpm/action-setup@v4
         with:
-          version: 11.18.0
+          version: ${{ steps.toolchain.outputs.pnpm }}
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
@@ -26,7 +30,7 @@ jobs:
       - name: Prepare app environment
         run: |
           cp .env.example .env
-          pnpm sync-version
+          pnpm check:standard
 
       - run: pnpm lint
 
@@ -36,4 +40,12 @@ jobs:
         env:
           GENERATE_SOURCEMAP: "false"
 
-      - run: test -f build/chrome.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lingoflow-chrome-${{ github.sha }}
+          path: |
+            build/chrome.zip
+            build/chrome.zip.sha256
+            build/release-report.json
+          if-no-files-found: error
+          retention-days: 30

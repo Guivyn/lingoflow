@@ -2,4 +2,6 @@ node_modules
 build
 public
 package.json
+src/ui/theme/tokens.ts
+src/ui/theme/variables.css
 testdata/subtitle-samples

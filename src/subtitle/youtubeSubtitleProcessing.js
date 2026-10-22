@@ -189,6 +189,7 @@ function processSubtitles({
   timeout = 1000,
   maxWords = 15,
   maxDurationMs = 10000,
+  maxChars = Infinity,
 } = {}) {
   // pause 连词词库目前以英文为主，对其他空格分隔语言的逻辑连词切分支持仍有局限。
   const groupedPauseWords = {
@@ -245,6 +246,7 @@ function processSubtitles({
   const sentences = [];
   let currentBuffer = [];
   let bufferWordCount = 0;
+  let bufferLength = 0;
 
   const flushBuffer = () => {
     if (currentBuffer.length > 0) {
@@ -259,6 +261,7 @@ function processSubtitles({
     }
     currentBuffer = [];
     bufferWordCount = 0;
+    bufferLength = 0;
   };
 
   flatEvents.forEach((segment) => {
@@ -267,11 +270,13 @@ function processSubtitles({
     const lastSegment = currentBuffer[currentBuffer.length - 1];
 
     if (lastSegment) {
-      const isEndOfSentence = /[.?!…\])]$/.test(lastSegment.text);
+      const isEndOfSentence = /[.?!…][”’"'\])]*$/.test(lastSegment.text);
       const isPauseOfSentence = /[,]$/.test(lastSegment.text);
       const isTimeout = segment.start - lastSegment.end > timeout;
       const isDurationExceeded =
-        segment.start - currentBuffer[0].start >= maxDurationMs;
+        segment.end - currentBuffer[0].start > maxDurationMs;
+      const isLengthExceeded =
+        bufferLength + 1 + segment.text.length > maxChars;
       const isWordLimitExceeded =
         (usePause || isPauseOfSentence) && bufferWordCount >= maxWords;
       const startsWithSign = /^[[(♪]/.test(segment.text);
@@ -284,6 +289,7 @@ function processSubtitles({
         isEndOfSentence ||
         isTimeout ||
         isDurationExceeded ||
+        isLengthExceeded ||
         isWordLimitExceeded ||
         startsWithSign ||
         startsWithPauseWord
@@ -294,6 +300,7 @@ function processSubtitles({
 
     currentBuffer.push(segment);
     bufferWordCount += segment.text.split(/\s+/).length;
+    bufferLength += segment.text.length + (currentBuffer.length > 1 ? 1 : 0);
   });
 
   flushBuffer();
@@ -327,7 +334,7 @@ export function formatSubtitles(
     }
 
     let currentLine = null;
-    const MAX_LENGTH = 30;
+    const MAX_LENGTH = Math.min(30, longSentenceThreshold);
     const PAUSE_THRESHOLD_MS = 1000;
 
     for (const segment of flatEvents) {
@@ -392,6 +399,7 @@ export function formatSubtitles(
         const reProcessed = processSubtitles({
           flatEvents: subEvents,
           usePause: true,
+          maxChars: longSentenceThreshold,
         });
         result.push(...reProcessed);
       } else {
@@ -412,9 +420,12 @@ export function formatSubtitles(
  * @param {Array<object>} events 清洗后的 YouTube json3 events。
  * @returns {Array<object>|null} 统计算法生成的字幕条目，异常时返回 null。
  */
-function algorithmicSegment(events) {
+function algorithmicSegment(events, maxChars) {
   try {
-    const algorithmicSubtitles = intelligentSentenceBreak({ events });
+    const algorithmicSubtitles = intelligentSentenceBreak(
+      { events },
+      { maxChars }
+    );
     return algorithmicSubtitles.map((sub) => ({
       text: sub.text,
       start: sub.start,
@@ -467,7 +478,7 @@ export function runBuiltinSegmentation({
 
   if (mode === "statistical") {
     logger.info("Youtube Provider: Sentence break mode: STATISTICAL");
-    const result = algorithmicSegment(events);
+    const result = algorithmicSegment(events, longSentenceThreshold);
     if (result?.length) return toCues(result);
     logger.info(
       "Youtube Provider: Statistical segmentation returned empty, falling back to rule"

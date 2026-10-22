@@ -9,6 +9,7 @@ import { isExt } from "./client";
 import { isBg } from "./browser";
 import { PORT_STREAM_FETCH } from "../config";
 import { createSSEParser, createAsyncQueue } from "./stream";
+import { httpRequestError, restoreRequestError } from "./requestError";
 import {
   createTimeoutSignal,
   mergeAbortSignals,
@@ -37,7 +38,7 @@ export async function* fetchStreamNative(input, init = {}, opts = {}) {
   const response = await fetch(input, { ...init, signal });
 
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    throw httpRequestError(response);
   }
 
   const reader = response.body.getReader();
@@ -94,7 +95,11 @@ async function* fetchStreamViaPort(input, init, opts) {
         asyncQueue.finish();
         break;
       case "error":
-        asyncQueue.error(new Error(message.error));
+        asyncQueue.error(
+          message.details
+            ? restoreRequestError(message.details)
+            : new Error(message.error)
+        );
         break;
       default:
         break;

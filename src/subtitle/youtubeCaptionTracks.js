@@ -194,8 +194,8 @@ export async function getSubtitleEvents(capUrl, potUrl, responseText) {
   }
 
   try {
-    // 沿用原有就地修改 potUrl.searchParams 的行为。
-    // 如果 potUrl 被其他调用方共享，可能产生副作用；本次拆分不改变该行为。
+    // 原地更新 potUrl.searchParams。
+    // 调用方共享同一个 URL 对象时，也会观察到这些参数变化。
     potUrl.searchParams.delete("tlang");
     potUrl.searchParams.delete("name");
     potUrl.searchParams.set("lang", capUrl.searchParams.get("lang"));

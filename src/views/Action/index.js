@@ -4,7 +4,8 @@ import { useEffect, useMemo, useCallback, useState } from "react";
 import { SettingProvider } from "../../hooks/Setting";
 import Header from "../Popup/Header";
 import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
+import Fade from "@mui/material/Fade";
+import { tokens } from "../../ui";
 import useWindowSize from "../../hooks/WindowSize";
 import {
   EVENT_LINGOFLOW_INNER,
@@ -25,6 +26,14 @@ export default function Action({ translator, processActions }) {
   const [rule, setRule] = useState(translator.rule); // 当前网页翻译规则状态缓存
   const [setting, setSetting] = useState(translator.setting); // 全局配置状态缓存
   const windowSize = useWindowSize();
+  useEffect(() => {
+    if (!showPopup) return;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setShowPopup(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [showPopup]);
 
   // 点击“设置”图标，在浏览器新标签页中打开扩展 Options 设置页
   const handleOpenSetting = useCallback(() => {
@@ -73,8 +82,8 @@ export default function Action({ translator, processActions }) {
 
   // 根据当前视口尺寸计算弹出面板的理想定位与尺寸，保证其限制在屏幕视口内并居中显示
   const popProps = useMemo(() => {
-    const width = Math.min(windowSize.w, 360);
-    const height = Math.min(windowSize.h, 442);
+    const width = Math.min(windowSize.w, 380);
+    const height = Math.min(windowSize.h, 620);
     const left = (windowSize.w - width) / 2;
     const top = (windowSize.h - height) / 2;
     return {
@@ -89,36 +98,56 @@ export default function Action({ translator, processActions }) {
   return (
     <SettingProvider context="contentPopup">
       <ThemeProvider>
-        {showPopup && (
-          <Draggable
-            key="pop"
-            {...popProps}
-            usePaper // 启用阴影卡片卡纸背景
-            handler={
-              // 指针按下此 Header 区域可以整体拖动面板
-              <Box style={{ cursor: "move" }}>
-                <Header
-                  onClose={() => {
-                    setShowPopup(false);
-                  }}
+        <Fade
+          in={showPopup}
+          timeout={{
+            enter: tokens.motion.fast,
+            exit: tokens.motion.overlayExit,
+          }}
+          mountOnEnter
+          unmountOnExit
+        >
+          <Box>
+            <Draggable
+              key="pop"
+              {...popProps}
+              usePaper // 启用阴影卡片卡纸背景
+              handler={
+                // 指针按下此 Header 区域可以整体拖动面板
+                <Box style={{ cursor: "move" }}>
+                  <Header
+                    onClose={() => {
+                      setShowPopup(false);
+                    }}
+                  />
+                </Box>
+              }
+            >
+              <Box
+                role="dialog"
+                aria-label="LingoFlow"
+                width={popProps.width}
+                sx={{
+                  maxHeight: "calc(100vh - 100px)",
+                  overflowY: "auto",
+                  borderRadius: "8px",
+                  boxShadow: tokens.shadow.md,
+                }}
+              >
+                <PopupCont
+                  rule={rule}
+                  setting={setting}
+                  setRule={setRule}
+                  setSetting={setSetting}
+                  handleOpenSetting={handleOpenSetting}
+                  processActions={processActions}
+                  domain={window.location.hostname}
+                  isContent={true} // 标明是直接嵌入在网页内容上的浮层面板，而不是浏览器扩展栏顶部的 popup 面板
                 />
-                <Divider />
               </Box>
-            }
-          >
-            <Box width={360}>
-              <PopupCont
-                rule={rule}
-                setting={setting}
-                setRule={setRule}
-                setSetting={setSetting}
-                handleOpenSetting={handleOpenSetting}
-                processActions={processActions}
-                isContent={true} // 标明是直接嵌入在网页内容上的浮层面板，而不是浏览器扩展栏顶部的 popup 面板
-              />
-            </Box>
-          </Draggable>
-        )}
+            </Draggable>
+          </Box>
+        </Fade>
       </ThemeProvider>
     </SettingProvider>
   );

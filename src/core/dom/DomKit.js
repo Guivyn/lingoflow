@@ -189,6 +189,15 @@ export const DomKit = {
     if (DomKit.displayCache.has(el)) {
       return DomKit.displayCache.get(el);
     }
+    // Custom elements default to inline even when they contain structural blocks.
+    if (el.nodeName?.includes("-")) {
+      for (const child of el.children || []) {
+        if (DomKit.isBlockNode(child)) {
+          DomKit.displayCache.set(el, true);
+          return true;
+        }
+      }
+    }
     const isBlock = !window.getComputedStyle(el).display.startsWith("inline");
     DomKit.displayCache.set(el, isBlock);
     return isBlock;

@@ -19,10 +19,8 @@ import { isExt } from "./client";
 import { browser } from "./browser";
 import { appLog } from "./log";
 import { debounce } from "./utils";
-import {
-  migrateAutoTranslateSetting,
-  normalizeSetting,
-} from "../core/storage/schema";
+import { normalizeSetting } from "../core/storage/schema";
+import { beginSave } from "./saveFeedback";
 
 // 品牌更名前的应用名，用于一次性迁移旧 chrome.storage/localStorage 数据。
 const LEGACY_APP_NAME = "KISS-Translator";
@@ -76,16 +74,30 @@ async function del(key) {
  * @param {Object|Array} obj 待存入 of JS 对象或数组
  */
 async function setObj(key, obj) {
-  const serialized = JSON.stringify(obj);
-  const previous = writeQueues.get(key) || Promise.resolve();
-  const next = previous.catch(() => undefined).then(() => set(key, serialized));
-  writeQueues.set(key, next);
+  const finish = beginSave(key);
   try {
-    await next;
-  } finally {
-    if (writeQueues.get(key) === next) {
-      writeQueues.delete(key);
+    if (key === STOKEY_SETTING) {
+      const issues = [];
+      obj = normalizeSetting(obj, { issues });
+      if (issues.length) appLog("Settings normalized", issues);
     }
+    const serialized = JSON.stringify(obj);
+    const previous = writeQueues.get(key) || Promise.resolve();
+    const next = previous
+      .catch(() => undefined)
+      .then(() => set(key, serialized));
+    writeQueues.set(key, next);
+    try {
+      await next;
+    } finally {
+      if (writeQueues.get(key) === next) {
+        writeQueues.delete(key);
+      }
+    }
+    finish("saved");
+  } catch (error) {
+    finish("error");
+    throw error;
   }
 }
 
@@ -273,8 +285,11 @@ export const getSettingWithDefault = async () => {
 
   return mergeSettingWithDefault(setting);
 };
-export const setSetting = async (val) =>
-  setObj(STOKEY_SETTING, migrateAutoTranslateSetting(val));
+export const setSetting = async (val) => {
+  const normalized = normalizeSetting(val);
+  await setObj(STOKEY_SETTING, normalized);
+  return normalized;
+};
 
 // 基于最新存储快照更新设置，供弹窗等短生命周期入口使用，避免整份旧配置覆盖选项页修改。
 export const updateStoredSetting = async (patchOrUpdater) => {
@@ -285,8 +300,7 @@ export const updateStoredSetting = async (patchOrUpdater) => {
         typeof patchOrUpdater === "function"
           ? patchOrUpdater(current)
           : { ...current, ...patchOrUpdater };
-      await setSetting(next);
-      return next;
+      return setSetting(next);
     })
   );
 };

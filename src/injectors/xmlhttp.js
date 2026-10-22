@@ -5,26 +5,68 @@
  */
 export const XMLHttpRequestInjector = () => {
   try {
+    const marker = Symbol.for("lingoflow.youtube-caption-capture");
+    if (window[marker]) return;
+    const isCaptionUrl = (value) => {
+      try {
+        const url = new URL(value, window.location.href);
+        return (
+          url.protocol === "https:" &&
+          /(^|\.)youtube\.com$/.test(url.hostname) &&
+          url.pathname === "/api/timedtext"
+        );
+      } catch {
+        return false;
+      }
+    };
+    const publish = (url, response) => {
+      if (
+        !isCaptionUrl(url) ||
+        typeof response !== "string" ||
+        response.length > 8 * 1024 * 1024
+      )
+        return;
+      window.postMessage(
+        { type: "LINGOFLOW_XHR_DATA_YOUTUBE", url, response },
+        window.location.origin
+      );
+    };
     const originalOpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function (...args) {
       const url = args[1];
       // 匹配 YouTube 的 timedtext 字幕网络请求链接
-      if (typeof url === "string" && url.includes("timedtext")) {
+      if (typeof url === "string" && isCaptionUrl(url)) {
         this.addEventListener("load", function () {
-          // 向主应用派发字幕数据，使用了安全的原点限制 (window.location.origin)
-          // 目前仅重写拦截了 `XMLHttpRequest` 对象；网页底层升级或改用 `fetch` 后该拦截可能失效。
-          window.postMessage(
-            {
-              type: "LINGOFLOW_XHR_DATA_YOUTUBE",
-              url: this.responseURL,
-              response: this.responseText,
-            },
-            window.location.origin
-          );
+          try {
+            publish(this.responseURL, this.responseText);
+          } catch {
+            /* Non-text XHR is not a caption text payload. */
+          }
         });
       }
       return originalOpen.apply(this, args);
     };
+    if (typeof window.fetch === "function") {
+      const originalFetch = window.fetch;
+      window.fetch = function (...args) {
+        return originalFetch.apply(this, args).then((response) => {
+          if (isCaptionUrl(response.url)) {
+            // Clone only: never consume the response body needed by the YouTube player.
+            try {
+              response
+                .clone()
+                .text()
+                .then((text) => publish(response.url, text))
+                .catch(() => {});
+            } catch {
+              /* Ignore non-cloneable responses. */
+            }
+          }
+          return response;
+        });
+      };
+    }
+    window[marker] = true;
   } catch (err) {
     console.log("XMLHttpRequestInjector", err);
   }
