@@ -312,11 +312,13 @@ export default function PopupCont({
     "&:hover": { filter: "brightness(.98)" },
   };
   const popupRowSx = {
-    display: "flex",
+    display: "grid",
+    gridTemplateColumns: "max-content minmax(0, 1fr)",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 1.5,
     minHeight: 52,
+    "& > .MuiTypography-root": { whiteSpace: "nowrap" },
   };
   return (
     <Stack className="lf-popup" sx={{ px: 2.5, pt: 1, pb: 1 }} spacing={0.5}>
@@ -440,7 +442,7 @@ export default function PopupCont({
             displayEmpty: true,
             inputProps: { "aria-label": i18n("translate_service") },
           }}
-          sx={{ width: 185 }}
+          sx={{ width: "100%", minWidth: 0 }}
         >
           {!optApis.some((a) => a.key === apiSlug) && (
             <MenuItem value="" disabled>
@@ -458,7 +460,7 @@ export default function PopupCont({
         <Typography sx={{ fontSize: tokens.font.sizeData }}>
           {i18n("display_mode", "显示方式")}
         </Typography>
-        <Box sx={{ width: 185 }}>
+        <Box sx={{ minWidth: 0 }}>
           <SegmentedControl
             label={i18n("display_mode", "显示方式")}
             value={transOnly === "true" ? "only" : "bilingual"}
@@ -496,7 +498,7 @@ export default function PopupCont({
             displayEmpty: true,
             inputProps: { "aria-label": i18n("text_style_alt") },
           }}
-          sx={{ width: 185 }}
+          sx={{ width: "100%", minWidth: 0 }}
         >
           {!allTextStyles.some((s) => s.styleSlug === textStyle) && (
             <MenuItem value="">{i18n("none", "无")}</MenuItem>

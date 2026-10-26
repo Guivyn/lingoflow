@@ -110,6 +110,7 @@ function Trantab() {
         toLang2={toLang2}
         transApis={resolvedTransApis}
         simpleStyle={false}
+        compactLayout
         langDetector={langDetector}
         enDict={enDict}
         enSug={enSug}
@@ -237,7 +238,7 @@ export default function Popup() {
     <Box
       className="lf-popup"
       width={380}
-      sx={{ maxWidth: "100vw", bgcolor: theme.palette.background.paper }}
+      sx={{ bgcolor: theme.palette.background.paper }}
     >
       {/* 头部组件 */}
       <Header

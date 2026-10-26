@@ -75,7 +75,7 @@
 ## 开发
 
 <!-- release-standard:start -->
-**v2.0.0** · Node.js **22** · pnpm **11.18.0**
+**v2.0.1** · Node.js **22** · pnpm **11.18.0**
 <!-- release-standard:end -->
 
 工具链以 [`.nvmrc`](.nvmrc) 和 [`.pnpm-version`](.pnpm-version) 为准，上方版本区块按发布规范自动生成。参见 [交付规范](docs/release-standard.md)。

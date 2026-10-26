@@ -45,6 +45,7 @@ export default function TranForm({
   toLang2: initToLang2,
   transApis,
   simpleStyle = false,
+  compactLayout = false,
   langDetector: initLangDetector = "-",
   enDict: initEnDict = "-",
   enSug: initEnSug = "-",
@@ -55,6 +56,12 @@ export default function TranForm({
   isPlaygound = false,
 }) {
   const i18n = useI18n();
+  const compactLanguageLabel = (options, value) =>
+    value === "auto"
+      ? i18n("automatic_detection", "自动检测")
+      : String(options.find(([lang]) => lang === value)?.[1] || value).split(
+          " - "
+        )[0];
 
   // 当前是否处于文本框获取焦点的编辑提交模式
   const [editMode, setEditMode] = useState(false);
@@ -235,7 +242,11 @@ export default function TranForm({
             {/* 各类服务参数、语种设置下拉菜单网格 */}
             <Grid container spacing={2} columns={12}>
               {/* 多选框：允许同时勾选多个翻译引擎进行结果对比 */}
-              <Grid item xs={xs} md={md}>
+              <Grid
+                item
+                xs={compactLayout ? 12 : xs}
+                md={compactLayout ? 12 : md}
+              >
                 <TextField
                   select
                   SelectProps={{
@@ -260,13 +271,24 @@ export default function TranForm({
                 </TextField>
               </Grid>
               {/* 源语言 */}
-              <Grid item xs={xs} md={md}>
+              <Grid
+                item
+                xs={compactLayout ? 6 : xs}
+                md={compactLayout ? 6 : md}
+              >
                 <TextField
                   select
                   SelectProps={{ MenuProps: { disablePortal: !isPlaygound } }}
                   fullWidth
                   size="small"
                   name="fromLang"
+                  {...(compactLayout && {
+                    SelectProps: {
+                      MenuProps: { disablePortal: !isPlaygound },
+                      renderValue: (value) =>
+                        compactLanguageLabel(OPT_LANGS_FROM, value),
+                    },
+                  })}
                   value={fromLang}
                   label={i18n("from_lang")}
                   onChange={(e) => {
@@ -281,13 +303,24 @@ export default function TranForm({
                 </TextField>
               </Grid>
               {/* 目标语言 */}
-              <Grid item xs={xs} md={md}>
+              <Grid
+                item
+                xs={compactLayout ? 6 : xs}
+                md={compactLayout ? 6 : md}
+              >
                 <TextField
                   select
                   SelectProps={{ MenuProps: { disablePortal: !isPlaygound } }}
                   fullWidth
                   size="small"
                   name="toLang"
+                  {...(compactLayout && {
+                    SelectProps: {
+                      MenuProps: { disablePortal: !isPlaygound },
+                      renderValue: (value) =>
+                        compactLanguageLabel(OPT_LANGS_TO, value),
+                    },
+                  })}
                   value={toLang}
                   label={i18n("to_lang")}
                   onChange={(e) => {

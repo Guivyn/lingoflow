@@ -7,6 +7,12 @@ import Popup from "./views/Popup";
 // 标记当前上下文为 "popup"，方便其他共享库得知当前处于浏览器插件弹窗面板环境
 globalThis.__LINGOFLOW_CONTEXT__ = "popup";
 
+// 工具栏弹窗由文档尺寸决定外框宽度；独立翻译窗口跟随窗口大小。
+if (window.location.hash !== "#tranbox") {
+  document.documentElement.style.width = "380px";
+  document.body.style.width = "380px";
+}
+
 // 夸克等受限扩展环境下，未捕获的 Promise 错误不显示在页面里，这里直接渲染到弹窗底部便于排查。
 window.addEventListener("unhandledrejection", (event) => {
   event.preventDefault();

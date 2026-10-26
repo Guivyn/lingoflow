@@ -75,7 +75,7 @@ The active global bindings are shown in `chrome://extensions/shortcuts`. Page-le
 ## Development
 
 <!-- release-standard:start -->
-**v2.0.0** · Node.js **22** · pnpm **11.18.0**
+**v2.0.1** · Node.js **22** · pnpm **11.18.0**
 <!-- release-standard:end -->
 
 The toolchain is defined by [`.nvmrc`](.nvmrc) and [`.pnpm-version`](.pnpm-version); the version block is generated from the release standard. See the [release standard](docs/release-standard.md).
