@@ -45,8 +45,9 @@ const translationBaseStyles = `
   }
   .lingoflow-wrapper.lingoflow-long {
     display: block;
+    width: 100%;
     white-space: normal;
-    text-align: start;
+    text-align: inherit;
   }
   .lingoflow-wrapper.lingoflow-long > .lingoflow-inner {
     display: block;
@@ -57,6 +58,18 @@ const translationBaseStyles = `
   }
   .lingoflow-space {
     margin-inline-end: 0.22em;
+  }
+  .lingoflow-wrapper.lingoflow-reflow,
+  .lingoflow-wrapper.lingoflow-reflow > .lingoflow-inner {
+    display: block;
+    white-space: normal;
+  }
+  .lingoflow-wrapper.lingoflow-reflow {
+    width: 100%;
+    text-align: inherit;
+  }
+  .lingoflow-wrapper.lingoflow-reflow > .lingoflow-space {
+    display: none;
   }
 `;
 

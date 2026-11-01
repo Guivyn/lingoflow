@@ -6,6 +6,7 @@ import { genTextClass } from "../../libs/style";
 import { createRetrySVG } from "../../libs/svg";
 import { DomKit } from "../dom/DomKit";
 import { tokens } from "../../ui/theme/tokens";
+import { repairTranslationLayout } from "./repairTranslationLayout";
 
 const PRESENTATION_ONLY_TAGS = new Set([
   "B",
@@ -82,6 +83,7 @@ export class TranslationRenderer {
   #useSheetFallback = false;
 
   #translationNodes = new WeakMap();
+  #layoutFrames = new WeakMap();
 
   #transOnlyRevertTimer = null;
   #transOnlyRevertTarget = null;
@@ -475,10 +477,28 @@ export class TranslationRenderer {
         `:scope > .${DomKit.LINGOFLOW_CLASS.inner}`
       );
       if (inner) {
+        wrapper.classList.remove("lingoflow-reflow");
         inner.innerHTML = trustedHTML;
         inner.style.opacity = "1";
       }
     });
+    this.#scheduleLayoutRepair(wrapper);
+  }
+
+  #scheduleLayoutRepair(wrapper) {
+    if (typeof requestAnimationFrame !== "function") return;
+    const previous = this.#layoutFrames.get(wrapper);
+    if (previous !== undefined) cancelAnimationFrame(previous);
+    const frame = requestAnimationFrame(() => {
+      this.#layoutFrames.delete(wrapper);
+      if (!wrapper.isConnected || this.#translationNodes.get(wrapper)?.isHide)
+        return;
+      const inner = wrapper.querySelector(
+        `:scope > .${DomKit.LINGOFLOW_CLASS.inner}`
+      );
+      this.#withViewportAnchor(() => repairTranslationLayout(wrapper, inner));
+    });
+    this.#layoutFrames.set(wrapper, frame);
   }
 
   commitTranslation({ wrapper, nodes, isHide = false }) {
@@ -522,6 +542,8 @@ export class TranslationRenderer {
 
     state.isHide = transOnly === "true";
     this.#translationNodes.set(wrapper, state);
+    if (state.isHide) wrapper.classList.remove("lingoflow-reflow");
+    else this.#scheduleLayoutRepair(wrapper);
     return state;
   }
 
@@ -560,6 +582,9 @@ export class TranslationRenderer {
   }
 
   removeWrapper(wrapper) {
+    const frame = this.#layoutFrames.get(wrapper);
+    if (frame !== undefined) cancelAnimationFrame(frame);
+    this.#layoutFrames.delete(wrapper);
     const parent = wrapper.parentElement;
     this.#withViewportAnchor(() => {
       const backup = this.#getTranslationBackup(wrapper);
