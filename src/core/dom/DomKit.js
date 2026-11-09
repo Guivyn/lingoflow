@@ -1,4 +1,9 @@
 import { APP_LCNAME, APP_CONSTS } from "../../config";
+import {
+  BLOCK_LAYOUT_TAGS,
+  hasBlockDescendantLayout,
+  hasBlockLayout,
+} from "./layout";
 
 const LINGOFLOW_CLASS = {
   warpper: `${APP_LCNAME}-wrapper`,
@@ -11,85 +16,10 @@ const LINGOFLOW_CLASS = {
 };
 
 export const DomKit = {
-  displayCache: new WeakMap(),
-
   TAGS: {
     BREAK_LINE: new Set(["BR", "WBR"]),
-    BLOCK: new Set([
-      "ADDRESS",
-      "ARTICLE",
-      "ASIDE",
-      "BLOCKQUOTE",
-      "CANVAS",
-      "DD",
-      "DIV",
-      "DL",
-      "DT",
-      "FIELDSET",
-      "FIGCAPTION",
-      "FIGURE",
-      "FOOTER",
-      "FORM",
-      "H1",
-      "H2",
-      "H3",
-      "H4",
-      "H5",
-      "H6",
-      "HEADER",
-      "HR",
-      "LI",
-      "MAIN",
-      "NAV",
-      "NOSCRIPT",
-      "OL",
-      "P",
-      "PRE",
-      "SECTION",
-      "TABLE",
-      "TFOOT",
-      "UL",
-      "VIDEO",
-    ]),
-    INLINE: new Set([
-      "ABBR",
-      "ACRONYM",
-      "B",
-      "BDO",
-      "BIG",
-      "BR",
-      "BUTTON",
-      "CITE",
-      "CODE",
-      "DFN",
-      "DEL",
-      "FONT",
-      "EM",
-      "I",
-      "IMG",
-      "INPUT",
-      "INS",
-      "KBD",
-      "LABEL",
-      "MAP",
-      "MARK",
-      "OBJECT",
-      "OUTPUT",
-      "Q",
-      "RUBY",
-      "SAMP",
-      "SCRIPT",
-      "SELECT",
-      "SMALL",
-      "STRONG",
-      "SUB",
-      "SUP",
-      "TEXTAREA",
-      "TIME",
-      "TT",
-      "U",
-      "VAR",
-    ]),
+    // 仅在无法获取计算后的 display 时兜底。
+    BLOCK: BLOCK_LAYOUT_TAGS,
     REPLACE: new Set([
       "ABBR",
       "CODE",
@@ -180,35 +110,14 @@ export const DomKit = {
     return el instanceof Element || el instanceof DocumentFragment;
   },
 
-  isBlockNode(el) {
+  isBlockNode(el, readLayout) {
     if (!DomKit.isElementOrFragment(el)) return false;
-    if (el.attributes?.display?.value?.includes("inline")) return false;
-    if (el.attributes?.display?.value?.includes("block")) return true;
-    if (DomKit.TAGS.INLINE.has(el.nodeName?.toUpperCase())) return false;
-    if (DomKit.TAGS.BLOCK.has(el.nodeName?.toUpperCase())) return true;
-    if (DomKit.displayCache.has(el)) {
-      return DomKit.displayCache.get(el);
-    }
-    // Custom elements default to inline even when they contain structural blocks.
-    if (el.nodeName?.includes("-")) {
-      for (const child of el.children || []) {
-        if (DomKit.isBlockNode(child)) {
-          DomKit.displayCache.set(el, true);
-          return true;
-        }
-      }
-    }
-    const isBlock = !window.getComputedStyle(el).display.startsWith("inline");
-    DomKit.displayCache.set(el, isBlock);
-    return isBlock;
+    return hasBlockLayout(el, { readLayout });
   },
 
-  hasBlockNode(el) {
+  hasBlockNode(el, readLayout) {
     if (!DomKit.isElementOrFragment(el)) return false;
-    for (const child of el.childNodes) {
-      if (DomKit.isBlockNode(child)) return true;
-    }
-    return false;
+    return hasBlockDescendantLayout(el, { readLayout });
   },
 
   hasTextNode(el) {

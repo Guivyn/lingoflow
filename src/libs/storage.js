@@ -3,10 +3,12 @@ import {
   STOKEY_SETTING,
   STOKEY_SETTING_BACKUP_V1_BEFORE_V2,
   STOKEY_RULES,
+  STOKEY_RULES_MATHJAX_MIGRATED,
   STOKEY_FAB,
   STOKEY_TRANBOX,
   DEFAULT_SETTING,
   DEFAULT_RULES,
+  GLOBAL_KEY,
   DEFAULT_API_LIST,
   OPT_STYLE_NONE,
   getSettingVersion,
@@ -21,6 +23,7 @@ import { appLog } from "./log";
 import { debounce } from "./utils";
 import { normalizeSetting } from "../core/storage/schema";
 import { beginSave } from "./saveFeedback";
+import { splitSelectorList } from "./selectorList";
 
 // 品牌更名前的应用名，用于一次性迁移旧 chrome.storage/localStorage 数据。
 const LEGACY_APP_NAME = "KISS-Translator";
@@ -250,8 +253,74 @@ const migrateLegacyAppStorage = async () => {
   }
 };
 
+function addDefaultSelector(current, selector) {
+  if (typeof current !== "string" || !current.trim()) return current;
+
+  const selectors = splitSelectorList(current);
+  for (const item of selectors) {
+    let value = item;
+    if (item.startsWith("+")) {
+      value = item.slice(1).trim();
+    } else if (item.startsWith("-")) {
+      value = item.slice(1).trim();
+    }
+
+    if (value === selector) return current;
+  }
+
+  const patchMode = selectors.some(
+    (item) => item.startsWith("+") || item.startsWith("-")
+  );
+  const addition = patchMode ? `+${selector}` : selector;
+  return [...selectors, addition].join(", ");
+}
+
+async function migrateMathJaxRuleDefaults() {
+  if ((await getObj(STOKEY_RULES_MATHJAX_MIGRATED)) === true) return;
+
+  const rawRules = await get(STOKEY_RULES);
+  if (rawRules === null || rawRules === undefined) {
+    await setObj(STOKEY_RULES_MATHJAX_MIGRATED, true);
+    return;
+  }
+
+  const rules = await getObj(STOKEY_RULES);
+  if (!Array.isArray(rules)) return;
+
+  const globalIndex = rules.findIndex((rule) => rule?.pattern === GLOBAL_KEY);
+  if (globalIndex < 0) {
+    await setObj(STOKEY_RULES_MATHJAX_MIGRATED, true);
+    return;
+  }
+
+  const globalRule = rules[globalIndex];
+  const nextGlobalRule = {
+    ...globalRule,
+    ignoreSelector: addDefaultSelector(
+      globalRule.ignoreSelector,
+      ".MathJax_Display"
+    ),
+    keepSelector: addDefaultSelector(globalRule.keepSelector, ".MathJax"),
+  };
+  const changed =
+    nextGlobalRule.ignoreSelector !== globalRule.ignoreSelector ||
+    nextGlobalRule.keepSelector !== globalRule.keepSelector;
+
+  if (changed) {
+    const nextRules = [...rules];
+    nextRules[globalIndex] = nextGlobalRule;
+    await setObj(STOKEY_RULES, nextRules);
+  }
+  await setObj(STOKEY_RULES_MATHJAX_MIGRATED, true);
+}
+
 export const runDataMigration = async () => {
   await migrateLegacyAppStorage();
+  try {
+    await migrateMathJaxRuleDefaults();
+  } catch (err) {
+    appLog("MathJax rule migration failed:", err);
+  }
 
   const rawSetting = await getSetting();
   if (rawSetting && getSettingVersion(rawSetting) < CURRENT_SETTINGS_VERSION) {

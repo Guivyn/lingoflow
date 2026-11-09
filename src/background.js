@@ -47,12 +47,12 @@ import { saveRule, matchRule } from "./libs/rules";
 import { injectInlineJs, injectInternalCss } from "./libs/injector";
 import { appLog, logger } from "./libs/log";
 import { sha256 } from "./libs/utils";
+import { buildDynamicRuleUpdate } from "./libs/dnrRules";
 import {
   isTrustedExtensionSender,
   isExtensionPageSender,
   normalizeInjectText,
   normalizeProxyStreamArgs,
-  sanitizeDnrList,
   validateHashInput,
 } from "./libs/requestGuard";
 
@@ -90,38 +90,18 @@ async function updateIcon(isActive, tabId) {
   }
 }
 
-// declarativeNetRequest 动态规则的起始 ID 段，避免 ID 冲突
-const CSP_RULE_START_ID = 1;
-const ORI_RULE_START_ID = 10000;
-
 /**
- * 从一个 URL 或域名字符串中提取可注册域名 (registrable domain, 即 eTLD+1)。
- * 例如 "https://dict.youdao.com/xxx" -> "youdao.com"。
- * 用于 DNR 的 excludedInitiatorDomains，使其能匹配目标站点的所有子域名页面。
- * @param {string} input URL 或域名（可不带协议）
- * @returns {string} 可注册域名；解析失败时返回空字符串
+ * 返回扩展请求在 DNR 中使用的发起方域名。
+ * @returns {string} 扩展运行时 URL 的 hostname；不可用时返回空字符串
  */
-function getRegistrableDomain(input) {
+function getExtensionInitiatorDomain() {
   try {
-    const hostname = new URL(
-      /^[a-z]+:\/\//i.test(input) ? input : `https://${input}`
-    ).hostname;
-    const labels = hostname.split(".").filter(Boolean);
-    // 取最后两段作为可注册域名（足以覆盖有道等常见翻译源场景）
-    return labels.length <= 2 ? hostname : labels.slice(-2).join(".");
+    return new URL(browser.runtime.getURL("")).hostname;
   } catch (err) {
-    appLog("getRegistrableDomain error", err);
+    appLog("getExtensionInitiatorDomain error", err);
     return "";
   }
 }
-// 需要从 HTTP 响应头中移除的 CSP (Content-Security-Policy) 键名，用以允许加载第三方翻译接口脚本/发送翻译请求
-const CSP_REMOVE_HEADERS = [
-  `content-security-policy`,
-  `content-security-policy-report-only`,
-  `x-webkit-csp`,
-  `x-content-security-policy`,
-];
-
 // 独立窗口 (TranBox 独立窗口模式) 的全局状态变量
 let separateWindowId = null; // 当前已打开窗口的 ID
 let lastKnownBounds = null; // 缓存窗口最后一次有效的屏幕位置坐标与大小
@@ -349,85 +329,21 @@ async function updateCspRules({ csplist, orilist }) {
   try {
     // 1. 获取当前所有已注册的动态 DNR 规则
     const oldRules = await browser.declarativeNetRequest.getDynamicRules();
-
-    const rulesToAdd = [];
-    const idsToRemove = [];
-
-    // 2. 构造并处理 CSP 移除过滤规则
-    if (csplist !== undefined) {
-      const processedCspList = sanitizeDnrList(csplist);
-
-      // 获取所有属于 CSP 段的旧规则 ID，准备予以清理
-      const oldCspRuleIds = oldRules
-        .filter(
-          (rule) => rule.id >= CSP_RULE_START_ID && rule.id < ORI_RULE_START_ID
-        )
-        .map((rule) => rule.id);
-      idsToRemove.push(...oldCspRuleIds);
-
-      // 为每个目标 url 分配新的规则 ID 并构造 removeHeaders 行动
-      const newCspRules = processedCspList.map((url, index) => ({
-        id: CSP_RULE_START_ID + index,
-        action: {
-          type: "modifyHeaders",
-          responseHeaders: CSP_REMOVE_HEADERS.map((header) => ({
-            operation: "remove",
-            header,
-          })),
-        },
-        condition: {
-          urlFilter: url,
-          resourceTypes: ["main_frame", "sub_frame"],
-        },
-      }));
-      rulesToAdd.push(...newCspRules);
+    const extensionInitiatorDomain =
+      orilist === undefined ? "" : getExtensionInitiatorDomain();
+    if (orilist !== undefined && !extensionInitiatorDomain) {
+      appLog("Origin rules skipped because extension origin is unavailable");
     }
-
-    // 3. 构造并处理 Origin 请求头重写伪装规则
-    if (orilist !== undefined) {
-      const processedOriList = sanitizeDnrList(orilist);
-
-      // 获取所有属于 Origin 修改段的旧规则 ID，准备清理
-      const oldOriRuleIds = oldRules
-        .filter((rule) => rule.id >= ORI_RULE_START_ID)
-        .map((rule) => rule.id);
-      idsToRemove.push(...oldOriRuleIds);
-
-      // 将发往特定翻译源的 xmlhttprequest 请求的 Origin 修改为目标源域名，伪装成同源请求
-      const newOriRules = processedOriList.map((url, index) => {
-        const condition = {
-          urlFilter: url,
-          resourceTypes: ["xmlhttprequest"],
-        };
-
-        // 仅对“非目标站点本身”的页面发起的请求伪装 Origin。
-        // 否则会篡改用户在目标站点（如有道）自身页面上发出的请求的 Origin，
-        // 反而触发该站点的跨域校验失败 (CORS AllowOriginMismatch)。详见 issue #759。
-        const initiatorDomain = getRegistrableDomain(url);
-        if (initiatorDomain) {
-          condition.excludedInitiatorDomains = [initiatorDomain];
-        }
-
-        return {
-          id: ORI_RULE_START_ID + index,
-          action: {
-            type: "modifyHeaders",
-            requestHeaders: [
-              { header: "Origin", operation: "set", value: url },
-            ],
-          },
-          condition,
-        };
-      });
-      rulesToAdd.push(...newOriRules);
-    }
+    const update = buildDynamicRuleUpdate({
+      oldRules,
+      csplist,
+      orilist,
+      extensionInitiatorDomain,
+    });
 
     // 批量更新 DNR 规则；不支持的旧浏览器会在 catch 中降级处理。
-    if (idsToRemove.length > 0 || rulesToAdd.length > 0) {
-      await browser.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: idsToRemove,
-        addRules: rulesToAdd,
-      });
+    if (update.removeRuleIds.length > 0 || update.addRules.length > 0) {
+      await browser.declarativeNetRequest.updateDynamicRules(update);
     }
   } catch (err) {
     appLog("update csp rules", err);

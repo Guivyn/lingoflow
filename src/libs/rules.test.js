@@ -4,8 +4,8 @@ jest.mock("./storage", () => ({
 }));
 
 const { getRulesWithDefault, setRules } = require("./storage");
-const { checkRules, persistRule, saveRule } = require("./rules");
-const { OPT_STYLE_NONE, BUILTIN_RULES } = require("../config");
+const { checkRules, matchRule, persistRule, saveRule } = require("./rules");
+const { OPT_STYLE_NONE, BUILTIN_RULES, GLOBAL_RULE } = require("../config");
 
 describe("rules", () => {
   beforeEach(() => {
@@ -92,6 +92,34 @@ describe("rules", () => {
     expect(soRule.selector).toContain(".s-prose p");
   });
 
+  test("applies Stack Overflow site rules on top of the global rule", async () => {
+    getRulesWithDefault.mockResolvedValue([
+      {
+        ...GLOBAL_RULE,
+        pattern: "*",
+        toLang: "ja",
+        selector: "article p",
+        ignoreSelector: ".global-only",
+        parentStyle: "color: blue;",
+      },
+    ]);
+
+    const rule = await matchRule(
+      "https://stackoverflow.com/questions/123/example"
+    );
+
+    expect(rule.pattern).toBe("stackoverflow.com");
+    expect(rule.autoScan).toBe("false");
+    expect(rule.selector).toContain(".s-prose p");
+    expect(rule.selector).not.toContain("article p");
+    expect(rule.keepSelector).toContain(".post-tag");
+    expect(rule.ignoreSelector).toContain("footer");
+    expect(rule.ignoreSelector).toContain(".s-tag");
+    expect(rule.ignoreSelector).not.toContain(".global-only");
+    expect(rule.toLang).toBe("ja");
+    expect(rule.parentStyle).toBe("color: blue;");
+  });
+
   test("persistRule updates the global rule in place", async () => {
     getRulesWithDefault.mockResolvedValue([
       { pattern: "*", autoScan: "false", enabled: true },
@@ -111,9 +139,7 @@ describe("rules", () => {
   });
 
   test("persistRule inserts a new personal rule", async () => {
-    getRulesWithDefault.mockResolvedValue([
-      { pattern: "*", autoScan: "true" },
-    ]);
+    getRulesWithDefault.mockResolvedValue([{ pattern: "*", autoScan: "true" }]);
 
     await persistRule({ pattern: "example.com", textStyle: "highlight" });
 

@@ -23,6 +23,12 @@ import { RuleMatcher } from "../core/rules/RuleMatcher";
 import { TranslationRenderer } from "../core/renderer/TranslationRenderer";
 import { DomScanner } from "../core/scanner/DomScanner";
 import { DomKit } from "../core/dom/DomKit";
+import {
+  BLOCK_LAYOUT_TAGS,
+  hasBlockDescendantLayout,
+  hasBlockLayout,
+  createLayoutReader,
+} from "../core/dom/layout";
 import { createInterpreter } from "./interpreter";
 import { clearFetchPool } from "./pool";
 import { scheduleIdle, genEventName } from "./utils";
@@ -41,92 +47,12 @@ import { getDocInfo } from "./docInfo";
  * @description 翻译核心逻辑封装
  */
 export class Translator {
-  // 块级判定缓存，避免对同一节点高频调用 window.getComputedStyle(el) 造成浏览器回流（Reflow）
-  static displayCache = new WeakMap();
-
   // HTML 元素标签分类
   static TAGS = {
     // 强制换行标签
     BREAK_LINE: new Set(["BR", "WBR"]),
-    // 块级标签
-    BLOCK: new Set([
-      "ADDRESS",
-      "ARTICLE",
-      "ASIDE",
-      "BLOCKQUOTE",
-      "CANVAS",
-      "DD",
-      "DIV",
-      "DL",
-      "DT",
-      "FIELDSET",
-      "FIGCAPTION",
-      "FIGURE",
-      "FOOTER",
-      "FORM",
-      "H1",
-      "H2",
-      "H3",
-      "H4",
-      "H5",
-      "H6",
-      "HEADER",
-      "HR",
-      "LI",
-      "MAIN",
-      "NAV",
-      "NOSCRIPT",
-      "OL",
-      "P",
-      "PRE",
-      "SECTION",
-      "TABLE",
-      "TFOOT",
-      "UL",
-      "VIDEO",
-    ]),
-    // 行级标签
-    INLINE: new Set([
-      // "A",
-      "ABBR",
-      "ACRONYM",
-      "B",
-      "BDO",
-      "BIG",
-      "BR",
-      "BUTTON",
-      "CITE",
-      "CODE",
-      "DFN",
-      "DEL",
-      "FONT",
-      "EM",
-      "I",
-      "IMG",
-      "INPUT",
-      "INS",
-      "KBD",
-      "LABEL",
-      "MAP",
-      "MARK",
-      "OBJECT",
-      "OUTPUT",
-      "Q",
-      "RUBY",
-      "SAMP",
-      "SCRIPT",
-      "SELECT",
-      "SMALL",
-      // "SPAN",
-      "STRONG",
-      "SUB",
-      "SUP",
-      "TEXTAREA",
-      "TIME",
-      "TT",
-      "U",
-      "VAR",
-    ]),
+    // 仅在无法获取计算后的 display 时兜底。
+    BLOCK: BLOCK_LAYOUT_TAGS,
     // 需要被作为占位符替换以保持原文格式不被机器翻译破坏的复杂标签
     REPLACE: new Set([
       "ABBR",
@@ -196,45 +122,14 @@ export class Translator {
     return el instanceof Element || el instanceof DocumentFragment;
   }
 
-  /**
-   * 判断目标元素是否为块级（Block）节点
-   * 缓存会在页面重新扫描时整体失效，以覆盖运行期间动态样式变化。
-   * @param {Node} el - 待检测的 DOM 节点
-   * @returns {boolean}
-   */
-  static isBlockNode(el) {
+  static isBlockNode(el, readLayout) {
     if (!Translator.isElementOrFragment(el)) return false;
-
-    // 若有显式的 inline 属性设置，直接判定非块级
-    if (el.attributes?.display?.value?.includes("inline")) return false;
-    // 若有显式的 block 属性设置，直接判定为块级
-    if (el.attributes?.display?.value?.includes("block")) return true;
-
-    // 若标签在内联标签集合中，直接判定非块级
-    if (Translator.TAGS.INLINE.has(el.nodeName?.toUpperCase())) return false;
-    // 若标签在块级标签集合中，直接判定为块级
-    if (Translator.TAGS.BLOCK.has(el.nodeName?.toUpperCase())) return true;
-
-    // 优先读取 WeakMap 缓存
-    if (Translator.displayCache.has(el)) {
-      return Translator.displayCache.get(el);
-    }
-
-    // 降级回滚：调用 getComputedStyle 进行高开销的布局样式计算
-    const isBlock = !window.getComputedStyle(el).display.startsWith("inline");
-    Translator.displayCache.set(el, isBlock);
-    return isBlock;
+    return hasBlockLayout(el, { readLayout });
   }
 
-  // 判断是否包含块级子元素
-  static hasBlockNode(el) {
+  static hasBlockNode(el, readLayout) {
     if (!Translator.isElementOrFragment(el)) return false;
-    for (const child of el.childNodes) {
-      if (Translator.isBlockNode(child)) {
-        return true;
-      }
-    }
-    return false;
+    return hasBlockDescendantLayout(el, { readLayout });
   }
 
   // 判断是否直接包含非空文本节点
@@ -525,7 +420,6 @@ export class Translator {
       ignoreSelector: this.#ignoreSelector,
       translationTagName: this.#translationTagName,
       tags: Translator.TAGS,
-      isBlockNode: Translator.isBlockNode.bind(Translator),
     });
     this.#ruleMatcher.setSkipsRegex(this.#combinedSkipsRegex);
     this.#renderer = new TranslationRenderer({
@@ -756,8 +650,9 @@ export class Translator {
     }
 
     let nodeGroup = [];
+    const readLayout = createLayoutReader();
     [...node.childNodes].forEach((child) => {
-      const shouldBreak = this.#ruleMatcher.shouldBreak(child);
+      const shouldBreak = this.#ruleMatcher.shouldBreak(child, readLayout);
       const shouldGroup =
         child.nodeType === Node.ELEMENT_NODE ||
         child.nodeType === Node.TEXT_NODE;
@@ -885,6 +780,7 @@ export class Translator {
     const { newlineLength } = this.#setting;
     const parentNode = hostNode.parentElement;
     const hideOrigin = transOnly === "true";
+    let requestWrapper = null;
 
     try {
       const [processedString, placeholderMap] =
@@ -911,6 +807,7 @@ export class Translator {
           hideOrigin,
           newlineLength,
         });
+        requestWrapper = wrapper;
         this.#renderer.renderTranslation({ wrapper, htmlString: cachedHtml });
         this.#renderer.commitTranslation({
           wrapper,
@@ -940,6 +837,7 @@ export class Translator {
         hideOrigin,
         newlineLength,
       });
+      requestWrapper = wrapper;
 
       const currentRunId = this.#runId;
 
@@ -1097,12 +995,9 @@ export class Translator {
 
       // 失败重试按钮
       try {
-        const wrapper = hostNode.querySelector(
-          `:scope > .${Translator.LINGOFLOW_CLASS.warpper}:last-of-type`
-        );
-        if (wrapper) {
-          this.#renderer.setError(wrapper, errorText, () => {
-            this.#processedNodes.delete(hostNode);
+        if (requestWrapper?.isConnected) {
+          this.#renderer.setError(requestWrapper, errorText, () => {
+            // 重试仍属于同一已处理宿主，保留标记以避免扫描器并发创建重复请求。
             this.#translateNodeGroup(nodes, hostNode, deLang);
           });
         }
@@ -1414,8 +1309,6 @@ export class Translator {
   rescan() {
     if (!this.#isInitialized) return;
     this.#advanceRun();
-    // 页面运行期间元素的 display 可能被动态修改，全量重扫时整体失效块级判定缓存。
-    Translator.displayCache = new WeakMap();
 
     this.#cleanupAllNodes();
     this.#resetOptions();

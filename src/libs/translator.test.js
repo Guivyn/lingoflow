@@ -271,6 +271,61 @@ describe("Translator rule styles", () => {
     expect(target.style.cssText).toContain("color: red");
   });
 
+  test("keeps concurrent retry controls attached to their translation groups", async () => {
+    const pending = [];
+    apiTranslate.mockImplementation(
+      ({ text }) =>
+        new Promise((resolve, reject) => {
+          pending.push({ text, resolve, reject });
+        })
+    );
+    document.body.innerHTML =
+      '<main id="root"><p id="target">First group<br>Second group</p></main>';
+
+    createTranslator(
+      { autoScan: "false", selector: "#target" },
+      { minLength: 0 }
+    );
+    await flushAsync();
+
+    expect(pending.map(({ text }) => text)).toEqual([
+      "First group",
+      "Second group",
+    ]);
+    pending[0].resolve({ trText: "第一组译文", isSame: false });
+    pending[1].reject(new Error("second group failed"));
+    await flushAsync();
+
+    const retrySelector = `.${Translator.LINGOFLOW_CLASS.retry}`;
+    let wrappers = Array.from(
+      document.querySelectorAll(`.${Translator.LINGOFLOW_CLASS.warpper}`)
+    );
+    expect(wrappers).toHaveLength(2);
+    expect(wrappers[0].querySelector(retrySelector)).toBeNull();
+    const failedRetry = wrappers[1].querySelector(retrySelector);
+    expect(failedRetry).not.toBeNull();
+
+    failedRetry.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await flushAsync();
+
+    expect(apiTranslate.mock.calls.map(([args]) => args.text)).toEqual([
+      "First group",
+      "Second group",
+      "Second group",
+    ]);
+    expect(pending).toHaveLength(3);
+    pending[2].resolve({ trText: "第二组重试成功", isSame: false });
+    await flushAsync();
+
+    wrappers = Array.from(
+      document.querySelectorAll(`.${Translator.LINGOFLOW_CLASS.warpper}`)
+    );
+    expect(wrappers).toHaveLength(2);
+    expect(
+      wrappers.every((wrapper) => !wrapper.querySelector(retrySelector))
+    ).toBe(true);
+  });
+
   test("skips whitespace-only groups around block children in selected list items", async () => {
     apiTranslate.mockImplementation(({ text }) =>
       Promise.resolve({

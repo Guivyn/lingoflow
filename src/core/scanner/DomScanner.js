@@ -3,6 +3,7 @@ import { injectJs, INJECTOR } from "../../injectors";
 import { appLog } from "../../libs/log";
 import { debounce, scheduleIdle } from "../../libs/utils";
 import { DomKit } from "../dom/DomKit";
+import { createLayoutReader } from "../dom/layout";
 
 /**
  * DOM 扫描与监听器。
@@ -388,9 +389,13 @@ export class DomScanner {
       return null;
     }
 
+    const readLayout = createLayoutReader();
     let current = startNode;
     while (current && current !== document.body) {
-      if (this.#isBlockNode?.(current) || this.#observedNodes.has(current)) {
+      if (
+        this.#isBlockNode?.(current, readLayout) ||
+        this.#observedNodes.has(current)
+      ) {
         for (const root of this.#rootNodes) {
           if (root.contains(current)) {
             return current;
@@ -467,7 +472,7 @@ export class DomScanner {
     });
   }
 
-  #scanNode(rootNode) {
+  #scanNode(rootNode, readLayout) {
     const ignoreSelector = this.#getIgnoreSelector?.();
     if (
       !this.#isElementOrFragment(rootNode) ||
@@ -481,17 +486,18 @@ export class DomScanner {
       return;
     }
 
+    const layoutReader = readLayout || createLayoutReader();
     const hasText = DomKit.hasTextNode(rootNode);
 
     if (!hasText && rootNode.children.length === 1) {
       const child = rootNode.children[0];
       if (!child.classList?.contains(DomKit.LINGOFLOW_CLASS.warpper)) {
-        this.#scanNode(child);
+        this.#scanNode(child, layoutReader);
         return;
       }
     }
 
-    const hasBlock = this.#hasBlockNode?.(rootNode);
+    const hasBlock = this.#hasBlockNode?.(rootNode, layoutReader);
 
     if (hasText || !hasBlock) {
       this.observeNode(rootNode);
@@ -499,9 +505,9 @@ export class DomScanner {
 
     if (hasBlock) {
       for (const child of rootNode.children) {
-        const isBlock = this.#isBlockNode?.(child);
+        const isBlock = this.#isBlockNode?.(child, layoutReader);
         if (!hasText || isBlock) {
-          this.#scanNode(child);
+          this.#scanNode(child, layoutReader);
         }
       }
     }

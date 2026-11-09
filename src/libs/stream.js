@@ -57,6 +57,20 @@ export const createSSEParser = () => {
 };
 
 /**
+ * 解析单条 SSE JSON 数据帧；只跳过格式损坏的帧，其它异常交由调用方处理。
+ * @param {string} rawData SSE data 字段
+ * @returns {Object|null} JSON 值；无效 JSON 返回 null
+ */
+export function parseStreamJsonFrame(rawData) {
+  try {
+    return JSON.parse(rawData);
+  } catch (error) {
+    if (error instanceof SyntaxError) return null;
+    throw error;
+  }
+}
+
+/**
  * 创建异步队列，用于在事件/回调 API 与 ES6 异步生成器 (Async Generator) 之间提供异步迭代桥接。
  * 允许在生产者（如 SSE 监听器回调）和消费者（如 for await...of 循环）之间同步数据。
  * @returns {Object} 队列操作对象，包含 push、finish、error 以及迭代器 iterate。

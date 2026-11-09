@@ -1,7 +1,4 @@
-import {
-  handleTranslate,
-  __resetFallbackCircuitBreakers,
-} from "./translation";
+import { handleTranslate, __resetFallbackCircuitBreakers } from "./translation";
 import {
   DEFAULT_API_LIST,
   OPT_TRANS_MICROSOFT,
@@ -112,6 +109,70 @@ describe("handleTranslate", () => {
         result: ["你好", "en"],
       },
     ]);
+  });
+
+  test("falls back to non-stream request after a transient stream error", async () => {
+    async function* interruptedStream() {
+      throw new Error("stream connection reset");
+    }
+
+    fetchStream.mockReturnValueOnce(interruptedStream());
+    fetchData.mockResolvedValueOnce({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify([{ text: "你好", sourceLanguage: "en" }]),
+          },
+        },
+      ],
+    });
+
+    const result = await collectAsyncGenerator(
+      handleTranslate(["hello"], {
+        from: "en",
+        to: "zh-CN",
+        fromLang: "English",
+        toLang: "Chinese",
+        langMap: () => "",
+        glossary: "",
+        apiSetting: getApiSetting(OPT_TRANS_OPENAI),
+        usePool: false,
+      })
+    );
+
+    expect(fetchStream).toHaveBeenCalledTimes(1);
+    expect(fetchData).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetchStream.mock.calls[0][1].body).stream).toBe(true);
+    expect(JSON.parse(fetchData.mock.calls[0][1].body).stream).toBe(false);
+    expect(result).toEqual([{ id: 0, result: ["你好", "en"] }]);
+  });
+
+  test("does not retry stream request errors through a non-stream request", async () => {
+    async function* rejectedStream() {
+      const error = new Error("provider rejected stream request");
+      error.name = "RequestError";
+      throw error;
+    }
+
+    fetchStream.mockReturnValueOnce(rejectedStream());
+
+    await expect(
+      collectAsyncGenerator(
+        handleTranslate(["hello"], {
+          from: "en",
+          to: "zh-CN",
+          fromLang: "English",
+          toLang: "Chinese",
+          langMap: () => "",
+          glossary: "",
+          apiSetting: getApiSetting(OPT_TRANS_OPENAI),
+          usePool: false,
+        })
+      )
+    ).rejects.toThrow("provider rejected stream request");
+
+    expect(fetchStream).toHaveBeenCalledTimes(1);
+    expect(fetchData).not.toHaveBeenCalled();
   });
 
   test("uses edge public endpoint without auth for microsoft", async () => {

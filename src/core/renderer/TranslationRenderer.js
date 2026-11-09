@@ -5,6 +5,7 @@ import { appLog } from "../../libs/log";
 import { genTextClass } from "../../libs/style";
 import { createRetrySVG } from "../../libs/svg";
 import { DomKit } from "../dom/DomKit";
+import { createLayoutReader } from "../dom/layout";
 import { tokens } from "../../ui/theme/tokens";
 import { repairTranslationLayout } from "./repairTranslationLayout";
 
@@ -830,6 +831,7 @@ export class TranslationRenderer {
 
   #collectExistingTranslationNodes(wrapper) {
     const { transOrder = "original-first" } = this.#rule;
+    const readLayout = createLayoutReader();
     const nodes = [];
     const isOriginalBefore = transOrder !== "translation-first";
     let current = isOriginalBefore
@@ -838,7 +840,7 @@ export class TranslationRenderer {
 
     while (current) {
       if (
-        this.#shouldBreak?.(current) &&
+        this.#shouldBreak?.(current, readLayout) &&
         !this.#tags.WARP.has(current.nodeName?.toUpperCase())
       ) {
         break;

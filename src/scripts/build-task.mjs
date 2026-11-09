@@ -2,6 +2,7 @@
 import { argv, quote, $ } from "zx";
 import { pkg, syncStandard } from "./release-standard.mjs";
 import { syncDesignTokens } from "./design-tokens.mjs";
+import { packageSource } from "./package-source.mjs";
 
 // 在 Windows 上使用 cmd.exe，避免 zx 默认使用 WSL bash 导致 node not found
 if (process.platform === "win32") {
@@ -53,6 +54,7 @@ try {
 
   // 3. 后处理：扩展包不需要独立 content 页面
   await fs.remove(inDest("content.html"));
+  await packageSource({ targetDir });
 
   console.log(chalk.green("Chrome build completed successfully!"));
 } catch (err) {

@@ -1,4 +1,8 @@
 import { appLog } from "../../libs/log";
+import {
+  hasBlockDescendantLayout,
+  hasBlockLayout,
+} from "../dom/layout";
 
 const isElementOrFragment = (el) =>
   el instanceof Element || el instanceof DocumentFragment;
@@ -14,8 +18,6 @@ export class RuleMatcher {
 
   #tags;
 
-  #isBlockNodeStatic;
-
   #combinedSkipsRegex = null;
 
   #blockSelectorInvalid = false;
@@ -26,14 +28,12 @@ export class RuleMatcher {
     ignoreSelector,
     translationTagName,
     tags,
-    isBlockNode,
   }) {
     this.#rule = rule;
     this.#setting = setting;
     this.#ignoreSelector = ignoreSelector;
     this.#translationTagName = translationTagName;
     this.#tags = tags;
-    this.#isBlockNodeStatic = isBlockNode;
   }
 
   setSkipsRegex(regex) {
@@ -45,9 +45,11 @@ export class RuleMatcher {
   }
 
   isIgnoredElement(node) {
-    return (
-      node?.nodeType === Node.ELEMENT_NODE &&
-      node.closest?.(this.#ignoreSelector)
+    const selector = this.#ignoreSelector?.trim();
+    return Boolean(
+      selector &&
+        node?.nodeType === Node.ELEMENT_NODE &&
+        node.closest?.(selector)
     );
   }
 
@@ -100,7 +102,11 @@ export class RuleMatcher {
 
   matchesBlockSelector(node) {
     const selector = this.#rule.blockSelector?.trim();
-    if (!selector || this.#blockSelectorInvalid || !isElementOrFragment(node)) {
+    if (
+      !selector ||
+      this.#blockSelectorInvalid ||
+      node?.nodeType !== Node.ELEMENT_NODE
+    ) {
       return false;
     }
 
@@ -113,45 +119,54 @@ export class RuleMatcher {
     }
   }
 
-  isBlockNode(node) {
-    if (this.matchesBlockSelector(node)) return true;
-    return this.#isBlockNodeStatic(node);
-  }
+  #matchesKeepSelector(node) {
+    const selector = this.#rule.keepSelector?.trim();
+    if (!selector || node?.nodeType !== Node.ELEMENT_NODE) return false;
 
-  hasBlockNode(node) {
-    if (!isElementOrFragment(node)) return false;
-    for (const child of node.childNodes) {
-      if (this.isBlockNode(child)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  shouldBreak(node) {
-    if (!isElementOrFragment(node)) return false;
-
-    let matchesKeepSelector = false;
     try {
-      matchesKeepSelector = node.matches(this.#rule.keepSelector);
+      return node.matches(selector);
     } catch (err) {
-      appLog(
-        "keepSelector match error in shouldBreak",
-        this.#rule.keepSelector,
-        err
-      );
+      appLog("keepSelector match error", selector, err);
+      return false;
     }
-    if (matchesKeepSelector) return false;
+  }
+
+  #layoutOptions(readLayout) {
+    return {
+      readLayout,
+      isForcedBlock: (node) => this.matchesBlockSelector(node),
+      isPreservedInline: (node) =>
+        this.#matchesKeepSelector(node) || this.isIgnoredElement(node),
+    };
+  }
+
+  isBlockNode(node, readLayout) {
+    if (!isElementOrFragment(node)) return false;
+    return hasBlockLayout(node, this.#layoutOptions(readLayout));
+  }
+
+  hasBlockNode(node, readLayout) {
+    if (!isElementOrFragment(node)) return false;
+    return hasBlockDescendantLayout(node, this.#layoutOptions(readLayout));
+  }
+
+  shouldBreak(node, readLayout) {
+    if (!isElementOrFragment(node)) return false;
+
+    if (this.#matchesKeepSelector(node)) return false;
 
     if (
       this.#tags.BREAK_LINE.has(node.nodeName?.toUpperCase()) ||
-      node.matches?.(this.#ignoreSelector) ||
+      (this.#ignoreSelector && node.matches?.(this.#ignoreSelector)) ||
       node.nodeName?.toLowerCase() === this.#translationTagName
     ) {
       return true;
     }
 
-    if (this.#rule.autoScan === "true" && this.isBlockNode(node)) {
+    if (
+      this.#rule.autoScan === "true" &&
+      this.isBlockNode(node, readLayout)
+    ) {
       return true;
     }
 

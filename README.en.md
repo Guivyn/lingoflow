@@ -45,7 +45,7 @@ The default configuration uses Microsoft's built-in endpoint. Other providers ma
 
 Requests support background cancellation, bounded concurrency, and error-aware retries. Cache identities account for effective configuration and full context; expiry and entry limits are enforced. Settings, website rules, and floating-button preferences share save-failure feedback.
 
-See the [cache policy](docs/cache-policy.md), [performance baseline](docs/performance/README.md), and [upstream compatibility](docs/upstream-integration.md). Performance measurements use a repeatable simulated service and do not establish real-provider speed gains. Local AI, audio transcription, PDF/EPUB/image translation, and plugin runtimes are not included.
+See the [cache policy](docs/cache-policy.md), [performance baseline](docs/performance/README.md), and [upstream compatibility](docs/upstream-integration_v2.md). Performance measurements use a repeatable simulated service and do not establish real-provider speed gains. Local AI, audio transcription, PDF/EPUB/image translation, and plugin runtimes are not included.
 
 Latest version: [Release notes](https://github.com/Guivyn/lingoflow/releases/latest). Existing local settings and rules retain their storage namespace across the major-version upgrade.
 
@@ -75,7 +75,7 @@ The active global bindings are shown in `chrome://extensions/shortcuts`. Page-le
 ## Development
 
 <!-- release-standard:start -->
-**v2.0.2** · Node.js **22** · pnpm **11.18.0**
+**v2.0.3** · Node.js **22** · pnpm **11.18.0**
 <!-- release-standard:end -->
 
 The toolchain is defined by [`.nvmrc`](.nvmrc) and [`.pnpm-version`](.pnpm-version); the version block is generated from the release standard. See the [release standard](docs/release-standard.md).

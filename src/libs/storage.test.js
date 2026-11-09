@@ -1,6 +1,7 @@
 import {
   APP_NAME,
   STOKEY_RULES,
+  STOKEY_RULES_MATHJAX_MIGRATED,
   STOKEY_SETTING,
   STOKEY_SETTING_BACKUP_V1_BEFORE_V2,
   OPT_STYLE_NONE,
@@ -45,6 +46,54 @@ describe("storage adapter migration", () => {
       window.localStorage.getItem(STOKEY_SETTING_BACKUP_V1_BEFORE_V2)
     );
     expect(backup.version).toBe(1);
+  });
+
+  test("adds MathJax defaults once without changing site rules or exclusions", async () => {
+    const siteRule = {
+      pattern: "example.com",
+      ignoreSelector: ".site-ignore",
+      keepSelector: ".site-keep",
+    };
+    window.localStorage.setItem(
+      STOKEY_RULES,
+      JSON.stringify([
+        siteRule,
+        { pattern: "*", ignoreSelector: "button", keepSelector: "code" },
+      ])
+    );
+
+    await runDataMigration();
+
+    const migratedRules = JSON.parse(window.localStorage.getItem(STOKEY_RULES));
+    expect(migratedRules[0]).toEqual(siteRule);
+    expect(migratedRules[1].ignoreSelector).toBe("button, .MathJax_Display");
+    expect(migratedRules[1].keepSelector).toBe("code, .MathJax");
+    expect(
+      JSON.parse(window.localStorage.getItem(STOKEY_RULES_MATHJAX_MIGRATED))
+    ).toBe(true);
+
+    await runDataMigration();
+    expect(JSON.parse(window.localStorage.getItem(STOKEY_RULES))).toEqual(
+      migratedRules
+    );
+
+    window.localStorage.clear();
+    window.localStorage.setItem(
+      STOKEY_RULES,
+      JSON.stringify([
+        {
+          pattern: "*",
+          ignoreSelector: "button, -.MathJax_Display",
+          keepSelector: "code, -.MathJax",
+        },
+      ])
+    );
+
+    await runDataMigration();
+
+    const excludedRules = JSON.parse(window.localStorage.getItem(STOKEY_RULES));
+    expect(excludedRules[0].ignoreSelector).toBe("button, -.MathJax_Display");
+    expect(excludedRules[0].keepSelector).toBe("code, -.MathJax");
   });
 
   test("returns default setting when nothing is stored", async () => {

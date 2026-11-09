@@ -31,9 +31,9 @@ const DEFAULT_SELECTOR =
   "h1, h2, h3, h4, h5, h6, li, p, dd, blockquote, figcaption, label, legend";
 // 默认被忽略、不参与翻译的选择器：包含按钮、页脚、导航栏、代码块、矢量图以及带“logo”属性的元素
 const DEFAULT_IGNORE_SELECTOR =
-  "button, footer, pre, mark, nav, svg, img[src*='.svg'], [class*='logo'] svg, [id*='logo'] svg";
+  "button, footer, pre, mark, nav, svg, img[src*='.svg'], [class*='logo'] svg, [id*='logo'] svg, .MathJax_Display";
 // 默认保留原样、不破坏内部结构的特殊行内元素选择器（如行内代码、公式等）
-const DEFAULT_KEEP_SELECTOR = `code, cite, math, .math, a:has(code)`;
+const DEFAULT_KEEP_SELECTOR = `code, cite, math, .math, a:has(code), .MathJax`;
 
 // 网页匹配翻译规则的空对象结构模板（属性全览）
 export const DEFAULT_RULE = {

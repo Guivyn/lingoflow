@@ -25,7 +25,6 @@ test("inline custom components containing blocks are structural, inline-only com
         ? { display: "inline" }
         : original(node)
     );
-  DomKit.displayCache = new WeakMap();
   expect(DomKit.isBlockNode(container)).toBe(true);
   expect(DomKit.isBlockNode(inline)).toBe(false);
   computed.mockRestore();

@@ -1,6 +1,7 @@
 import { PROVIDER_CAPABILITIES } from "../capabilities";
 import { OPT_TRANS_OPENAI } from "../../config";
 import { injectThinking, parseAIRes, parseSTRes } from "../shared";
+import { RequestError } from "../../libs/requestError";
 
 export const openaiProvider = {
   apiType: OPT_TRANS_OPENAI,
@@ -81,6 +82,23 @@ export const openaiProvider = {
     return res?.choices?.[0]?.message?.content?.trim() || "";
   },
   parseStreamDelta(json) {
+    const streamError = json?.error || (json?.type === "error" ? json : null);
+    if (streamError) {
+      const detail = streamError.error || streamError;
+      const status = Number(detail.status || streamError.status) || 0;
+      const message =
+        (typeof detail === "string" ? detail : detail.message) ||
+        streamError.message ||
+        "Streaming API request failed.";
+      throw new RequestError(
+        message,
+        {
+          status,
+          code: String(detail.code || streamError.code || "API_ERROR"),
+          retryable: status === 429 || status >= 500,
+        }
+      );
+    }
     return json.choices?.[0]?.delta?.content || "";
   },
 };

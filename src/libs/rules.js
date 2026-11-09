@@ -15,6 +15,7 @@ import {
   OPT_SPLIT_PARAGRAPH_ALL,
 } from "../config";
 import { getRulesWithDefault, setRules } from "./storage";
+import { splitSelectorList } from "./selectorList";
 
 // 已移除的内置译文样式，导入旧规则时统一回退为无样式。
 const LEGACY_REMOVED_TEXT_STYLES = new Set([
@@ -38,14 +39,8 @@ function mergeSelectors(defaultStr, userStr) {
     return defaultStr;
   }
 
-  const defaultList = defaultStr
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const userList = userStr
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const defaultList = splitSelectorList(defaultStr);
+  const userList = splitSelectorList(userStr);
 
   // 判断是否属于追加/删除的补丁（Patch）模式（即列表中包含任意一个带 "+" 或 "-" 的项）
   const isPatchMode = userList.some(
@@ -83,18 +78,52 @@ function mergeSelectors(defaultStr, userStr) {
   return [...finalSet].join(", ");
 }
 
+/** 内置规则按主机边界和路径段匹配，避免域名文本出现在其它主机名中。 */
+const isBuiltinUrlMatch = (href, pattern) => {
+  try {
+    const pageUrl = new URL(href);
+    const hasExplicitProtocol = /^[a-z][a-z\d+.-]*:\/\//i.test(pattern);
+    const patternUrl = new URL(
+      hasExplicitProtocol ? pattern : `https://${pattern}`
+    );
+    const pageHost = pageUrl.hostname.toLowerCase();
+    const patternHost = patternUrl.hostname.toLowerCase();
+
+    if (hasExplicitProtocol && pageUrl.protocol !== patternUrl.protocol) {
+      return false;
+    }
+
+    if (
+      pageHost !== patternHost &&
+      !pageHost.endsWith(`.${patternHost}`)
+    ) {
+      return false;
+    }
+
+    const patternPath = patternUrl.pathname.replace(/\/+$/, "") || "/";
+    return (
+      patternPath === "/" ||
+      pageUrl.pathname === patternPath ||
+      pageUrl.pathname.startsWith(`${patternPath}/`)
+    );
+  } catch {
+    return false;
+  }
+};
+
 /**
  * 在给定的规则列表中，依据当前的 URL 匹配适合的规则
  * @param {Array<Object>} rules 待遍历的规则数组
  * @param {string} href 当前页面的完整 URL (如 location.href)
+ * @param {Function} matchesPattern URL 与 pattern 的匹配函数
  * @returns {Object|undefined} 匹配到的首条规则，未匹配返回 undefined
  */
-const findMatchingRule = (rules, href) => {
+const findMatchingRule = (rules, href, matchesPattern = isMatch) => {
   return rules.find(
     (r) =>
       r.pattern !== GLOBAL_KEY &&
       r.enabled !== false &&
-      r.pattern.split(/\n|,/).some((p) => isMatch(href, p.trim()))
+      r.pattern.split(/\n|,/).some((p) => matchesPattern(href, p.trim()))
   );
 };
 
@@ -204,7 +233,11 @@ export const matchRule = async (href) => {
   const matchedPersonalRule = findMatchingRule(personalRules, href);
 
   // 内置站点规则（Wiki、HN、X、YouTube、GitHub 等）作为次级兜底
-  const matchedBuiltinRule = findMatchingRule(BUILTIN_RULES, href);
+  const matchedBuiltinRule = findMatchingRule(
+    BUILTIN_RULES,
+    href,
+    isBuiltinUrlMatch
+  );
 
   // 如果没有匹配到任何规则，返回全局规则
   if (!matchedPersonalRule && !matchedBuiltinRule) {

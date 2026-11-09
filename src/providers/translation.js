@@ -30,6 +30,7 @@ import {
   createRealtimeStreamParser,
   detectStreamFormat,
   getStreamDelta,
+  parseStreamJsonFrame,
 } from "../libs/stream";
 import { appLog } from "../libs/log";
 import { fetchData, fetchStream } from "../libs/fetch";
@@ -468,18 +469,15 @@ export const handleDict = async ({
         signal,
         poolKey: apiSlug,
       })) {
-        try {
-          const json = JSON.parse(rawData);
-          const delta = getStreamDelta(json, apiType);
-          if (!delta) continue;
+        const json = parseStreamJsonFrame(rawData);
+        if (!json) continue;
+        const delta = getStreamDelta(json, apiType);
+        if (!delta) continue;
 
-          fullContent += delta;
-          // 流式模型可能先输出 Markdown 代码围栏，边流式展示边剥离可避免 UI 闪出 ```。
-          fullContent = stripMarkdownCodeBlock(fullContent, true);
-          onStreamChunk({ markdown: fullContent });
-        } catch {
-          // 忽略单个 SSE 数据帧解析失败，等待后续帧继续输出。
-        }
+        fullContent += delta;
+        // 流式模型可能先输出 Markdown 代码围栏，边流式展示边剥离可避免 UI 闪出 ```。
+        fullContent = stripMarkdownCodeBlock(fullContent, true);
+        onStreamChunk({ markdown: fullContent });
       }
 
       const markdown = stripMarkdownCodeBlock(fullContent).trim();
@@ -760,62 +758,59 @@ async function* handleTranslateStreamInternal(
       signal,
       poolKey,
     })) {
-      try {
-        const json = JSON.parse(rawData);
-        const delta = getStreamDelta(json, apiType);
+      const json = parseStreamJsonFrame(rawData);
+      if (!json) continue;
+      const delta = getStreamDelta(json, apiType);
 
-        if (delta) {
-          fullContent += delta;
-          fullContent = stripMarkdownCodeBlock(fullContent, true);
+      if (delta) {
+        fullContent += delta;
+        fullContent = stripMarkdownCodeBlock(fullContent, true);
 
-          if (!useBatchFetch) {
-            if (streamRenderMode === "realtime") {
-              yield { id: 0, partialText: fullContent, isComplete: false };
-            }
-            continue;
+        if (!useBatchFetch) {
+          if (streamRenderMode === "realtime") {
+            yield { id: 0, partialText: fullContent, isComplete: false };
           }
+          continue;
+        }
 
-          if (!formatDetected) {
-            const { isJson, detected } = detectStreamFormat(fullContent);
-            if (detected) {
-              formatDetected = true;
-              isJsonFormat = isJson;
-              // 格式检测成功后，将累积的内容写入解析器
-              if (isJsonFormat) {
-                for (const { id, translation } of jsonParser.write(
-                  fullContent
-                )) {
-                  results[id] = translation;
-                  yield { id, result: translation };
-                }
+        if (!formatDetected) {
+          const { isJson, detected } = detectStreamFormat(fullContent);
+          if (detected) {
+            formatDetected = true;
+            isJsonFormat = isJson;
+            // 格式检测成功后，将累积的内容写入解析器
+            if (isJsonFormat) {
+              for (const { id, translation } of jsonParser.write(
+                fullContent
+              )) {
+                results[id] = translation;
+                yield { id, result: translation };
               }
             }
-          } else if (isJsonFormat) {
-            for (const { id, translation } of jsonParser.write(delta)) {
-              results[id] = translation;
-              yield { id, result: translation };
-            }
-          } else {
-            for (const { id, translation } of parseStreamingSegments(
-              fullContent,
-              processedIds
-            )) {
-              results[id] = translation;
-              yield { id, result: translation };
-            }
           }
-          // 实时渲染模式：yield 段落级中间态
-          if (realtimeParser && streamRenderMode === "realtime") {
-            const items = realtimeParser.write(delta);
-            for (const { id, partialText, isComplete } of items) {
-              if (!isComplete) {
-                yield { id, partialText, isComplete: false };
-              }
+        } else if (isJsonFormat) {
+          for (const { id, translation } of jsonParser.write(delta)) {
+            results[id] = translation;
+            yield { id, result: translation };
+          }
+        } else {
+          for (const { id, translation } of parseStreamingSegments(
+            fullContent,
+            processedIds
+          )) {
+            results[id] = translation;
+            yield { id, result: translation };
+          }
+        }
+        // 实时渲染模式：yield 段落级中间态
+        if (realtimeParser && streamRenderMode === "realtime") {
+          const items = realtimeParser.write(delta);
+          for (const { id, partialText, isComplete } of items) {
+            if (!isComplete) {
+              yield { id, partialText, isComplete: false };
             }
           }
         }
-      } catch (e) {
-        // 忽略解析错误
       }
     }
 
@@ -1010,16 +1005,13 @@ async function handleSubtitleStreamInternal(
       throw new DOMException("The operation was aborted.", "AbortError");
     }
 
-    try {
-      const json = JSON.parse(rawData);
-      const delta = getStreamDelta(json, apiType);
-      if (!delta) continue;
+    const json = parseStreamJsonFrame(rawData);
+    if (!json) continue;
+    const delta = getStreamDelta(json, apiType);
+    if (!delta) continue;
 
-      fullContent += delta;
-      appendSubtitles(parser.write(delta), false);
-    } catch {
-      // 单个 SSE 分片异常不终止整条字幕流，等待后续分片或最终兜底解析补齐。
-    }
+    fullContent += delta;
+    appendSubtitles(parser.write(delta), false);
   }
 
   appendSubtitles(parser.end(), false);

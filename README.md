@@ -45,7 +45,7 @@
 
 请求支持后台取消、并发上限和按错误类型重试。缓存区分有效配置与完整上下文，读取时执行有效期和条目数量限制。通用设置、网站规则和悬浮按钮使用统一的保存失败反馈。
 
-详细说明见 [缓存策略](docs/cache-policy.md)、[性能基线](docs/performance/README.md) 与 [上游兼容范围](docs/upstream-integration.md)。性能基线使用可重复的模拟服务，不代表真实接口的实测提速。本版本未包含本地 AI、音频转写、PDF/EPUB/图片翻译及服务插件运行时。
+详细说明见 [缓存策略](docs/cache-policy.md)、[性能基线](docs/performance/README.md) 与 [上游兼容范围](docs/upstream-integration_v2.md)。性能基线使用可重复的模拟服务，不代表真实接口的实测提速。本版本未包含本地 AI、音频转写、PDF/EPUB/图片翻译及服务插件运行时。
 
 当前版本改进见 [Release 说明](https://github.com/Guivyn/lingoflow/releases/latest)。大版本升级沿用现有存储命名空间，保留已有本地配置和规则。
 
@@ -75,7 +75,7 @@
 ## 开发
 
 <!-- release-standard:start -->
-**v2.0.2** · Node.js **22** · pnpm **11.18.0**
+**v2.0.3** · Node.js **22** · pnpm **11.18.0**
 <!-- release-standard:end -->
 
 工具链以 [`.nvmrc`](.nvmrc) 和 [`.pnpm-version`](.pnpm-version) 为准，上方版本区块按发布规范自动生成。参见 [交付规范](docs/release-standard.md)。
