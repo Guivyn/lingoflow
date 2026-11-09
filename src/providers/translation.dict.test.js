@@ -23,6 +23,7 @@ jest.mock("../libs/stream", () => ({
   createRealtimeStreamParser: jest.fn(),
   detectStreamFormat: jest.fn(),
   getStreamDelta: jest.fn(),
+  parseStreamJsonFrame: (rawData) => JSON.parse(rawData),
 }));
 
 const openaiApi = {
