@@ -455,7 +455,7 @@ export const saveRule = async (curRule) => {
  * 直接持久化单条规则（兼容全局 "*" 规则，避免重复插入）。
  * 弹窗等轻量入口用它把页面内的开关/样式选择写回本地存储。
  */
-export const persistRule = async (rule) => {
+export const persistRule = async (rule, { preserveTransOpen = false } = {}) => {
   if (!rule || typeof rule.pattern !== "string" || !rule.pattern.trim()) return;
 
   const pattern = rule.pattern.trim();
@@ -466,6 +466,9 @@ export const persistRule = async (rule) => {
   const base =
     index >= 0 ? rules[index] : { ...DEFAULT_RULE, pattern };
   const next = { ...base, ...rule, pattern };
+  if (preserveTransOpen) {
+    next.transOpen = base.transOpen ?? DEFAULT_RULE.transOpen;
+  }
 
   if (index >= 0) {
     rules[index] = next;

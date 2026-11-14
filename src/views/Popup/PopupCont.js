@@ -198,7 +198,7 @@ export default function PopupCont({
     try {
       const nextRule = { ...rule, ...fields };
       setRule(nextRule);
-      await persistRule(nextRule);
+      await persistRule(nextRule, { preserveTransOpen: true });
       setSaveError("");
 
       if (!processActions) {

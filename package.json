@@ -1,7 +1,7 @@
 {
   "name": "lingoflow",
   "description": "A lightweight bilingual translation Chrome extension.",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "license": "GPL-3.0-only",
   "author": "Gabe<yugang2002@gmail.com>",
   "private": true,

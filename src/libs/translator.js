@@ -171,6 +171,7 @@ export class Translator {
   #isJsInjected = false; // 注入用户JS
   #isShadowRootJsInjected = false; //
   #enabled = false; // 全局默认状态
+  #startedAutomatically = false; // 当前翻译是否由目标语言自动翻译启动
   #runId = 0; // 用于中止过期的异步请求
   #requestController = new AbortController();
 
@@ -521,7 +522,7 @@ export class Translator {
         (fromLang !== "auto" && fromLang.slice(0, 2) !== deLang.slice(0, 2))
       )
         return;
-      this.enable();
+      this.enable({ automatic: true });
     } catch (err) {
       appLog("auto translate target language", err);
     }
@@ -1244,10 +1245,17 @@ export class Translator {
   }
 
   // 开启翻译
-  enable() {
-    if (this.#enabled) return;
+  enable({ automatic = false } = {}) {
+    if (this.#enabled) {
+      if (!automatic) {
+        this.#startedAutomatically = false;
+        this.#rule.transOpen = "true";
+      }
+      return;
+    }
     this.#enabled = true;
-    this.#rule.transOpen = "true";
+    this.#startedAutomatically = automatic;
+    if (!automatic) this.#rule.transOpen = "true";
     this.#advanceRun();
 
     if (this.#isInitialized) {
@@ -1287,8 +1295,12 @@ export class Translator {
 
   // 关闭翻译
   disable() {
-    if (!this.#enabled) return;
+    if (!this.#enabled) {
+      this.#startedAutomatically = false;
+      return;
+    }
     this.#enabled = false;
+    this.#startedAutomatically = false;
     this.#rule.transOpen = "false";
     this.#advanceRun();
     this.#pageLangPromise = null;
@@ -1350,6 +1362,10 @@ export class Translator {
   // 更新全局设置：合并到运行期设置并刷新已插入的译文布局
   applySetting(patch) {
     Object.assign(this.#setting, patch);
+    if (patch?.autoTransTarget === false && this.#startedAutomatically) {
+      this.disable();
+      return;
+    }
     // 语言检测器或跳过语言变化后，页面级语言结果需要重新计算。
     this.#pageLangPromise = null;
     this.#maybeAutoTranslateTarget();
@@ -1435,7 +1451,14 @@ export class Translator {
   }
 
   get rule() {
-    return { ...this.#rule };
+    return {
+      ...this.#rule,
+      transOpen: this.#enabled ? "true" : this.#rule.transOpen,
+    };
+  }
+
+  get startedAutomatically() {
+    return this.#startedAutomatically;
   }
 
   get eventName() {

@@ -275,9 +275,14 @@ export default class TranslatorManager {
    * 用户在页面内切换过的全文翻译、划词翻译、输入框翻译等开关。
    */
   #snapshotRuntimeState() {
+    const rule = this.#cloneConfig(this._translator?.rule || this.#rule);
+    if (this._translator?.startedAutomatically) {
+      rule.transOpen = "false";
+    }
+
     return {
       setting: this.#cloneConfig(this._translator?.setting || this.#setting),
-      rule: this.#cloneConfig(this._translator?.rule || this.#rule),
+      rule,
       fabConfig: this.#cloneConfig(this.#fabConfig),
     };
   }
